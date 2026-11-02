@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.6 (2 November 2026)  
+**Baseline PRD:** v0.7 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Task 001 map/PWA foundation deployed from `main` after [#3](https://github.com/s3ton/bitmon/pull/3) and [#4](https://github.com/s3ton/bitmon/pull/4); owner confirms installed PWA and high perceived geographic fidelity on a phone. Task 002 is in review on [draft PR #8](https://github.com/s3ton/bitmon/pull/8) against `preview`. E0 acceptance, geometry audit and cross-device checks remain open. **Last evidence review:** 2 November 2026.
