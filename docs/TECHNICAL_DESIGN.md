@@ -5,7 +5,7 @@
 **Geographic world contract:** The [bitmon Product Requirements](PRODUCT_REQUIREMENTS.md) are authoritative for world geometry and visual rendering. **OpenFreeMap is the sole geographic source**; MapLibre renders the tiles; no new real-world building or road geometry may be invented. Mapped building facades and windows may use deterministic art inferred only from OpenFreeMap's available fields and context. Implementation and decision status is tracked separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 **Status:** Concept / architecture proposal, not a security-audited specification
-**Version:** 2.2 (adapted from the Project Aether v2.2 technical proposal; registration-first verified adventures)
+**Version:** 2.3 (Task 002 geographic exploration and heading-following camera contract; underlying v2.2 protocol proposal unchanged)
 **Date:** 2 November 2026
 **Project name:** **bitmon** (game and creature name; original characters and artwork required)
 
@@ -245,7 +245,16 @@ Network outages need predefined handling: suspend affected slots, shift deadline
 
 ## 7. Deterministic combat and capture
 
-**World and camera presentation:** Per the [Product Requirements](PRODUCT_REQUIREMENTS.md), the **first prototype is exploration-only**: a male avatar with a directional walk cycle, touch controls, and a fixed-angle portrait camera following OpenFreeMap-based low-poly 2.5D geometry. When battles are implemented later, they will remain in the **same 2.5D world scene**: zoom/reframe toward the encountered bitmon with real-world mapped surroundings visible, then return to the exact fixed-angle exploration camera. Camera motion is **presentation only** and must not change canonical player coordinates, encounter validity, or battle rules.
+**World and camera presentation (Task 002 / DEC-019):** The **first prototype is exploration-only**: original male four-direction animated trainer, portrait-safe virtual joystick, and a **fixed-pitch/zoom, heading-following camera** over MapLibre's unchanged OpenFreeMap geometry. Later battles remain in the **same 2.5D world scene**, zoom/reframe toward the encountered bitmon, restore the captured pre-battle bearing/pitch/zoom/follow state, and then resume heading-following mode. Camera rotation is **presentation only**: it never rotates true geographic player coordinates, modifies mapped geometry, or affects encounter validity and battle rules.
+
+**E0 design/implementation contract (2026-11-02):**
+
+- **Movement state:** player position is true WGS84 longitude/latitude; integrate joystick input using elapsed time and speed measured in meters/second, with clamped background-frame delta and normalized diagonals. Short local moves use a spherical Earth approximation. A MapLibre geographic marker anchors the sprite and shadow to the actual location, not to a decorative screen pixel.
+- **Camera/input separation:** at the start of each joystick gesture, snapshot camera bearing as the direction-input basis and keep that basis for the gesture. This avoids rotating the camera while interpreting held input in a way that would make geographic movement spiral. The camera target bearing is calculated from **actual accepted displacement**, including collision sliding. Shortest-angle exponential interpolation works across 0°/360° and keeps the last target while stationary. Exploration pitch (45°) and zoom (16.4) are fixed. Disable drag/pinch tilt/rotate and pan/zoom gestures.
+- **Avatar facing:** geographic heading minus current camera bearing determines screen-facing (up/down/left/right); elapsed walking time picks frames only while successful movement occurs, otherwise idle. Use a minimal original vector trainer and simple ground shadow. Neither sprite direction nor animation time updates geographic position.
+- **Minimal source collision:** cache WGS84 polygon/multipolygon rings from loaded OpenFreeMap `building` and `water` source layers, test an avatar foot margin with polygon holes, and permit movement/axis sliding only into unblocked coordinates. Collision checks must never depend on rendered extrusion pixels or camera rotation. Freeze movement while relevant vector tiles are not loaded rather than guessing a bridge/entrance. Loaded tiles can lack pedestrian access data, have generalized/coarsely clipped boundaries, or change revision; this is **not** authoritative real-world passability.
+- **Lifecycle:** pointer capture/virtual joystick reset on pointer release, blur, document hide, or landscape rotation. Stop walking animation immediately on release. Schedule camera frames only while movement or angle smoothing is pending; do not spin an idle frame loop.
+- **Later architecture:** entrance/access rights, navigation graphs, long-distance travel, GPS, verified movement/encounter region commitments, and battle-camera transition implementation are deferred. Prototype geographic movement is not a cryptographic locality proof.
 
 ### 7.1 Battles
 
