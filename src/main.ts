@@ -12,7 +12,7 @@ const style: StyleSpecification = {
   sources: {
     openmaptiles: {
       type: 'vector',
-      url: 'https://tiles.openfreemap.org/planet',
+      url: 'https://tiles.openfreemap.org/planet/latest',
       attribution: '© OpenFreeMap · © OpenStreetMap contributors',
     },
   },
