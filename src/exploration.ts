@@ -143,7 +143,6 @@ export function startExploration(map: MapLibreMap): void {
     // Initial Brera coordinates can fall inside a real mapped building.
     // Spawn at a nearby mapped route, not by disabling building collisions.
     if (!hasPlacedSpawn) {
-      hasPlacedSpawn = true
       const search = (candidate: Position) => !isBlocked(candidate) &&
         distanceMeters(START, candidate) <= 70
       let best: Position | null = null
@@ -184,7 +183,10 @@ export function startExploration(map: MapLibreMap): void {
           collisionOrigin = { ...position }
         }
       }
-      if (!best && isBlocked(position)) {
+      if (!isBlocked(position)) {
+        hasPlacedSpawn = true
+        movementStatus.hidden = true
+      } else {
         movementStatus.hidden = false
         movementStatus.textContent = 'No clear starting spot in loaded map data.'
       }
