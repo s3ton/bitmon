@@ -98,14 +98,16 @@ const style: StyleSpecification = {
 }
 
 const status = document.querySelector<HTMLParagraphElement>('#status')!
+const zoomSlider = document.querySelector<HTMLInputElement>('#zoom-slider')!
+const zoomValue = document.querySelector<HTMLOutputElement>('#zoom-value')!
 
 const map = new Map({
   container: 'map',
   style,
   center: [9.1869, 45.4715], // Brera, Milan: geographic coordinates, not a fictional level.
   zoom: 16.4,
-  minZoom: 16.4,
-  maxZoom: 16.4,
+  minZoom: 15.5,
+  maxZoom: 18.5,
   pitch: 45,
   minPitch: 45,
   maxPitch: 45,
@@ -116,6 +118,11 @@ const map = new Map({
   canvasContextAttributes: { antialias: false },
 })
 
+zoomSlider.addEventListener('input', () => {
+  const zoom = Number(zoomSlider.value)
+  zoomValue.value = zoom.toFixed(1)
+  map.setZoom(zoom)
+})
 map.addControl(new AttributionControl({ compact: false }), 'bottom-right')
 map.once('idle', () => { status.hidden = true })
 startExploration(map)

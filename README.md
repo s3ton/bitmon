@@ -11,7 +11,7 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 - [Development Tracker](docs/DEVELOPMENT_TRACKER.md) — implementation status, acceptance evidence, open decisions, and requirements change history.
 - [Agent Engineering Skill](skill.md) — mandatory test minimization, no-dead-code policy, simplification review, and PR-to-preview workflow.
 
-The source repository is **public**. The currently deployed build is [bitmon Stable](https://s3ton.github.io/bitmon/) from `main`. A new, distinct [bitmon Preview](https://s3ton.github.io/bitmon/preview/) installation is **planned but not live until the reviewed infrastructure-only main release activates dual-channel deployment**. The two PWAs share GitHub Pages hosting but use separate manifest identities and service-worker caches; no second repository is required.
+The source repository is **public**. The currently deployed build is [bitmon Stable](https://s3ton.github.io/bitmon/) from `main`. A [bitmon Preview](https://s3ton.github.io/bitmon/preview/) channel is now deployed alongside Stable. The owner's first install attempt reported a duplicate-app identity; a corrective explicit Preview ID and icon is in review. The two PWAs share GitHub Pages hosting but use separate manifest identities and service-worker caches; no second repository is required.
 
 ## Current development status (2 November 2026)
 
@@ -35,8 +35,8 @@ npm run dev
 ## Two GitHub Pages PWAs — phone testing and stable releases
 
 1. Keep [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) set to **GitHub Actions** with `github-pages` environment deployments restricted to `main`. First, review/merge the small **infrastructure-only main release PR** (not gameplay PR #11), which activates the dual-channel Pages workflow on the default branch.
-2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. It has a distinct "bitmon Test" home-screen label/DEV icon and should auto-update after the `preview` branch's **successful** push CI, without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
-3. On a portrait phone, check preview movement, 10 m/s diagonals, small trainer, heading camera, floating joystick, collision, offline shell, and that both icons launch their respective builds. Verify changing preview leaves Stable unchanged.
+2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. After the identity fix deploys, it should have a **purple Preview icon and "bitmon DEV" home-screen label**, distinct from the teal Stable app. It auto-updates after `preview` branch **successful** push CI, without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
+3. On a portrait phone, verify Preview offers a **separate installation**, with its purple icon and distinct name, while Stable remains installed. Then check joystick up/down direction, 10 m/s diagonals, 15.5–18.5 right-side zoom slider, scale-adjusting trainer, collision, offline shell and both home-screen launches. Verify changing preview leaves Stable unchanged.
 4. **Only after approving the preview**, merge a reviewed `preview` → `main` release PR (currently [#11](https://github.com/s3ton/bitmon/pull/11)) to promote its exact gameplay to Stable. Existing GitHub Pages deploys both compiled outputs together, not two separate Pages sites.
 
 Both PWAs need internet for uncached map tiles. Current source code has no saved game progress; any future localStorage or IndexedDB keys must include the channel name because browser storage is shared by origin.

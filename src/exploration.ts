@@ -87,17 +87,24 @@ export function startExploration(map: MapLibreMap): void {
   avatar.setAttribute('aria-label', 'Trainer avatar')
   // A 1.8 m trainer is tiny at neighborhood zoom. Keep a small readability
   // floor rather than drawing him at building scale.
-  const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(START.lat)) /
-    (512 * 2 ** map.getZoom())
-  const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel)
-  avatar.style.height = `${heightPx}px`
-  avatar.style.width = `${heightPx * .75}px`
   avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
   const avatarMarker = new Marker({
     element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
   }).setLngLat([START.lon, START.lat]).addTo(map)
 
   let position = { ...START }
+  // The avatar scales with zoom instead of staying at its original CSS size.
+  // A small minimum keeps its walking animation readable on a phone.
+  function updateAvatarScale(): void {
+    const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
+      (512 * 2 ** map.getZoom())
+    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel)
+    avatar.style.height = `${heightPx}px`
+    avatar.style.width = `${heightPx * .75}px`
+  }
+  map.on('zoom', updateAvatarScale)
+  updateAvatarScale()
+
   let heading = map.getBearing()
   let targetBearing = heading
   let collisionAreas: CollisionArea[] = []
@@ -237,7 +244,9 @@ export function startExploration(map: MapLibreMap): void {
       distanceMeters(position, collisionOrigin) < COLLISION_RADIUS_METERS && !isBlocked(position)
     if (!landscape && length > DEAD_ZONE && ready) {
       const magnitude = Math.min(1, (length - DEAD_ZONE) / (1 - DEAD_ZONE))
-      const desiredHeading = controlBearing + degrees(Math.atan2(x, -y))
+      // Touch reports downward-positive screen Y. Invert its north/south
+      // mapping to match thumb intent; keep WASD/arrow debugging unchanged.
+      const desiredHeading = controlBearing + degrees(Math.atan2(x, usingStick ? y : -y))
       const distance = SPEED_METERS_PER_SECOND * magnitude * dt
       const east = Math.sin(radians(desiredHeading)) * distance
       const north = Math.cos(radians(desiredHeading)) * distance
@@ -312,7 +321,7 @@ export function startExploration(map: MapLibreMap): void {
       (event.pointerType === 'mouse' && event.button !== 0) ||
       window.matchMedia('(orientation: landscape)').matches) return
     if (event.target instanceof Element &&
-      event.target.closest('a, button, input, textarea, select')) return
+      event.target.closest('#zoom-control, a, button, input, textarea, select')) return
     const bounds = app.getBoundingClientRect()
     const verticalFraction = (event.clientY - bounds.top) / bounds.height
     if (verticalFraction < JOYSTICK_START_MIN || verticalFraction > JOYSTICK_START_MAX) return
