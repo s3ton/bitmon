@@ -332,7 +332,7 @@ export function startExploration(map: MapLibreMap): void {
   })
   for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
     app.addEventListener(eventName, (event) => {
-      if (event.pointerId === activePointer) resetStick()
+      if ((event as PointerEvent).pointerId === activePointer) resetStick()
     })
   }
   const directionKeys = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'])
