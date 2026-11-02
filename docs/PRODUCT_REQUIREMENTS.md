@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.2 — OpenFreeMap-only geographic authority; no invented roads or buildings  
+**Version:** 0.3 — smartphone-first, portrait-only, installable PWA with low-poly 2.5D  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -12,9 +12,9 @@
 
 ## 1. Product vision
 
-**bitmon is a browser-first creature-collection RPG set on a game version of the real Earth.** A player explores streets, paths, parks, neighborhoods, and landscapes corresponding to real places, encounters and trains bitmon, builds a collection, trades under fair rules, and competes to lead gyms.
+**bitmon is a smartphone-first, installable PWA creature-collection RPG set on a game version of the real Earth.** A player explores streets, paths, parks, neighborhoods, and landscapes corresponding to real places, encounters and trains bitmon, builds a collection, trades under fair rules, and competes to lead gyms.
 
-The **world is mapped 1:1 to the real-world geography represented in OpenFreeMap**: its streets, geographic positions, and building footprints come only from features present in OpenFreeMap tiles, rather than a small fictional map that merely resembles Earth. An absent mapped building or road must stay absent; the game never creates one to fill gaps. OpenFreeMap can be incomplete, so this is a fidelity-to-source promise rather than a guarantee that every real feature has been mapped. It is **rendered as a stylized 2.5D top-down RPG**, evoking the readable pixel-art perspective of handheld creature games from the late 2000s and early 2010s, with wholly original bitmon art and assets.
+The **world is mapped 1:1 to the real-world geography represented in OpenFreeMap**: its streets, geographic positions, and building footprints come only from features present in OpenFreeMap tiles, rather than a small fictional map that merely resembles Earth. An absent mapped building or road must stay absent; the game never creates one to fill gaps. OpenFreeMap can be incomplete, so this is a fidelity-to-source promise rather than a guarantee that every real feature has been mapped. It is **rendered as an original low-poly 2.5D top-down/oblique RPG** with simplified geometric volumes, clean silhouettes, restrained shading and materials, and minimal polygon detail. Classic handheld creature RPGs remain a reference for camera and exploration—not a requirement to imitate pixel-art textures or copyrighted assets.
 
 **OpenFreeMap is the only geographic data source**, and **MapLibre** displays and styles its tiles. We add original game art to the **existing mapped geometry**: stylized road surfaces, raised/extruded mapped buildings, roof treatments, facades, windows, characters, and bitmon. Building appearance may be **plausibly inferred** from attributes and surrounding context that OpenFreeMap already exposes; inferred usage is an art choice, not an assertion about the real building. No additional OSM enrichment service, building dataset, custom geography source, or invented road/building geometry is required or permitted.
 
@@ -23,18 +23,23 @@ The game is primarily played locally after the player registers a verifiable tra
 ### Product promises
 
 1. **The real Earth is the world.** A street in the map corresponds to that street's real geographic location.
-2. **It feels like a game, not a navigation app.** Roads and buildings remain recognizable, but everything is presented in a coherent 2.5D RPG art style.
+2. **It feels like a low-poly mobile game, not a navigation app.** Roads and buildings remain recognizable, but everything is presented in a coherent low-poly 2.5D RPG style.
 3. **Every neighborhood has a visual identity without fabricated geography.** OpenFreeMap building footprints, land use, roads, waterways, and parks influence the scene; only surface art and facade treatments may be invented.
 4. **The player's bitmon are earned, not fabricated.** Verified encounters and progression follow independently checkable rules.
 5. **Most actions are immediate.** Walking, exploring, and battling do not require blockchain transactions every few seconds.
 6. **Social competition is simple and fair.** Trading follows fixed restrictions; gyms have permanent type identities and reward reputation, not money.
 7. **No single operator is required to keep playing.** The player can self-pay transaction fees, use alternative hosting, and verify the canonical game state.
+8. **It lives on the phone.** Players can install bitmon from a browser onto their home screen and play in portrait orientation.
 
 ## 2. Decisions and assumptions
 
 ### Confirmed product decisions
 
 - The game and creatures are named **bitmon** for now.
+- **Smartphones are the primary target.** Bitmon ships as an **installable PWA**, not initially as a native app-store binary.
+- **Portrait-only gameplay.** No landscape gameplay layout or support is planned.
+- **Low-poly 2.5D** is the required art direction; simple geometric building volumes, faceted or flat-shaded treatments, original art, and low visual complexity.
+- **GitHub-only distribution for now:** keep the source repository private and deploy **compiled PWA output only** to a separate public GitHub repository served by GitHub Pages.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
 - **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
 - **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
@@ -49,14 +54,15 @@ The game is primarily played locally after the player registers a verifiable tra
 
 - **Virtual exploration is the primary control scheme:** players move a character through the map using mouse/touch/keyboard/gamepad. A player's real GPS location is **not** assumed to be required. This is different from a location-based game that requires physically visiting coordinates. The movement/travel design must be decided explicitly (§14).
 - The geographic **positions and footprints** are 1:1, but art style, perspective, visible building height, and collision presentation may be stylized for readability. This does **not** mean every meter of travel is fun at normal walking speed.
-- The initial product is a browser-based progressive web app (PWA), with desktop and mobile support.
+- Desktop browsers may be used for development/debugging, but **desktop-specific and landscape layouts are not product requirements**. The game is designed for upright portrait smartphone screens.
+- Offline capability is scoped to cached application files and local pending progress where feasible; the entire Earth map, new authenticated randomness and blockchain settlement are not promised offline.
 - Every bitmon type/rarity, battle rule, starter list, and gym location is still subject to game design unless stated as a confirmed rule above.
 
 ## 3. Who the player is and what they do
 
 ### Primary player journey
 
-1. **Open bitmon.** See a short introduction explaining that the setting is the real Earth, presented as a game world.
+1. **Open or install bitmon on a smartphone.** Visit its public PWA URL, or launch it from the home-screen icon; see a short introduction explaining the real-Earth game world.
 2. **Create a verified trainer.** Connect or create a self-custodial wallet, choose a starter under fixed rules, select an initial permitted region, and register the trainer on-chain. Fees are self-paid or optionally sponsored.
 3. **Enter the world.** Start at a map coordinate and see roads, nearby buildings, parks, paths, and water in the bitmon visual language.
 4. **Explore.** Move through the world, follow recognizable streets, pass 2.5D buildings, and discover places and habitats. The world streams in as the player travels.
@@ -105,7 +111,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **As a player**, a park looks different from an industrial area, and different real-world surroundings can support different bitmon encounters.
 
 - Use available land-cover, land-use, water, transportation, and place data to visually distinguish, for example, parks, woods, grass, farmland, water, residential areas, commerce, and industry.
-- Reuse a coherent 2.5D tiles/sprites/material style across the world instead of displaying unmodified map colors next to unrelated game artwork.
+- Reuse coherent **low-poly 2.5D geometry**, simple faceted/flat materials and a restrained palette across the world, instead of displaying unmodified map colors next to unrelated art.
 - Habitat information may inform encounter species or game points **only through fixed, published game rules**.
 - If a place lacks reliable tags, use an explicit neutral/default visual treatment instead of asserting a specific local building type or habitat.
 - More detailed art may be applied to **existing mapped surfaces and objects** at special places. It must not introduce a fictional building, road, or path.
@@ -120,13 +126,15 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - **No buildings or roads may be procedurally created unless OpenFreeMap contains the underlying feature.** Missing map features remain missing; game markers may appear as UI overlays but cannot masquerade as physical roads or buildings.
 - Continents, oceans, islands, and remote settlements should not require hard-coded city maps to be shown.
 
-## 5. Visual direction: 2.5D top-down RPG
+## 5. Visual direction: low-poly 2.5D top-down RPG
 
 ### VIS-01 — Camera and readability
 
 **As a player**, I see the world from a consistent elevated, top-down/oblique viewpoint with spatial depth.
 
-- Use a **2.5D scene**: largely map-aligned ground geometry plus raised buildings, depth-sorted sprites, shadows, and decorative geometry.
+- Use a **low-poly 2.5D scene**: map-aligned ground geometry, low-triangle-count raised building forms, depth-sorted sprites, controlled shadows and sparse decoration.
+- Favor **clear silhouettes, simple mesh geometry, cohesive flat/faceted shading and low draw-call cost**, not photorealism or pixel-art textures.
+- Frame all gameplay for a narrow **portrait smartphone viewport**; the character, mapped routes and nearby interactions must remain readable.
 - The target feel is a classic handheld top-down creature RPG (the fourth/fifth-generation era is a **visual reference only**, not a license to copy character designs, tiles, interfaces, sounds, or maps).
 - The main player character remains legible against the map; nearby buildings must not permanently hide the player.
 - Perspective, building height exaggeration, and camera pitch are art/UX parameters to test, not claims that geographic features are fully photorealistic.
@@ -139,7 +147,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 - Convert **only OpenFreeMap-mapped building footprints** into **2.5D building volumes** anchored to their source coordinates; never add a separate building polygon or extend the mapped footprint.
 - Use OpenFreeMap height/minimum-height fields when supplied; use a **deterministic visual-only fallback** for missing height data. A guessed height is not a fact about the real building.
-- Draw roofs and visible facades with original bitmon materials, outlines, shadows, and facade details.
+- Draw roofs and visible facades with **simple low-poly geometry**, original bitmon flat/faceted materials, restrained shadows, and lightweight windows and facade treatments.
 - Geometry and artwork must line up with the ground map; buildings cannot float, visually jump between tiles, or rotate arbitrarily as the camera moves.
 - Respect building parts/minimum heights when available; avoid drawing two conflicting building shells for one mapped structure.
 - If a building footprint exists but its use is unknown, render a believable **generic or context-inferred facade** without claiming the building is definitively residential, retail, industrial, or civic.
@@ -184,7 +192,8 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 - Nearby detail loads progressively as the camera moves; distant areas use simpler geometry and fewer decorations.
 - Rendered textures/sprites should be cached and reused, not rebuilt for every frame or every building.
-- Set measurable performance and memory budgets using real low- and mid-range mobile devices before committing to a final facade implementation.
+- **Performance, touch latency, memory, network transfer and battery life on low-/mid-range smartphones** take precedence over desktop fidelity. Define measurable budgets before settling the facade implementation.
+- Dense urban scenes must limit geometry, draw calls, material variation and decoration to remain playable in portrait.
 - The scene should remain usable during slow tile loads; show a clear loading/fallback state rather than silently changing geography.
 - The renderer must handle dense cities, sparse rural regions, missing heights, multipolygon buildings, zoom changes, and map-tile boundaries.
 
@@ -198,7 +207,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Define where the player may walk based on a deterministic game navigation representation consistent with the map, not just painted road pixels.
 - Prevent walking through solid building volumes and impassable water by default unless a game mechanic explicitly allows it.
 - Allow the player to inspect surroundings and understand the map orientation.
-- Support touch-friendly controls as well as desktop keyboard/mouse controls; consider gamepad later.
+- **Touch is the primary input** for moving, exploring, selecting battle actions, collecting, and navigating menus with one or two thumbs in portrait. Keyboard/mouse are optional development conveniences; gamepad support is deferred.
 
 ### MOVE-02 — Traveling long distances
 
@@ -332,12 +341,43 @@ The game should not require disclosure of the player's real-world location merel
 - Required map, asset, protocol, and rules versions should be documented sufficiently for independent compatible clients.
 - If the public OpenFreeMap tile endpoint becomes unavailable, the player should be able to switch to a mirror or self-hosted copy of the **same OpenFreeMap geographic dataset**; this must not introduce alternative map geometry.
 
-## 12. UX and accessibility
+## 12. Mobile PWA experience, UX, and accessibility
+
+### MOBILE-01 — Smartphone-first, portrait-only gameplay
+
+**As a player**, I can play bitmon on my smartphone held upright, using touch controls throughout.
+
+- Registration, exploration, combat, collection, trades, gyms, menus, and wallet prompts are laid out for **upright portrait phone screens**.
+- **No landscape gameplay UI** is designed or maintained. Where the device/browser ignores the portrait preference and rotates to landscape, preserve local state, temporarily pause gameplay if necessary, and show a concise **rotate your phone** prompt.
+- Respect notches, rounded corners, safe areas, virtual keyboards, and varying portrait aspect ratios; keep controls and the playable world visible and accessible.
+- All essential actions must be usable by touch with comfortable thumb targets. Do not require keyboard, mouse, controller, or desktop display.
+
+### PWA-01 — Installable mobile web app
+
+**As a player**, I can visit a public HTTPS link, install/add bitmon to my phone's home screen, and launch it without an app store.
+
+- Provide a standards-based PWA manifest (name, icons, start URL, scope, `display: "standalone"`, and `orientation: "portrait"`) with installable HTTPS hosting.
+- On Android and iOS, provide the appropriate install/Add to Home Screen guidance. The first release needs **no downloadable APK/IPA** and no store listing.
+- **Portrait preference is not a universal hardware lock**. Some browsers, notably iOS browsers, may not honor orientation settings; use the **MOBILE-01** fallback instead of relying on an unsupported API.
+- Cache a lightweight application shell and preserve unsent local progress where feasible. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
+- A connectivity loss or app update must not silently discard pending progress. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
+
+### DIST-01 — GitHub-only distribution from private source
+
+**As a player**, I can install bitmon from a public GitHub Pages URL while the development repository is still private.
+
+- Keep **`s3ton/bitmon` private**. Create a **separate public repository** (proposed name **`bitmon-pwa`**) exclusively for built PWA files when deployment is enabled.
+- Build the game with **GitHub Actions** and publish only deployable artifacts: HTML, CSS, compiled JavaScript, app icons, and public assets. Use **GitHub Pages** on GitHub Free; no other hosting platform is required.
+- Never copy source files, private documentation, Git history, deployment credentials, secrets, unused private assets, or development source maps into the public repository.
+- **Compiled JavaScript can be read and reverse-engineered** by users. Keeping original sources private does not make shipped game logic secret; correctness and anti-cheat rules must not rely on hidden browser code.
+- Make all PWA manifest/start URLs, assets, service worker scope and offline caching work from the **GitHub Pages repository subpath**.
+- Publish builds only through an **explicitly approved deployment path**, not automatically on every feature PR. Use a scoped publishing credential and stay within the GitHub Free plan.
+- The public build-only repository and publishing workflow are **planned**, not created by this documentation change.
 
 ### UX-01 — Usability and accessibility
 
 - The player has a clear world view, an obvious current position, nearby interactive points, and a readable party/collection panel.
-- Basic UI is usable with keyboard and touch; controls and text should work on common phone screen sizes.
+- **Touch is mandatory** for all player-facing interactions; text, overlays, actions and maps must fit common **portrait smartphone** screens. Keyboard controls are optional for developers.
 - Use clear contrasts and symbolic cues alongside type colors, especially for color-vision accessibility.
 - Important game interactions do not rely on tiny map markers or precise pixel tapping.
 - Show map loading, offline/unavailable regions, wallet failures, slow proofs, and transaction finality explicitly.
@@ -346,18 +386,21 @@ The game should not require disclosure of the player's real-world location merel
 
 ## 13. Release scope and user-visible acceptance tests
 
-The first playable milestone is a **vertical slice** rather than a finished planet-sized RPG. It demonstrates one real neighborhood with the same generalized pipeline intended for the rest of Earth.
+The first playable milestone is an **installable portrait-smartphone PWA vertical slice** rather than a finished planet-sized RPG. It demonstrates one real neighborhood with the same generalized pipeline intended for the rest of Earth.
 
 ### P0 — Must work in the first map/game vertical slice
 
 1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
-2. Show a controlled player character and a usable, consistent top-down/oblique **2.5D view**.
+2. Show a controlled player character and a usable, consistent **low-poly 2.5D view on a portrait smartphone**.
 3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
 4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
-5. Keep roads, buildings, player collision, and camera aligned while moving and crossing tile boundaries.
+5. Keep roads, buildings, player collision, and camera aligned while **moving via touch controls on a portrait smartphone** and crossing tile boundaries.
 6. Create a verified trainer before issuing the first authenticated encounter, with clear registration/activation state.
 7. Complete one local deterministic encounter, one capture, local pending save, and successful verified finalization.
 8. Show errors or degraded rendering rather than falsely implying detailed map data exist where they do not; verify that areas with no source footprints contain **no generated buildings**, and no roads appear where OpenFreeMap contains none.
+9. Open the PWA on Android and iOS, install it to a home screen, and launch in an app-like standalone display with all core controls **portrait-first**.
+10. Rotate a device that does not enforce portrait orientation; gameplay pauses safely with a **rotate-phone** prompt instead of a landscape gameplay layout.
+11. Load the installed PWA from the **GitHub Pages repository subpath**; verify manifest, app assets and service worker paths resolve.
 
 ### P1 — Required for a usable first game release
 
@@ -367,7 +410,8 @@ The first playable milestone is a **vertical slice** rather than a finished plan
 - Regional/habitat encounter design with a **specified anti-hindsight location commitment model**.
 - Same-tier swaps with level reset and 24-hour rate limiting.
 - Fixed-type NPC/player gyms, defense team updates, fame history, and challenge validation.
-- Mobile performance, usability, error states, map attribution, and alternative tile source tests.
+- **Portrait smartphone** performance and touch usability, installability on Android/iOS, offline/error states, map attribution, and alternative OpenFreeMap mirror tests.
+- GitHub-only publishing of compiled artifacts to the public PWA repository; exclude original source, credentials, unpublished assets and development source maps.
 
 ### P2 — Later enhancements, not release blockers
 
@@ -384,13 +428,16 @@ The first playable milestone is a **vertical slice** rather than a finished plan
 | Building with unknown class | A generic or tentative context-based facade appears without asserting an actual residential/commercial building use. |
 | Tall vs short building | Different OpenFreeMap `render_height` values produce appropriately distinct raised forms, with a documented visual-only fallback when unknown. |
 | Tile seam | A road and facade crossing a tile boundary do not visibly separate or change style. |
-| Dense city | Gameplay remains responsive under the agreed device and frame-time budget, with predictable level-of-detail fallback. |
+| Dense city on smartphone | Low-poly gameplay remains responsive on an agreed low-/mid-range portrait device, with predictable level-of-detail fallback. |
 | Sparse rural area | The scene degrades gracefully when buildings or roads are missing in the tiles; the renderer never fills them in by invention. |
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
 | Known-beacon location exploit | A player cannot choose a better location **after** seeing encounter randomness and still claim the result as a valid earlier slot. |
 | Unregistered account | No verified bitmon can be claimed without pre-registered eligible trainer identity. |
 | Fire gym | Fire and Fire/Wind are accepted; Water/Wind is rejected for both attack and defense. |
 | Sponsor outage | A player with their own gas and a valid proof can still finalize progress. |
+| Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
+| Landscape rotation | Unsupported orientation lock shows a rotate-phone message and preserves session state; no landscape gameplay is implemented. |
+| GitHub Pages distribution | The compiled PWA loads from the public repository subpath without publishing private source, secrets or source maps. |
 
 ## 14. Open decisions blocking detailed development
 
@@ -407,7 +454,8 @@ These questions need product decisions; implementing guesses as if already settl
 9. **Gym placement:** How are gyms distributed fairly across a worldwide map? How does a player find and reach them?
 10. **Starter and habitat design:** Initial bitmon types, starting conditions, balance of cities/rural areas, and whether region influences **species only** or also rarity.
 11. **Map revision consistency:** How often does basemap data refresh, and how do updated streets/buildings interact with saved gameplay/collisions and proof rules?
-12. **Device targets:** Minimum supported mobile hardware, frame rate, offline requirements, and asset download/storage budgets.
+12. **Device targets:** Minimum Android/iOS versions, smartphone portrait viewport sizes, touch target dimensions, frame rate, offline behavior, download and storage budgets. **Portrait-only smartphone-first is already fixed.**
+13. **Release automation:** Finalize public GitHub Pages repository name, credentials and controlled release trigger; GitHub-only compiled distribution and private source are already fixed.
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 
