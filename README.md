@@ -11,7 +11,14 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 - [Development Tracker](docs/DEVELOPMENT_TRACKER.md) — implementation status, acceptance evidence, open decisions, and requirements change history.
 - [Agent Engineering Skill](skill.md) — mandatory test minimization, no-dead-code policy, simplification review, and PR-to-preview workflow.
 
-The source repository is now **public**. GitHub Pages publishes the compiled PWA from the **main** branch at [https://s3ton.github.io/bitmon/](https://s3ton.github.io/bitmon/) after the deployment workflow succeeds. No separate distribution repository is needed.
+The source repository is **public**. The compiled test PWA is live at [https://s3ton.github.io/bitmon/](https://s3ton.github.io/bitmon/), deployed from **`main`** by GitHub Actions. [Deployment run 41504378759](https://github.com/s3ton/bitmon/actions/runs/41504378759) succeeded on 2 November 2026, and the repository owner confirmed the site works. No separate distribution repository is needed.
+
+## Current development status (2 November 2026)
+
+- [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
+- The **map-rendering foundation** is live: OpenFreeMap geography, simplified extruded buildings, fixed-angle camera, portrait UI fallback and basic PWA shell. This is an exploration **view**, not yet a playable walking game.
+- **Next:** directional walking avatar, touch movement and follow-camera, then real-device installation and map-fidelity checks.
+- **Not yet verified:** full Android/iOS home-screen installation, offline behavior, feature-by-feature geographic fidelity, screenshots and device performance. See the [development tracker](docs/DEVELOPMENT_TRACKER.md) for exact evidence and remaining acceptance gates.
 
 ## Local build
 
