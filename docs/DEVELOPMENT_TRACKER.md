@@ -4,7 +4,7 @@
 **Baseline PRD:** v0.4 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Planning / no implementation evidence recorded in the repository yet.
+**Current reporting state:** Task 001 implementation proposed in PR from `feat/task-001-pwa-world`; acceptance and on-device checks pending.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -21,7 +21,7 @@
 
 Each requirement should eventually record an **owner**, GitHub issue/PR, test/demo evidence, remaining blocker, and last verified date. The statuses below describe **documented evidence**, not assumptions about work outside this repository.
 
-**Current overview:** 32 tracked requirements; **0 verified Done**, **32 Not started** based on the current repository evidence. This is a documentation baseline, not a claim that nobody has experimented elsewhere.
+**Current overview:** 32 tracked requirements; **0 verified Done**. Task 001 introduces map and PWA implementation; no phone acceptance evidence has been recorded. This is a documentation baseline, not a claim that nobody has experimented elsewhere.
 
 ## 2. Requirements implementation matrix
 
@@ -29,12 +29,12 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 
 | ID | Player-facing capability | Priority | Status | First acceptance evidence to attach | Owner / issue / PR |
 |---|---|---|---|---|---|
-| WORLD-01 | Earth geography preserved in the mapped world | E0 | Not started | Compare a known OpenFreeMap neighborhood with bitmon at source coordinates; no fabricated features | — |
-| WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | Not started | Road-source feature audit; test no added road, intersection, alley or connector | — |
+| WORLD-01 | Earth geography preserved in the mapped world | E0 | In review | Compare a known OpenFreeMap neighborhood with bitmon at source coordinates; no fabricated features | — |
+| WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | — |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Fixed-angle, non-rotating low-poly 2.5D exploration camera | E0 | Not started | Portrait phone follows avatar with constant bearing/pitch | — |
-| VIS-02 | Mapped building footprints become low-poly volumes | E0 | Not started | Source polygon ↔ simple rendered volume test; no unsourced building instance | — |
+| VIS-01 | Fixed-angle, non-rotating low-poly 2.5D exploration camera | E0 | In review | Portrait phone follows avatar with constant bearing/pitch | — |
+| VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | — |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
@@ -58,8 +58,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | FEES-01 | Optional sponsorship without sponsor dependency | P1 | Not started | Self-paid progression succeeds when sponsor is unavailable | — |
 | INDEPENDENCE-01 | Alternative client/map endpoint continuity | P1 | Not started | Equivalent OpenFreeMap mirror/self-hosted tiles and independent settlement | — |
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
-| MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | Not started | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | — |
-| PWA-01 | Install and launch from Android/iOS home screens | E0 | Not started | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | — |
+| MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | — |
+| PWA-01 | Install and launch from Android/iOS home screens | E0 | In review | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | — |
 | DIST-01 | GitHub-only public compiled PWA, private source | P0 | Not started | GitHub Pages distribution, correct subpath scope, no private sources/secrets/maps | — |
 
 ## 3. Map fidelity release gates
@@ -83,7 +83,7 @@ These requirements are **fixed decisions**, not open design options. A change re
 
 | Milestone | Scope | Status | Exit evidence |
 |---|---|---|---|
-| M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | Not started | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
+| M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | In review | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
 | M1 / E0 — Animated avatar exploration | Low-poly MapLibre map, source-mapped streets/buildings, fixed camera, portrait touch movement, animated male avatar, installable shell | Not started | Playable E0 on a portrait smartphone with four walking directions, stable camera, and zero fabricated buildings/roads |
 | M2 — First verified encounter and same-world battle | Registration-first onboarding, active identity, same-world camera zoom, local battle and proof/finalization | Not started | Battle retains mapped backdrop and returns camera; valid capture and replay rejection |
 | M3 — Installable smartphone PWA slice | Portrait UI, local saves, collection, install manifest, app shell, GitHub Pages distribution | Not started | P0 acceptance on Android and iPhone, installed from GitHub Pages URL |
@@ -145,3 +145,12 @@ This section records **requirements evolution** separately from actual implement
 The first engineering demonstration (E0) should load a real OpenFreeMap neighborhood through MapLibre **on a portrait smartphone**, draw only mapped roads and mapped low-poly buildings, show a **four-direction animated male avatar**, and allow walking via **touch controls while a fixed-angle camera follows without rotating**. Test sparse areas without fabricated roads/buildings. Package as an **installable PWA** and publish a deliberate compiled build via GitHub-only distribution. **Do not build the battle system or its camera transition yet**; CAM-01 is specified for M2.
 
 No implementation task is claimed complete by this document.
+
+
+## Task 001 — PWA map foundation (2 November 2026)
+
+- **Branch:** `feat/task-001-pwa-world`; **PR:** see the open pull request targeting `preview` (reference added in PR description).
+- **Delivered for review:** Vite/TypeScript app; OpenFreeMap-only MapLibre rendering of Brera, Milan; original fixed 45° pitch/-20° bearing; mapped-footprint extrusion with `render_height` and deterministic fallback; portrait rotation overlay; PWA manifest and app-shell worker.
+- **Pending evidence:** dependency installation, TypeScript compilation, production build, browser render, Android/iOS home-screen install, attribution inspection, source-footprint audit, and portrait smartphone screenshots. No manual or automated validation is claimed.
+- **Scope deferred:** avatar, walking, collision, facade variations, battles, registration and blockchain; no public repository or deployment created.
+- **Test accounting:** 0 added, 0 removed, net 0. No permanent test is justified for this initial presentation-only slice; PR workflow provides proposed build checks.
