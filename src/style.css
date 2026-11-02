@@ -67,3 +67,52 @@ body { overflow: hidden; }
   #rotate strong { font-size: 24px; }
   #rotate span { font-size: 14px; }
 }
+
+/* MapLibre anchors this marker at its genuine WGS84 world position. */
+.trainer { width: 52px; height: 86px; pointer-events: none; filter: drop-shadow(0 2px 2px #203b3733); }
+.trainer svg { width: 100%; height: 100%; overflow: visible; }
+
+#joystick {
+  position: absolute;
+  z-index: 3;
+  left: calc(env(safe-area-inset-left) + 22px);
+  bottom: calc(env(safe-area-inset-bottom) + 52px);
+  width: 128px;
+  height: 128px;
+  border: 2px solid #f8f6e8ad;
+  border-radius: 50%;
+  background: #294c49a8;
+  box-shadow: 0 3px 16px #142a2940, inset 0 0 0 18px #ffffff10;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#joystick.engaged { background: #294c49c9; }
+#joystick-knob {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  left: 35px;
+  top: 35px;
+  border-radius: 50%;
+  background: #f5e6c6;
+  border: 3px solid #ffffffba;
+  box-shadow: 0 2px 8px #1a322f55;
+  pointer-events: none;
+}
+#movement-status {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(env(safe-area-inset-bottom) + 192px);
+  left: 18px;
+  max-width: 205px;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 12px;
+  background: #f8f6e8e6;
+  pointer-events: none;
+}
+#movement-status[hidden] { display: none; }
+@media (orientation: landscape) {
+  #joystick, #movement-status { display: none; }
+}
