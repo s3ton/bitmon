@@ -66,26 +66,32 @@ jobs:
           const manifestPath = root + 'manifest.webmanifest'
           const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
           manifest.name = 'bitmon Preview'
-          manifest.short_name = 'bitmon Test'
-          // The '.' identity/scope resolve relative to /bitmon/preview/ rather
-          // than /bitmon/, so these are separate installed applications.
-          manifest.id = '.'
-          manifest.start_url = '.'
-          manifest.scope = '.'
-          manifest.theme_color = '#8c5a29'
+          manifest.short_name = 'bitmon DEV'
+          // Manifest id is resolved against the ORIGIN, not the manifest
+          // directory. id: '.' collided with stable's origin-root identity.
+          // Keep stable's existing ID unchanged; give Preview a unique one.
+          manifest.id = '/bitmon/preview/'
+          manifest.start_url = './?channel=preview'
+          manifest.scope = './'
+          manifest.theme_color = '#643da4'
           await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
           const indexPath = root + 'index.html'
           let html = await readFile(indexPath, 'utf8')
           html = html.replace(/<title>[^<]*<\/title>/, '<title>bitmon Preview — Explore</title>')
             .replace('content="bitmon"', 'content="bitmon Preview"')
-            .replace('content="#2e514d"', 'content="#8c5a29"')
+            .replace('content="#2e514d"', 'content="#643da4"')
             .replace('</header>', '<span>PREVIEW</span></header>')
           await writeFile(indexPath, html)
           for (const size of [192, 512]) {
             const path = root + 'icon-' + size + '.svg'
-            let svg = await readFile(path, 'utf8')
-            svg = svg.replace('fill="#2e514d"', 'fill="#8c5a29"')
-              .replace('</svg>', '<rect x="296" y="358" width="152" height="88" rx="22" fill="#f8e4ad"/><text x="372" y="418" fill="#603e22" text-anchor="middle" font-size="52" font-family="sans-serif" font-weight="bold">DEV</text></svg>')
+            // Distinct purple preview art, not the stable teal logo recolored.
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">
+              <rect width="512" height="512" rx="112" fill="#643da4"/>
+              <circle cx="256" cy="228" r="155" fill="#f8ca64"/>
+              <path d="M202 114h72q88 0 88 86t-88 86h-36v76h-66V114zm36 61v50h36q24 0 24-25t-24-25z" fill="#40206f"/>
+              <rect x="91" y="367" width="330" height="77" rx="29" fill="#312054"/>
+              <text x="256" y="420" font-size="45" font-weight="bold" text-anchor="middle" font-family="sans-serif" fill="white">PREVIEW</text>
+            </svg>`
             await writeFile(path, svg)
           }
           NODE
