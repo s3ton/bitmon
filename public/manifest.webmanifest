@@ -1,0 +1,26 @@
+{
+  "id": ".",
+  "name": "bitmon",
+  "short_name": "bitmon",
+  "description": "Explore the real Earth as a low-poly world.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e7e3d5",
+  "theme_color": "#2e514d",
+  "icons": [
+    {
+      "src": "./icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
