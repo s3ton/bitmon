@@ -321,7 +321,7 @@ export function startExploration(map: MapLibreMap): void {
       (event.pointerType === 'mouse' && event.button !== 0) ||
       window.matchMedia('(orientation: landscape)').matches) return
     if (event.target instanceof Element &&
-      event.target.closest('a, button, input, textarea, select')) return
+      event.target.closest('#zoom-control, a, button, input, textarea, select')) return
     const bounds = app.getBoundingClientRect()
     const verticalFraction = (event.clientY - bounds.top) / bounds.height
     if (verticalFraction < JOYSTICK_START_MIN || verticalFraction > JOYSTICK_START_MAX) return
