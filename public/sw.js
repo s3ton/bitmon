@@ -1,4 +1,4 @@
-const CACHE = 'bitmon-shell-v1'
+const CACHE = 'bitmon-shell-v2'
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE)
@@ -12,7 +12,8 @@ self.addEventListener('install', (event) => {
       .filter((url) => url.origin === self.location.origin && /\.(?:js|css)$/.test(url.pathname))
       .map((url) => url.href)
     await cache.addAll([...assets, new URL('manifest.webmanifest', start).href,
-      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href])
+      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href,
+      new URL('trainer-atlas.svg', start).href])
     await self.skipWaiting()
   })())
 })
