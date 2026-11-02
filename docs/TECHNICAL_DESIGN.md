@@ -5,7 +5,7 @@
 **Geographic world contract:** The [bitmon Product Requirements](PRODUCT_REQUIREMENTS.md) are authoritative for world geometry and visual rendering. **OpenFreeMap is the sole geographic source**; MapLibre renders the tiles; no new real-world building or road geometry may be invented. Mapped building facades and windows may use deterministic art inferred only from OpenFreeMap's available fields and context. Implementation and decision status is tracked separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 **Status:** Concept / architecture proposal, not a security-audited specification
-**Version:** 2.5 (Task 002 eight-way atlas, natural-scale trainer, 10 m/s movement and floating control surface; underlying protocol unchanged)
+**Version:** 2.6 (main-context dual-channel GitHub Pages deployment with isolated Preview/Stable PWA identities; gameplay protocol unchanged)
 **Date:** 2 November 2026
 **Project name:** **bitmon** (game and creature name; original characters and artwork required)
 
@@ -246,6 +246,10 @@ Network outages need predefined handling: suspend affected slots, shift deadline
 ## 7. Deterministic combat and capture
 
 **World and camera presentation (Task 002 / DEC-019, DEC-021):** The **first prototype is exploration-only**: original male eight-direction animated trainer, floating mid-screen gesture joystick, and a **fixed-pitch/zoom, heading-following camera** over MapLibre's unchanged OpenFreeMap geometry. Later battles remain in the **same 2.5D world scene**, zoom/reframe toward the encountered bitmon, restore the captured pre-battle bearing/pitch/zoom/follow state, and then resume heading-following mode. Camera rotation is **presentation only**: it never rotates true geographic player coordinates, modifies mapped geometry, or affects encounter validity and battle rules.
+
+**PWA channel architecture (DEC-022; 2026-11-02):** `main` is the only source of stable application code. `preview` contains reviewed experimental work; after a **successful** `push` CI run on that trusted branch, a `workflow_run` executes on the default branch `main`, satisfies its protected `github-pages` environment, checks out the successful preview commit SHA and `main`, independently builds each with Vite's relative asset paths, and publishes a **single** GitHub Pages artifact with root Stable and `preview/` experimental. Rebuild the stable artifact from `main` on preview-only updates: never substitute `preview` compiled assets into the stable root. A `main` push also updates both; pull requests and failed CI runs do not deploy. A one-time **infrastructure-only reviewed release** is needed to bootstrap this main-branch workflow without promoting untested gameplay.
+
+**PWA isolation:** the Preview manifest remains scoped to its own subpath and receives a distinct visible name/title/theme/icon at **build time**. Relative `id`, `start_url` and `scope` resolve to different PWA installation identifiers under `/bitmon/preview/` and `/bitmon/`. Each service worker uses a scope-derived cache key and cleans only its own CacheStorage entries; the stable root worker skips preview requests. Both apps share a web origin, so future localStorage/IndexedDB game data must be explicitly namespaced. No second repository, PAT, custom domain or remote hosting provider is introduced. The Pages output contains compiled app files only, not source or Git history.
 
 **E0 design/implementation contract (2026-11-02):**
 

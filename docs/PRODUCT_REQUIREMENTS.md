@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.9 — Task 002 refinement: person-scale avatar, eight-way animation, 10 m/s walking and floating middle-screen touch input  
+**Version:** 0.10 — dual installable Preview and Stable PWA channels on one GitHub Pages site, with isolated cache scopes and protected releases  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -42,7 +42,7 @@ The game is primarily played locally after the player registers a verifiable tra
 - **Exploration camera uses a fixed oblique pitch and zoom** and follows the geographic avatar; bearing smoothly rotates toward actual walking heading (heading-up), with manual rotation/tilt disabled.
 - **Battles stay in the same 2.5D real-world scene**: the camera zooms/reframes to focus on the encountered bitmon with the surrounding mapped world still behind it, then restores the previous exploration camera state and resumes heading-following behavior.
 - **The immediate development objective is exploration only:** a male avatar with a loopable four-direction walking animation, geographic touch movement, and a fixed-pitch, direction-following camera on the OpenFreeMap world. Battle mechanics and blockchain progression are not prerequisites for this first prototype.
-- **GitHub Pages test distribution:** `s3ton/bitmon` is public. Source changes enter `preview` via PR; a separate `preview` → `main` release PR triggers compilation and Pages deployment at `/bitmon/` only after merging to `main`. No second distribution repository is needed.
+- **GitHub Pages has two independently installable channels from the one public repository:** `bitmon Preview` at `/bitmon/preview/` automatically follows approved commits merged into `preview`; `bitmon Stable` at `/bitmon/` follows `main` only after a reviewed release PR. Pages deployment executes from protected `main` context, bundling both channel builds; preview changes never replace the stable code. No second repository required.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
 - **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
 - **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
@@ -386,17 +386,17 @@ The game should not require disclosure of the player's real-world location merel
 - Provide a standards-based PWA manifest (name, icons, start URL, scope, `display: "standalone"`, and `orientation: "portrait"`) with installable HTTPS hosting.
 - On Android and iOS, provide the appropriate install/Add to Home Screen guidance. The first release needs **no downloadable APK/IPA** and no store listing.
 - **Portrait preference is not a universal hardware lock**. Some browsers, notably iOS browsers, may not honor orientation settings; use the **MOBILE-01** fallback instead of relying on an unsupported API.
-- Cache a lightweight application shell and preserve unsent local progress where feasible. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
+- Cache a lightweight application shell and preserve unsent local progress where feasible. `Preview` and `Stable` must have separate manifest IDs, start URLs and service-worker scopes, plus channel-prefixed CacheStorage and local-save keys; updating one channel must not delete or overwrite the other's shell or progress. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
 - A connectivity loss or app update must not silently discard pending progress. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
 
 ### DIST-01 — Test distribution from the public source repository
 
-**As a player**, I can open and install the exploration test at `https://s3ton.github.io/bitmon/`.
+**As a tester**, I can install `bitmon Preview` from `https://s3ton.github.io/bitmon/preview/` while keeping an independently installable `bitmon Stable` at `https://s3ton.github.io/bitmon/`.
 
 - The repository **`s3ton/bitmon` is public**. For this exploration prototype, GitHub Actions deploys directly to its GitHub Pages site; do not create a separate distribution repository.
 - Publish **only the compiled `dist/` output**—HTML, CSS, JavaScript, manifest, service worker and icons/assets. Never include credentials, development sources, docs or Git history in the deployed artifact. Public repository content is independently visible by design.
-- Set GitHub Pages **Build and deployment → Source → GitHub Actions**. Only pushes to `main` deploy. Feature changes must enter `preview` by PR, followed by a separate, reviewed `preview` → `main` release PR. `preview` and feature branches never publish the live Pages site.
-- Manifest scope/start URL, application assets and the service worker must work under the GitHub Pages `/bitmon/` repository subpath.
+- Set GitHub Pages **Build and deployment → Source → GitHub Actions**. The protected Pages job runs from `main` on a `main` push, manual dispatch, or successful **push CI** completion on `preview` (trusted same-repository branch only). The job compiles both `main` and the checked `preview` SHA and uploads a single Pages artifact, with `/bitmon/` stable and `/bitmon/preview/` experimental. Only a separate reviewed release PR changes stable gameplay; no feature branch or pull request may directly deploy Pages.
+- Both channels must have correct relative asset URLs, separate manifest install identity/name/icon treatment, individual default service-worker scopes (`/bitmon/` and `/bitmon/preview/`), and cache cleanup restricted to the owning channel. Main's broader worker must not intercept preview-subpath requests. Because browser storage is origin-wide, future local saves must be prefixed by channel rather than relying on distinct URL paths.
 - The site is a **public test prototype**, not a completed or verified game. The deployed application can cache the shell but requires connectivity for uncached OpenFreeMap tiles.
 - Production release hosting is a separate future decision. Do not automatically deploy from every pull request.
 
@@ -479,7 +479,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Sponsor outage | A player with their own gas and a valid proof can still finalize progress. |
 | Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
 | Landscape rotation | Unsupported orientation lock shows a rotate-phone message and preserves session state; no landscape gameplay is implemented. |
-| GitHub Pages distribution | The compiled PWA loads from the public repository subpath without publishing private source, secrets or source maps. |
+| GitHub Pages distribution | Preview and stable can both install on a phone from separate Pages subpaths; preview updates after `preview` CI while the root stable PWA stays at the exact `main` revision and service-worker caches remain isolated. No credentials, private code or source maps appear in the Pages artifact. |
 
 ## 14. Open decisions blocking detailed development
 
@@ -497,7 +497,7 @@ These questions need product decisions; implementing guesses as if already settl
 10. **Starter and habitat design:** Initial bitmon types, starting conditions, balance of cities/rural areas, and whether region influences **species only** or also rarity.
 11. **Map revision consistency:** How often does basemap data refresh, and how do updated streets/buildings interact with saved gameplay/collisions and proof rules?
 12. **Device targets:** Minimum Android/iOS versions, smartphone portrait viewport sizes, touch target dimensions, frame rate, offline behavior, download and storage budgets. **Portrait-only smartphone-first is already fixed.**
-13. **Release automation:** GitHub Pages currently deploys from the public source repository's `main` only, after reviewed `preview` → `main` promotion. Long-term distribution/privacy remains open.
+13. **Release automation:** Main-context dual-channel Pages publishing is decided; only the Stable channel waits for a reviewed `preview` → `main` promotion. Preview publishes after successful `preview` push checks. Long-term release hosting/privacy remains open.
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 

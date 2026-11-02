@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.9 (2 November 2026)  
+**Baseline PRD:** v0.10 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Task 002 refinement [#13](https://github.com/s3ton/bitmon/pull/13) is merged into `preview`, implementing a smaller avatar, **10 m/s movement, eight-way sprite facing and floating joystick in middle 60%**, but is not yet on `main`. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
@@ -60,7 +60,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
 | MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | PWA-01 | Install and launch from Android/iOS home screens | E0 | In review | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| DIST-01 | Public repository GitHub Pages prototype | P0 | In review | Build and deploy succeeded on `main`; owner confirms site loads. Verify install/worker scope and deployed artifact contents before marking Done | [#3](https://github.com/s3ton/bitmon/pull/3), [#4](https://github.com/s3ton/bitmon/pull/4), [deploy](https://github.com/s3ton/bitmon/actions/runs/41504378759) |
+| DIST-01 | Separately installable Preview/Stable Pages PWAs from one public repo | P0 | In review — rollout pending | Main-context workflow serves both paths; merge into `preview` updates only preview gameplay; stable stays at `main`; verify two install identities and independent cache/offline behavior on phone | [#4](https://github.com/s3ton/bitmon/pull/4), dual-channel infrastructure PR |
 
 ## 3. Map fidelity release gates
 
@@ -115,10 +115,11 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
 | 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 | 2026-11-02 | DEC-017 | **Superseded by DEC-018** | Public-source-repository Pages testing was initially proposed from feature/`preview` | **v0.5** DIST-01 |
-| 2026-11-02 | DEC-018 | **Accepted** | Deploy compiled PWA artifacts to GitHub Pages **only from `main`** following feature PR into `preview` and separate reviewed `preview` → `main` release PR. Keep the website a test prototype | **v0.6** DIST-01 |
+| 2026-11-02 | DEC-018 | **Superseded by DEC-022 for preview publishing** | Earlier Pages workflow published only on `main` pushes; retained separation of `preview`/`main` release responsibilities | **v0.6** DIST-01 |
 | 2026-11-02 | DEC-019 | **Accepted — supersedes DEC-014** | Exploration pitch/zoom remain fixed; camera smooth-turns to actual accepted movement heading via shortest path, retaining bearing when idle; manual rotate/tilt disabled | **v0.7** VIS-01, MOVE-01, EXPL-01, CAM-01, E0/P0 |
 | 2026-11-02 | DEC-020 | **Accepted** | Original illustrated four-direction character atlas with discrete walking poses replaces procedural placeholder SVG; spawn must be collision-safe on OpenFreeMap world | **v0.8** EXPL-01, MOVE-01 |
 | 2026-11-02 | DEC-021 | **Accepted** | Trainer is small and roughly human-scale (1.8 m target with 8 px readability floor); exploration full-speed 10 m/s; animate 8-way including mirrored diagonals; float hidden joystick under finger only for pointer starts within 20–80% viewport height | **v0.9** VIS-01, MOVE-01, EXPL-01, E0/P0 |
+| 2026-11-02 | DEC-022 | **Accepted — supersedes DEC-018 trigger policy** | One Pages site hosts independently installable Preview (`/bitmon/preview/`, automatically updated from reviewed `preview` commits after successful CI) and Stable (`/bitmon/`, updated only from `main` release PRs). Deploy job always runs in protected `main` context and packs both builds; isolate manifest ID, SW scope/cache and eventual local saves | **v0.10** DIST-01, PWA-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -159,7 +160,7 @@ This section records **requirements evolution** separately from actual implement
 | Smartphone installation and map impression | Owner reports PWA installed and launched on their phone and that the neighborhood map looks extremely faithful (2 Nov 2026) | Confirmed owner report; device/OS unspecified; not a formal source-geometry audit |
 | Full E0 / PWA acceptance | Source geometry audit, representative OS/device installs, screenshots, new walking avatar and joystick | Not complete; owner Task 002 phone tests pending |
 
-**Implemented:** Vite + TypeScript + MapLibre; a recognizable fixed-start Brera, Milan map sourced from OpenFreeMap; styled roads/paths, terrain and water; low-poly building extrusions from mapped footprint geometry with source height or deterministic fallback; fixed 45° pitch and -20° bearing; portrait orientation prompt; manifest, icons and a limited offline application shell. GitHub Pages deploys compiled `dist/` output on pushes to `main` only. The repository is public, and no separate distribution repository exists.
+**Implemented baseline:** Vite + TypeScript + MapLibre/OpenFreeMap, oblique map/extrusions, portrait prompt, app manifest and offline shell. The **current deployed site** still publishes from `main` only. The new two-channel workflow is proposed in its own PR and remains **unverified** until the infrastructure-only main release is merged and a Pages run succeeds. No second repository or full real-device acceptance is claimed.
 
 **Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
@@ -177,7 +178,7 @@ This section records **requirements evolution** separately from actual implement
 
 **Task 003 — Geographic visual audit and E0 map readability:** assess dense and sparse OpenFreeMap regions for invented/missing geometry, improve deterministic facade variation and avatar/building occlusion using existing source tiles, and tune performance on mid-range phones. Keep creatures and blockchain deferred until E0 acceptance.
 
-**Release workflow:** Feature PR → `preview` → separate reviewed `preview` → `main` PR → automatic `main`-only GitHub Pages deployment. Documentation-only changes on `preview` are not published to `main` until the next approved release PR.
+**Release workflow (DEC-022):** Feature PR → `preview` → successful push CI → trusted main-context workflow rebuilds both PWAs and deploys only `/bitmon/preview/` code changes; Stable root always rebuilds from unchanged `main`. Once phone-approved, separate reviewed `preview` → `main` PR changes Stable gameplay. Bootstrap requires a small **infrastructure-only reviewed main release** before the first automatic Preview URL exists.
 
 ### Task 002 corrective response — phone report (2 November 2026)
 
@@ -186,3 +187,7 @@ Owner reports an immobile trainer after the PR #9 Pages release and rejects plac
 ### Task 002 visual and floating-control refinement — 2 November 2026
 
 Owner requested reducing the building-scale trainer to normal-human proportions, full input speed **10 m/s**, dedicated diagonal-facing frame cycles (left/right reuse by mirroring), and a virtual joystick that is **hidden until a pointer begins within the middle 60% of portrait height**. Implemented in merged [PR #13](https://github.com/s3ton/bitmon/pull/13) and verified by [TypeScript/build workflow](https://github.com/s3ton/bitmon/actions/runs/41520401521). The top/bottom 20% do not initiate movement, and the joystick disappears on release. Implementation uses an 8-row/40-frame SVG atlas, background-position facing selection, WGS84 marker with an approximately 1.8 m visual target and 8 px readability floor, and pointer capture on the app surface. No mobile device tests have yet passed; measure apparent scale and art quality on the installed phone before marking VIS-01/MOVE-01/EXPL-01 done.
+
+### Dual-channel PWA testing — deployment infrastructure (2 November 2026)
+
+The owner identified that requiring an untested gameplay PR to merge into `main` before phone validation defeats the `preview` release gate. DEC-022 defines **two installable PWAs on one GitHub Pages domain**. Source branch `preview` can be tested in the `/bitmon/preview/` app after successful review/CI; stable `/bitmon/` remains compiled from `main` until separate release approval. Main-only Pages environment protection is retained by using the default-branch `workflow_run` context. Separate PWA manifest identities, service-worker scopes, CacheStorage prefixes and a preview visual label/icon are part of the infrastructure. Manual verification of both installations and updates is outstanding; do **not** claim either channel is live before the main infrastructure PR's deployment succeeds.
