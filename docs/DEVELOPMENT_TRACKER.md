@@ -4,7 +4,7 @@
 **Baseline PRD:** v0.9 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. New Task 002 refinement targets smaller natural-scale avatar, **10 m/s movement, eight-way sprite facing and floating joystick in middle 60%**. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
+**Current reporting state:** Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Task 002 refinement [#13](https://github.com/s3ton/bitmon/pull/13) is merged into `preview`, implementing a smaller avatar, **10 m/s movement, eight-way sprite facing and floating joystick in middle 60%**, but is not yet on `main`. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -38,8 +38,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Geographic movement at 10 m/s, floating middle-60% touch zone, collision and diagonals | E0 | Blocked — initial phone test failed | Verify central 60% swipe activates, excluded 20% bands do not, 10 m/s maximum, release stops, valid spawn/collision and tile seams | [#10](https://github.com/s3ton/bitmon/pull/10), Task 002 refinement PR |
-| EXPL-01 | Small illustrated avatar; 8 directions × idle + four walking frames | E0 | In review — owner art approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | Task 002 refinement PR |
+| MOVE-01 | Geographic movement at 10 m/s, floating middle-60% touch zone, collision and diagonals | E0 | Blocked — initial phone test failed | Verify central 60% swipe activates, excluded 20% bands do not, 10 m/s maximum, release stops, valid spawn/collision and tile seams | [#10](https://github.com/s3ton/bitmon/pull/10), [#13](https://github.com/s3ton/bitmon/pull/13) |
+| EXPL-01 | Small illustrated avatar; 8 directions × idle + four walking frames | E0 | In review — owner art approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | [#13](https://github.com/s3ton/bitmon/pull/13) |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
@@ -90,7 +90,7 @@ These requirements are **fixed decisions**, not open design options. A change re
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
 | M5 — First release readiness | Wider region coverage, travel, fair region binding, performance, recovery | Not started | P1 acceptance and security reviews complete |
 
-Milestones are **proposed sequencing**, not calendar commitments. M1/E0 includes a proposed avatar/movement implementation on PR #8 awaiting owner smartphone validation; M3 includes a confirmed owner-installed PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
+Milestones are **proposed sequencing**, not calendar commitments. M1/E0's code is integrated through PRs #8, #10, #12 and #13, but its **first owner device check failed** and the corrective build awaits release and retest; M3 includes a confirmed owner-installed Task 001 PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
 
 ## 5. Decisions and requirement change log
 
@@ -163,7 +163,7 @@ This section records **requirements evolution** separately from actual implement
 
 **Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
-**Current released build limitations:** PR #9 deployed Task 002 but the first owner phone test found movement blocked and original sprite quality unacceptable. Corrective PRs #10/#12 and this eight-way/scale/control iteration are in `preview` or feature development, not yet on `main`; none has passed owner phone acceptance. No battles, captures, wallets, blockchain or backend exist.
+**Current released build limitations:** PR #9 deployed Task 002 but the first owner phone test found movement blocked and original sprite quality unacceptable. Corrective PRs #10/#12 and eight-way/scale/control PR #13 are merged in `preview`, not yet on `main`; none has passed owner phone acceptance. No battles, captures, wallets, blockchain or backend exist.
 
 ### Task 002 — Walking trainer, geographic joystick, direction-following camera (2 November 2026)
 
@@ -185,4 +185,4 @@ Owner reports an immobile trainer after the PR #9 Pages release and rejects plac
 
 ### Task 002 visual and floating-control refinement — 2 November 2026
 
-Owner requested reducing the building-scale trainer to normal-human proportions, full input speed **10 m/s**, dedicated diagonal-facing frame cycles (left/right reuse by mirroring), and a virtual joystick that is **hidden until a pointer begins within the middle 60% of portrait height**. The top/bottom 20% do not initiate movement, and the joystick disappears on release. Implementation uses an 8-row/40-frame SVG atlas, background-position facing selection, WGS84 marker with an approximately 1.8 m visual target and 8 px readability floor, and pointer capture on the app surface. No mobile device tests have yet passed; measure apparent scale and art quality on the installed phone before marking VIS-01/MOVE-01/EXPL-01 done.
+Owner requested reducing the building-scale trainer to normal-human proportions, full input speed **10 m/s**, dedicated diagonal-facing frame cycles (left/right reuse by mirroring), and a virtual joystick that is **hidden until a pointer begins within the middle 60% of portrait height**. Implemented in merged [PR #13](https://github.com/s3ton/bitmon/pull/13) and verified by [TypeScript/build workflow](https://github.com/s3ton/bitmon/actions/runs/41520401521). The top/bottom 20% do not initiate movement, and the joystick disappears on release. Implementation uses an 8-row/40-frame SVG atlas, background-position facing selection, WGS84 marker with an approximately 1.8 m visual target and 8 px readability floor, and pointer capture on the app surface. No mobile device tests have yet passed; measure apparent scale and art quality on the installed phone before marking VIS-01/MOVE-01/EXPL-01 done.
