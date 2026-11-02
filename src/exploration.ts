@@ -7,7 +7,15 @@ type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: n
 
 const METERS_PER_RADIAN = 6_371_008.8
 const SPEED_METERS_PER_SECOND = 10
-const CAMERA_TURN_RATE = 6
+// Presets deliberately keep translation responsive while limiting automatic yaw.
+const CAMERA_PRESETS = {
+  relaxed: { delay: .7, maxDegreesPerSecond: 35, dampingSeconds: 1.2 },
+  balanced: { delay: .4, maxDegreesPerSecond: 60, dampingSeconds: .8 },
+  responsive: { delay: .15, maxDegreesPerSecond: 100, dampingSeconds: .45 },
+} as const
+type CameraPreset = keyof typeof CAMERA_PRESETS
+const CAMERA_HEADING_DEAD_ZONE = 12
+const CAMERA_BACKWARD_ANGLE = 135
 const DEAD_ZONE = 0.16
 const START: Position = { lon: 9.1869, lat: 45.4715 }
 
@@ -82,6 +90,7 @@ export function startExploration(map: MapLibreMap): void {
   const joystick = document.querySelector<HTMLElement>('#joystick')!
   const knob = document.querySelector<HTMLElement>('#joystick-knob')!
   const movementStatus = document.querySelector<HTMLElement>('#movement-status')!
+  const cameraPresetSelect = document.querySelector<HTMLSelectElement>('#camera-preset')!
   const avatar = document.createElement('div')
   avatar.className = 'trainer'
   avatar.setAttribute('role', 'img')
@@ -107,7 +116,6 @@ export function startExploration(map: MapLibreMap): void {
   updateAvatarScale()
 
   let heading = map.getBearing()
-  let targetBearing = heading
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
   let hasPlacedSpawn = false
@@ -115,6 +123,14 @@ export function startExploration(map: MapLibreMap): void {
   let activePointer: number | null = null
   let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
+  let cameraPreset: CameraPreset = 'balanced'
+  let steadyHeading: number | null = null
+  let steadySeconds = 0
+  cameraPresetSelect.addEventListener('change', () => {
+    cameraPreset = cameraPresetSelect.value as CameraPreset
+    steadyHeading = null
+    steadySeconds = 0
+  })
   let animationTime = 0
   let lastAppearance = ''
   const keys = new Set<string>()
@@ -274,7 +290,6 @@ export function startExploration(map: MapLibreMap): void {
         position = candidate
         walking = true
         heading = degrees(Math.atan2(actualEast, actualNorth))
-        targetBearing = heading
         animationTime += dt
         avatarMarker.setLngLat([position.lon, position.lat])
       }
@@ -285,14 +300,34 @@ export function startExploration(map: MapLibreMap): void {
       movementStatus.textContent = !ready
         ? 'Checking nearby OpenFreeMap terrain…' : 'A mapped building or water blocks this way.'
     }
-    const turn = angleDelta(targetBearing, map.getBearing())
-    const nextBearing = Math.abs(turn) < .05
-      ? map.getBearing() : map.getBearing() + turn * (1 - Math.exp(-CAMERA_TURN_RATE * dt))
-    if (walking || Math.abs(turn) >= .05) {
-      map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing })
+    // A camera turn should be earned by sustained movement, not each twitch.
+    // Walking backward keeps the camera where it is, so pulling down never
+    // triggers a sudden 180° flip. The input bearing stays fixed per gesture,
+    // independent of these visual camera turns.
+    let nextBearing = map.getBearing()
+    const inputAngle = degrees(Math.atan2(x, -y))
+    if (walking && Math.abs(inputAngle) < CAMERA_BACKWARD_ANGLE) {
+      if (steadyHeading === null || Math.abs(angleDelta(heading, steadyHeading)) > CAMERA_HEADING_DEAD_ZONE) {
+        steadyHeading = heading
+        steadySeconds = 0
+      } else {
+        steadySeconds += dt
+      }
+      const preset = CAMERA_PRESETS[cameraPreset]
+      const turn = angleDelta(heading, nextBearing)
+      if (steadySeconds >= preset.delay && Math.abs(turn) > CAMERA_HEADING_DEAD_ZONE) {
+        const smoothed = turn * (1 - Math.exp(-dt / preset.dampingSeconds))
+        const capped = Math.sign(smoothed) * Math.min(Math.abs(smoothed), preset.maxDegreesPerSecond * dt)
+        nextBearing += capped
+      }
+    } else {
+      steadyHeading = null
+      steadySeconds = 0
     }
+    // Never continue a pending camera turn after stopping or hitting a wall.
+    if (walking) map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing })
     renderAvatar(walking)
-    if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(turn) >= .05) requestTick()
+    if ((usingStick && length > DEAD_ZONE) || keys.size) requestTick()
     else lastFrameTime = 0
   }
 
@@ -323,7 +358,7 @@ export function startExploration(map: MapLibreMap): void {
       (event.pointerType === 'mouse' && event.button !== 0) ||
       window.matchMedia('(orientation: landscape)').matches) return
     if (event.target instanceof Element &&
-      event.target.closest('#zoom-control, a, button, input, textarea, select')) return
+      event.target.closest('#zoom-control, #camera-control, a, button, input, textarea, select')) return
     const bounds = app.getBoundingClientRect()
     const verticalFraction = (event.clientY - bounds.top) / bounds.height
     if (verticalFraction < JOYSTICK_START_MIN || verticalFraction > JOYSTICK_START_MAX) return

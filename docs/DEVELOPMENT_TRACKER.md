@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.13 (2 November 2026)  
+**Baseline PRD:** v0.14 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Control-direction, 2× displayed avatar scale, and max zoom 20 changes from [PR #19](https://github.com/s3ton/bitmon/pull/19) are merged into `preview` and awaiting owner phone acceptance. The floating joystick activation zone is being widened to the middle 80% of portrait height (top/bottom 10% excluded), while collision remains in geographic meters. Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Task 002 refinement [#13](https://github.com/s3ton/bitmon/pull/13) is merged into `preview`, implementing a smaller avatar, **10 m/s movement, eight-way sprite facing and floating joystick originally in middle 60%**, but is not yet on `main`. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
@@ -33,7 +33,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Smooth heading-up camera; fixed pitch with 15.5–20 user zoom slider | E0 | In review — device check pending | Phone checks camera heading, idle bearing, correct zoom slider control, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
+| VIS-01 | Soft-follow camera with preset delay/capped yaw, fixed pitch and 15.5–20 zoom slider | E0 | In review — device check pending | Phone checks delayed steady turns, no reverse flip/idle coast, camera presets, zoom, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
@@ -123,6 +123,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-023 | **Accepted** | Correct origin-root Preview manifest-ID collision via explicit `/bitmon/preview/` ID and purple Preview icon; introduce right-side zoom slider (initial 15.5–18.5) while pitch stays fixed and heading-following remains automatic; attempted joystick Y correction proved inverted on phone | **v0.11** PWA-01, DIST-01, MOVE-01, VIS-01, CAM-01 |
 | 2026-11-02 | DEC-024 | **Accepted — supersedes DEC-023 joystick mapping and zoom upper limit** | Interpret touch Y as down-positive and negate it for camera-relative geographic heading, just as keyboard input does; scale displayed trainer dimensions 2× without changing world collision; extend slider and map maximum zoom to 20 | **v0.12** MOVE-01, VIS-01, EXPL-01, CAM-01 |
 | 2026-11-02 | DEC-025 | **Accepted — supersedes DEC-021 activation zone only** | Increase floating joystick start zone to viewport fractions 0.1–0.9 (middle 80%); keep top/bottom 10% excluded. Double-size sprite is a rendering/readability adjustment, not a physical growth of the trainer; collision probes remain in geographic meters regardless of zoom. | **v0.13** MOVE-01, EXPL-01, MOBILE-01 |
+| 2026-11-02 | DEC-026 | **Accepted — refines DEC-019 camera responsiveness** | Replace immediate heading chase with delayed soft-follow yaw, capped angular speed, 12° turn dead zone, reverse-input guard and idle freeze. Add Relaxed/Balanced/Responsive presets for mobile tuning; position follows immediately and camera/input geography remains independent. | **v0.14** VIS-01, MOVE-01, EXPL-01, MOBILE-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -132,7 +133,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | DEC-024 extends player-controlled 15.5–20 zoom; remaining tuning includes default zoom/range, readable sprite scaling, joystick orientation after camera turns, diagonal art, camera damping and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
+| OPEN-05 | DEC-026 introduces camera response presets and DEC-024 extends 15.5–20 zoom; remaining tuning includes final preset calibration, readable sprite scaling, joystick orientation after camera turns, diagonal art, and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -202,3 +203,7 @@ After deployment of dual-channel Pages, the owner reported the Preview installat
 ### Joystick activation zone revision — 2 November 2026
 
 The owner requested that only the top and bottom 10% of the portrait viewport reject joystick starts, expanding the interactive region from the original 60% to 80% (`0.1 ≤ y/viewportHeight ≤ 0.9`). The earlier DEC-021 20–80% range is historical and superseded by DEC-025. Existing zoom/UI input exclusions, hidden-until-pointerdown behavior, camera control and 10 m/s movement are unchanged. This change does not increase the trainer's real-world size: the previous 2× increase was visual only and collision stays meter-based. Owner phone verification is pending.
+
+### Preview camera soft-follow refinement — 2 November 2026
+
+The owner reported that rotating the camera almost instantly toward every joystick direction felt unnatural, especially for reverse and short sideways input. DEC-026 sets a Balanced soft-follow default (0.4 s stable-travel delay, max 60°/s, 0.8 s damping, 12° dead zone), with Relaxed and Responsive selector presets to compare on a smartphone. Player position updates immediately, but yaw is suppressed on backward gestures (≥135° relative to the control basis), small heading changes and brief sideways taps. Releasing input or being blocked freezes yaw immediately. The camera rotates only presentation; actual geographic movement retains its snapshot input bearing, 10 m/s full speed and existing OpenFreeMap collision. No phone acceptance or quantitative motion-sickness measurements are claimed.
