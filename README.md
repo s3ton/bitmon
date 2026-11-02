@@ -17,7 +17,7 @@ The source repository is **public**. The compiled test PWA is live at [https://s
 
 - [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
 - The **Task 001 map-rendering foundation** is live on `main`: OpenFreeMap geographic tiles, extruded mapped buildings, oblique 45° camera pitch, portrait fallback and installable PWA shell.
-- [**Task 002 draft PR #8**](https://github.com/s3ton/bitmon/pull/8) targets `preview` with an original directional SVG trainer, geographic movement through a safe-area touch joystick, basic OpenFreeMap source-polygon collision and a **smooth heading-following camera** at fixed pitch and zoom. **It has not yet been promoted to the deployed Pages app.**
+- [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) targets `preview` with an original directional SVG trainer, geographic movement through a safe-area touch joystick, basic OpenFreeMap source-polygon collision and a **smooth heading-following camera** at fixed pitch and zoom. **It has not yet been promoted to the deployed Pages app.**
 - The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
 - **Still pending:** Task 002 owner phone tests, Android/iOS cross-platform coverage, service-worker/offline verification, tile/collision/heading edge cases, screenshots and device performance. The [development tracker](docs/DEVELOPMENT_TRACKER.md) lists actual evidence and unmet acceptance gates.
 
