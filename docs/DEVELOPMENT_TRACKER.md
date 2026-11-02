@@ -1,10 +1,10 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.6 (2 November 2026)  
+**Baseline PRD:** v0.7 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Task 001 map/PWA foundation merged into `preview` ([#3](https://github.com/s3ton/bitmon/pull/3)) and released to `main` ([#4](https://github.com/s3ton/bitmon/pull/4)). The [GitHub Pages test](https://s3ton.github.io/bitmon/) deployed successfully and the repository owner reports it works. Full E0/avatar and device-install acceptance remain open. **Last evidence review:** 2 November 2026.
+**Current reporting state:** Task 001 map/PWA foundation deployed from `main` after [#3](https://github.com/s3ton/bitmon/pull/3) and [#4](https://github.com/s3ton/bitmon/pull/4); owner confirms installed PWA and high perceived geographic fidelity on a phone. Task 002 implementation is on [PR #8](https://github.com/s3ton/bitmon/pull/8) against `preview`. E0 acceptance, geometry audit and cross-device checks remain open. **Last evidence review:** 2 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -33,13 +33,13 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Fixed-angle, non-rotating low-poly 2.5D exploration camera | E0 | In review | Portrait phone follows avatar with constant bearing/pitch | [#3](https://github.com/s3ton/bitmon/pull/3) |
+| VIS-01 | Smooth heading-up camera, fixed pitch/zoom | E0 | In review | Phone checks cardinal/diagonal direction, shortest turn at 0°/360°, stop/idle bearing, stable zoom/pitch | [#8](https://github.com/s3ton/bitmon/pull/8) |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Touch-first movement on mapped space | E0 | Not started | Thumb-control movement, collision and passability demonstration on a phone | — |
-| EXPL-01 | Original male avatar with four-direction walking cycles | E0 | Not started | Up/down/left/right frames loop while moving, idle when stopped, no jitter | — |
+| MOVE-01 | Touch-driven geographic movement, diagonals and minimal building/water collision | E0 | In review | Phone joystick/motion, blocked mapped polygons, seam crossings and unloaded-tile pause | [#8](https://github.com/s3ton/bitmon/pull/8) |
+| EXPL-01 | Original male avatar with four camera-relative facing cycles and idle | E0 | In review | Four directions, stop/idle, heading changes while rotating camera, geographic anchoring | [#8](https://github.com/s3ton/bitmon/pull/8) |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
@@ -48,7 +48,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | ENC-04 | Limited, fair and understandable encounter opportunities | P1 | Not started | Tests for quota, uniqueness, timing and rarity rules | — |
 | GAME-01 | Inspectable, coherent bitmon collection | P0 | Not started | Starter + one captured bitmon show traits and pending/finalized status | — |
 | GAME-02 | Deterministic combat and capture | P0 | Not started | Same input actions → same legal result across clients | — |
-| CAM-01 | Zoom into active OpenFreeMap world for battle and restore exploration camera | P0 (post-E0) | Not started | Battle retains mapped world backdrop; returns exact fixed camera pose | — |
+| CAM-01 | Same-world battle zoom and restore heading-following exploration mode | P0 (post-E0) | Not started | Restore captured pre-battle pose, then resume automatic heading following | — |
 | GAME-03 | Pending save, finalization and recovery | P0 | Not started | Save locally, finalize, export/import and show correct status | — |
 | TRADE-01 | Same-tier, one-for-one restricted swaps | P1 | Not started | Atomic swap with level reset and 24-hour quota tests | — |
 | GYM-01 | Each gym has one immutable type | P1 | Not started | Fire and Fire/Wind allowed, Water/Wind rejected | — |
@@ -84,13 +84,13 @@ These requirements are **fixed decisions**, not open design options. A change re
 | Milestone | Scope | Status | Exit evidence |
 |---|---|---|---|
 | M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | In review | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
-| M1 / E0 — Animated avatar exploration | Low-poly MapLibre map, source-mapped streets/buildings, fixed camera, portrait touch movement, animated male avatar, installable shell | In progress | Playable E0 on a portrait smartphone with four walking directions, stable camera, and zero fabricated buildings/roads |
+| M1 / E0 — Animated avatar exploration | Low-poly OpenFreeMap map, fixed-pitch heading-up camera, geo touch movement, trainer animation and polygon collision | In review | Owner accepts four directions/diagonals, smooth turns, collision/seams and PWA on portrait phone; no fabricated geometry |
 | M2 — First verified encounter and same-world battle | Registration-first onboarding, active identity, same-world camera zoom, local battle and proof/finalization | Not started | Battle retains mapped backdrop and returns camera; valid capture and replay rejection |
 | M3 — Installable smartphone PWA slice | Portrait UI, local saves, collection, install manifest, app shell, GitHub Pages distribution | In progress | P0 acceptance on Android and iPhone, installed from GitHub Pages URL |
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
 | M5 — First release readiness | Wider region coverage, travel, fair region binding, performance, recovery | Not started | P1 acceptance and security reviews complete |
 
-Milestones are **proposed sequencing**, not calendar commitments. M1 has only its world-rendering foundation, and M3 has only its PWA shell and hosting foundation; neither milestone exit criterion has passed.
+Milestones are **proposed sequencing**, not calendar commitments. M1/E0 includes a proposed avatar/movement implementation on PR #8 awaiting owner smartphone validation; M3 includes a confirmed owner-installed PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
 
 ## 5. Decisions and requirement change log
 
@@ -111,11 +111,12 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-011 | **Accepted** | **Portrait-only** gameplay; no landscape game layout; use a rotate-device fallback where orientation lock is unsupported | **v0.3** MOBILE-01 |
 | 2026-11-02 | DEC-012 | **Accepted** | Original **low-poly 2.5D** style replaces pixel-art framing; simpler meshes/materials and mobile rendering priority | **v0.3** VIS-01/02/03/05 |
 | 2026-11-02 | DEC-013 | **Accepted** | **GitHub-only publishing**: private source repository, separate public build-only PWA repository hosted with GitHub Pages | **v0.3** DIST-01 |
-| 2026-11-02 | DEC-014 | **Accepted** | **Fixed-angle exploration camera:** follows the avatar; bearing and pitch do not rotate while walking | **v0.4** VIS-01, EXPL-01 |
+| 2026-11-02 | DEC-014 | **Superseded by DEC-019** | Former constant-bearing exploration camera; neither bearing nor pitch turned while walking | **v0.4** VIS-01, EXPL-01 |
 | 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
 | 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 | 2026-11-02 | DEC-017 | **Superseded by DEC-018** | Public-source-repository Pages testing was initially proposed from feature/`preview` | **v0.5** DIST-01 |
 | 2026-11-02 | DEC-018 | **Accepted** | Deploy compiled PWA artifacts to GitHub Pages **only from `main`** following feature PR into `preview` and separate reviewed `preview` → `main` release PR. Keep the website a test prototype | **v0.6** DIST-01 |
+| 2026-11-02 | DEC-019 | **Accepted — supersedes DEC-014** | Exploration pitch/zoom remain fixed; camera smooth-turns to actual accepted movement heading via shortest path, retaining bearing when idle; manual rotate/tilt disabled | **v0.7** VIS-01, MOVE-01, EXPL-01, CAM-01, E0/P0 |
 
 ### Open decisions to resolve before related implementation
 
@@ -125,7 +126,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | **Fixed** exploration pitch/bearing values, sprite scale and frame timing, low-poly roof occlusion, portrait touch sizes and mobile budgets | VIS-01/04/05, EXPL-01, MOBILE-01 | Open |
+| OPEN-05 | Heading-following bearing is decided by DEC-019; tune fixed pitch/zoom values, turn rate, dead zone, sprite frame rate/scale, roof occlusion, safe-area joystick size and mobile budgets | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — experimental tuning |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -153,17 +154,25 @@ This section records **requirements evolution** separately from actual implement
 | Feature validation | [GitHub Actions build](https://github.com/s3ton/bitmon/actions/runs/41503955234) — TypeScript and Vite build passed | Complete |
 | Release validation | [GitHub Actions release PR check](https://github.com/s3ton/bitmon/actions/runs/41504248392) — TypeScript and Vite build passed | Complete |
 | Pages publication from `main` | [Deploy run](https://github.com/s3ton/bitmon/actions/runs/41504378759) — build, artifact upload and Pages deployment passed | Complete |
-| Website smoke check | Repository owner reported the [public site](https://s3ton.github.io/bitmon/) “works well” | Positive user report; browser/device unspecified |
-| Full E0 / PWA acceptance | Map/source audits, screenshots, device installs, walking avatar and touch controls | Not complete |
+| Smartphone installation and map impression | Owner reports PWA installed and launched on their phone and that the neighborhood map looks extremely faithful (2 Nov 2026) | Confirmed owner report; device/OS unspecified; not a formal source-geometry audit |
+| Full E0 / PWA acceptance | Source geometry audit, representative OS/device installs, screenshots, new walking avatar and joystick | Not complete; owner Task 002 phone tests pending |
 
 **Implemented:** Vite + TypeScript + MapLibre; a recognizable fixed-start Brera, Milan map sourced from OpenFreeMap; styled roads/paths, terrain and water; low-poly building extrusions from mapped footprint geometry with source height or deterministic fallback; fixed 45° pitch and -20° bearing; portrait orientation prompt; manifest, icons and a limited offline application shell. GitHub Pages deploys compiled `dist/` output on pushes to `main` only. The repository is public, and no separate distribution repository exists.
 
-**Evidence boundary:** A successful website smoke test and production build do **not** establish that all OpenFreeMap features match rendered geometry, that the full app works on Android and iOS, that home-screen installation/standalone mode works, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
+**Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
-**Current limitations:** No trainer avatar, walking animations, touch movement, collision, encounters, battles, wallet, blockchain, or backend. Fixed map panning/zooming is a map preview, not the intended avatar-controlled gameplay. M0, M1 and M3 remain incomplete as full milestone definitions.
+**Task 001 baseline limitations:** Released `main` still lacks trainer avatar, walking animation and touch movement; these are introduced in Task 002 PR #8 and are not yet released to `main`. There are no encounters, battles, wallet, blockchain or backend. M0, M1 and M3 remain incomplete as full milestone definitions.
 
-### Next development task
+### Task 002 — Walking trainer, geographic joystick, direction-following camera (2 November 2026)
 
-Implement the original four-direction walking avatar, touch movement and a camera that follows the avatar without rotating, while preserving OpenFreeMap geometry and smartphone portrait behavior. Then perform a targeted source-geometry check, test installation and orientation on representative Android and iOS devices, and capture portrait screenshots. Keep gameplay/blockchain scope deferred.
+**Implementation:** [PR #8](https://github.com/s3ton/bitmon/pull/8), `feat/task-002-avatar-movement` → `preview`. A lightweight original SVG trainer with four visible directional walking cycles/idle and foot shadow is anchored through a geographic MapLibre Marker. Pointer-captured safe-area joystick and optional keyboard input drive frame-rate-independent meter/second movement, including diagonals. Camera uses shortest-angle bearing easing toward accepted movement, retaining pitch and zoom; building/water collision uses OpenFreeMap source polygons only, pausing while tiles load. No new dependencies or permanent automated tests.
+
+**Validation boundary:** [GitHub Actions PWA build run 41512017734](https://github.com/s3ton/bitmon/actions/runs/41512017734) passed `npm install --no-audit --no-fund`, `npm run check` and `npm run build` on the Task 002 branch (before the final documentation/performance cleanup). Owner will manually verify on a portrait phone after separately reviewing and promoting `preview` → `main`. **Do not mark VIS-01/MOVE-01/EXPL-01 Done before those checks.** Manual cases: cardinal/diagonal walks, continuous and rapid opposite turns, stop/idle, wall/water collisions, tile boundaries, geographic recognizability, orientation prompt, installed PWA relaunch and screenshots/recording. No device acceptance results are claimed here.
+
+**Limitations:** Loaded source polygons are not a pedestrian access-rights graph; footprints can be generalized, source tiles unavailable, and long-distance routing absent. Source-revision consistency, rural gaps, water edges, collision behavior and phone frame rates await manual validation. No GPS, battles, verified movement or wallet features.
+
+### Next development task after Task 002
+
+**Task 003 — Geographic visual audit and E0 map readability:** assess dense and sparse OpenFreeMap regions for invented/missing geometry, improve deterministic facade variation and avatar/building occlusion using existing source tiles, and tune performance on mid-range phones. Keep creatures and blockchain deferred until E0 acceptance.
 
 **Release workflow:** Feature PR → `preview` → separate reviewed `preview` → `main` PR → automatic `main`-only GitHub Pages deployment. Documentation-only changes on `preview` are not published to `main` until the next approved release PR.

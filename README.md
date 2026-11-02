@@ -2,7 +2,7 @@
 
 **bitmon** is a **smartphone-first, portrait-only, installable PWA** creature-collection RPG set on a 1:1 representation of Earth, rendered as an original **low-poly 2.5D** world.
 
-The geographic base uses **OpenFreeMap as the sole geographic data source** and **MapLibre for rendering**. No physical building or road may be generated unless it exists in the OpenFreeMap tiles. Original window, roof, and facade art may be inferred from those tiles but does not claim to reproduce actual architecture. The game adds original facade and roof treatments on mapped buildings, plus characters and creatures. **Immediate development focus:** touch-controlled walking-avatar exploration with a fixed-angle camera that follows without rotating. **Later battles** zoom/reframe the camera in the same low-poly world, then return to the exploration view. Progression is local-first and verifiable with permissionless trainer registration, public randomness, restricted creature swaps, and player-led gyms.
+The geographic base uses **OpenFreeMap as the sole geographic data source** and **MapLibre for rendering**. No physical building or road may be generated unless it exists in the OpenFreeMap tiles. Original window, roof, and facade art may be inferred from those tiles but does not claim to reproduce actual architecture. The game adds original facade and roof treatments on mapped buildings, plus characters and creatures. **Immediate development focus:** touch-controlled walking-avatar exploration with a fixed-pitch/zoom camera that smoothly turns toward the actual movement heading. **Later battles** zoom/reframe in the same low-poly world, then restore and resume heading-following exploration. Progression is local-first and verifiable with permissionless trainer registration, public randomness, restricted creature swaps, and player-led gyms.
 
 ## Documents
 
@@ -16,9 +16,10 @@ The source repository is **public**. The compiled test PWA is live at [https://s
 ## Current development status (2 November 2026)
 
 - [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
-- The **map-rendering foundation** is live: OpenFreeMap geography, simplified extruded buildings, fixed-angle camera, portrait UI fallback and basic PWA shell. This is an exploration **view**, not yet a playable walking game.
-- **Next:** directional walking avatar, touch movement and follow-camera, then real-device installation and map-fidelity checks.
-- **Not yet verified:** full Android/iOS home-screen installation, offline behavior, feature-by-feature geographic fidelity, screenshots and device performance. See the [development tracker](docs/DEVELOPMENT_TRACKER.md) for exact evidence and remaining acceptance gates.
+- The **Task 001 map-rendering foundation** is live on `main`: OpenFreeMap geographic tiles, extruded mapped buildings, oblique 45° camera pitch, portrait fallback and installable PWA shell.
+- [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) targets `preview` with an original directional SVG trainer, geographic movement through a safe-area touch joystick, basic OpenFreeMap source-polygon collision and a **smooth heading-following camera** at fixed pitch and zoom. **It has not yet been promoted to the deployed Pages app.**
+- The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
+- **Still pending:** Task 002 owner phone tests, Android/iOS cross-platform coverage, service-worker/offline verification, tile/collision/heading edge cases, screenshots and device performance. The [development tracker](docs/DEVELOPMENT_TRACKER.md) lists actual evidence and unmet acceptance gates.
 
 ## Local build
 
@@ -33,7 +34,7 @@ npm run dev
 
 1. Open [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) and set **Build and deployment → Source** to **GitHub Actions**.
 2. Merge feature work into `preview` through a reviewed PR; promote `preview` to `main` through a separate release PR. [The Pages workflow](https://github.com/s3ton/bitmon/actions/workflows/pages.yml) runs only when `main` changes and uploads only `dist/`.
-3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone, test the map and attribution, rotate the device and add the PWA to the home screen.
+3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone, test joystick and camera rotation, building/water collision, attribution, orientation prompt and PWA restart after adding it to the home screen.
 
 Map tiles still need network access; only the app shell is cached. The public URL is a preview, not a verified game.
 
