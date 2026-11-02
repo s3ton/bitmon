@@ -1,12 +1,12 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.1 — initial development baseline  
+**Version:** 0.2 — OpenFreeMap-only geographic authority; no invented roads or buildings  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
 **Creature name:** **bitmon** (singular and plural)  
-**Related concept:** Project Aether v2.2 (registration-first verified play, fixed-type gyms, restricted swaps). This PRD describes **what players should experience**; it is not a replacement for a protocol or security specification.
+**Related technical document:** [Technical Design](TECHNICAL_DESIGN.md) (registration-first verified play, fixed-type gyms, restricted swaps). This PRD describes **what players should experience**; it is not a replacement for a protocol or security specification. Implementation status and requirement changes are maintained separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 ---
 
@@ -14,9 +14,9 @@
 
 **bitmon is a browser-first creature-collection RPG set on a game version of the real Earth.** A player explores streets, paths, parks, neighborhoods, and landscapes corresponding to real places, encounters and trains bitmon, builds a collection, trades under fair rules, and competes to lead gyms.
 
-The **world is mapped 1:1 to real-world geography**: its streets, geographic positions, and building footprints come from geographic data, rather than a small fictional map that merely resembles Earth. It is **rendered as a stylized 2.5D top-down RPG**, evoking the readable pixel-art perspective of handheld creature games from the late 2000s and early 2010s, with wholly original bitmon art and assets.
+The **world is mapped 1:1 to the real-world geography represented in OpenFreeMap**: its streets, geographic positions, and building footprints come only from features present in OpenFreeMap tiles, rather than a small fictional map that merely resembles Earth. An absent mapped building or road must stay absent; the game never creates one to fill gaps. OpenFreeMap can be incomplete, so this is a fidelity-to-source promise rather than a guarantee that every real feature has been mapped. It is **rendered as a stylized 2.5D top-down RPG**, evoking the readable pixel-art perspective of handheld creature games from the late 2000s and early 2010s, with wholly original bitmon art and assets.
 
-**OpenFreeMap** supplies the open basemap/vector-tile starting point, and **MapLibre** displays and styles the map. We add our own game art: stylized ground treatments, raised/extruded buildings, roof details, facades, windows, interactive points, characters, and bitmon. Building appearance is selected from the best geographic attributes available; residential buildings should look residential when the underlying data supports that classification.
+**OpenFreeMap is the only geographic data source**, and **MapLibre** displays and styles its tiles. We add original game art to the **existing mapped geometry**: stylized road surfaces, raised/extruded mapped buildings, roof treatments, facades, windows, characters, and bitmon. Building appearance may be **plausibly inferred** from attributes and surrounding context that OpenFreeMap already exposes; inferred usage is an art choice, not an assertion about the real building. No additional OSM enrichment service, building dataset, custom geography source, or invented road/building geometry is required or permitted.
 
 The game is primarily played locally after the player registers a verifiable trainer. Its collection and progression can be validated without trusting the original game website or an always-online game server. The rules, not the client software, determine which rewards are legitimate.
 
@@ -24,7 +24,7 @@ The game is primarily played locally after the player registers a verifiable tra
 
 1. **The real Earth is the world.** A street in the map corresponds to that street's real geographic location.
 2. **It feels like a game, not a navigation app.** Roads and buildings remain recognizable, but everything is presented in a coherent 2.5D RPG art style.
-3. **Every neighborhood has a visual identity.** Real building footprints, land use, roads, waterways, and parks influence the scene.
+3. **Every neighborhood has a visual identity without fabricated geography.** OpenFreeMap building footprints, land use, roads, waterways, and parks influence the scene; only surface art and facade treatments may be invented.
 4. **The player's bitmon are earned, not fabricated.** Verified encounters and progression follow independently checkable rules.
 5. **Most actions are immediate.** Walking, exploring, and battling do not require blockchain transactions every few seconds.
 6. **Social competition is simple and fair.** Trading follows fixed restrictions; gyms have permanent type identities and reward reputation, not money.
@@ -36,10 +36,10 @@ The game is primarily played locally after the player registers a verifiable tra
 
 - The game and creatures are named **bitmon** for now.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
-- The base map uses **OpenFreeMap data/style infrastructure with MapLibre rendering**.
-- Streets and roads must follow the map data rather than a separately hand-drawn road network.
-- Buildings are overlaid in **stylized 2.5D**, with art and facade choices determined by map-derived building data when available.
-- Residential buildings should receive residential-appropriate facade/window artwork when identifiable.
+- **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
+- **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
+- Buildings use OpenFreeMap footprints, overlaid in **stylized 2.5D**. Their facade/window/roof art may be invented or inferred from the tile's available fields and local mapped context; visual invention must never add a new physical building or expand its footprint.
+- Inferred residential-like styling is allowed as **artistic interpretation**, never as a verified residential label. Ambiguous buildings receive a neutral or plausible generic style.
 - A **verified trainer must register before their first verified encounter**; registration must predate the relevant public randomness.
 - Each gym has exactly **one permanent assigned bitmon type**. Both teams must contain only bitmon with that type; either type of a dual-type bitmon is sufficient.
 - Gym leaders may update their eligible defense team but cannot alter the gym type or create additional gym-specific rules.
@@ -79,8 +79,8 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **Requirements**
 
 - The world uses real geographic coordinates and spans the Earth, not merely selected fictional towns.
-- Roads, footpaths, coastlines, waterways, land-use areas, and available building footprints derive from the map dataset.
-- The underlying map geometry is not randomly rearranged to create game levels. The same real feature retains the same geographic position across visits.
+- Roads, footpaths, coastlines, waterways, land-use areas, and available building footprints derive **exclusively from OpenFreeMap tiles**.
+- The underlying mapped geometry is not rearranged, invented, or extended to create game levels. For a fixed OpenFreeMap data revision, the same source feature retains the same geographic position across visits.
 - Movement/camera presentation may be stylized, but no invisible change of map scale may make geographic distances inconsistent. Any deliberate fast-travel mechanic must be clearly separate from walking.
 - Map content is refreshed periodically; the player should not mistake outdated, incomplete, or user-contributed geographic data for guaranteed real-time facts.
 
@@ -96,7 +96,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 - Roads are drawn from OpenFreeMap-compatible vector data in a consistent bitmon art style.
 - Road classes should be visually differentiated where useful: major streets, residential streets, walking paths, tracks, plazas, bridges, and tunnels.
-- Decorative styling may change road color, borders, texture, and markings; it must not invent a different route topology.
+- Decorative styling may change the appearance of **existing OpenFreeMap road/path features** (color, borders, texture, markings) but must not create new road/path segments, intersections, links, shortcuts, or altered route topology.
 - The scene must handle intersections, overlapping bridges, waterways, and road/building ordering without confusing visual occlusion.
 - **Walkability is a gameplay rule, not automatically guaranteed by a road drawn on the map.** The game must distinguish rendered map features from traversable game space, including rivers, walls, highways, railways, private areas, and missing access tags.
 
@@ -108,7 +108,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Reuse a coherent 2.5D tiles/sprites/material style across the world instead of displaying unmodified map colors next to unrelated game artwork.
 - Habitat information may inform encounter species or game points **only through fixed, published game rules**.
 - If a place lacks reliable tags, use an explicit neutral/default visual treatment instead of asserting a specific local building type or habitat.
-- More detailed local art can be added to special places without destroying the geographic correspondence.
+- More detailed art may be applied to **existing mapped surfaces and objects** at special places. It must not introduce a fictional building, road, or path.
 
 ### WORLD-04 — Global coverage and continuity
 
@@ -117,7 +117,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - The world should be generated from available geographic data anywhere the map provider has coverage.
 - Missing buildings, incomplete roads, or inconsistent tagging must degrade gracefully.
 - The game should communicate when map data are missing or a region is not yet playable under the movement rules.
-- The map must not silently fabricate real-world buildings and present them as mapped facts. Fictional gameplay props must be visually distinguishable from map-derived geometry.
+- **No buildings or roads may be procedurally created unless OpenFreeMap contains the underlying feature.** Missing map features remain missing; game markers may appear as UI overlays but cannot masquerade as physical roads or buildings.
 - Continents, oceans, islands, and remote settlements should not require hard-coded city maps to be shown.
 
 ## 5. Visual direction: 2.5D top-down RPG
@@ -137,35 +137,39 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 **As a player**, buildings occupy the same footprints as the real buildings in the map but look like buildings in a coherent RPG world.
 
-- Convert mapped building footprints into **2.5D building volumes** anchored to their real coordinates.
-- Use mapped or derived heights when available; use a **deterministic, visually reasonable fallback** for missing height data.
+- Convert **only OpenFreeMap-mapped building footprints** into **2.5D building volumes** anchored to their source coordinates; never add a separate building polygon or extend the mapped footprint.
+- Use OpenFreeMap height/minimum-height fields when supplied; use a **deterministic visual-only fallback** for missing height data. A guessed height is not a fact about the real building.
 - Draw roofs and visible facades with original bitmon materials, outlines, shadows, and facade details.
 - Geometry and artwork must line up with the ground map; buildings cannot float, visually jump between tiles, or rotate arbitrarily as the camera moves.
 - Respect building parts/minimum heights when available; avoid drawing two conflicting building shells for one mapped structure.
-- If a building footprint is present but no type is known, render a believable **generic building**, not a confidently labeled residence, shop, or school.
+- If a building footprint exists but its use is unknown, render a believable **generic or context-inferred facade** without claiming the building is definitively residential, retail, industrial, or civic.
 
-### VIS-03 — Data-driven facade and window art
+### VIS-03 — OpenFreeMap-only facade and window art
 
-**As a player**, different kinds of buildings visibly feel different without manually designing every building in the world.
+**As a player**, buildings can look like plausible houses, apartments, shops, warehouses, or civic buildings without the game inventing any additional buildings.
 
-| Building evidence available | Desired player-visible treatment | When evidence is missing |
+**All geography and all evidence for styling must come from the OpenFreeMap vector tiles the client already uses.** This includes source building polygons, available rendered height/minimum height/color data, and any nearby landuse or POI information actually encoded in those tiles. The tile schema does not guarantee a residential/commercial building classification or detailed roof/wall tags.
+
+| Evidence available in OpenFreeMap | Possible art treatment | Guardrail |
 |---|---|---|
-| Residential building classification (`building=house`, `apartments`, `residential`, etc.) | Residential window pattern, doors, balconies or shutters where the art style supports them; scale pattern to height/width | Generic facade; do not claim residential use |
-| Commercial/retail/office classification | Appropriate shopfront, office-window rhythm, or larger ground-floor glazing | Generic facade |
-| Industrial/warehouse classification | Larger blank walls, loading-door-style details, fewer windows | Generic facade |
-| Civic, educational, or other specialized class | Distinctive but restrained building art chosen from mapped tags | Generic facade |
-| Reliable height/level data | Taller facade with proportionate window rows and roof position | Deterministic default height and row count |
-| Material, wall color, or roof characteristics | Use available colors/material cues when they can be normalized into the art palette | Bitmon default material/roof palette |
+| Mapped building footprint | Raised building on **exactly that footprint**, with original roof and facade art | No footprint means **no building**; never add another polygon |
+| `render_height`, `render_min_height`, `hide_3d`, `colour` if present | Building volume, window-row rhythm, roof position, and palette | Missing values trigger a deterministic visual default, never a factual claim |
+| Nearby mapped residential landuse, housing-like street context, or appropriate mapped POIs | Plausible residential-style windows, doors, shutters, or balconies | Context is a **visual heuristic**, not proof of building usage |
+| Nearby mapped commercial or industrial landuse / relevant POIs | Plausible storefront, office-window, warehouse, or industrial facade | Do not display an unverified shop/business label |
+| Insufficient or conflicting evidence | Neutral/generic building facade with deterministic decorative variety | Never fetch a second dataset or silently invent missing geographic features |
+| Existing road/path geometry and class | Game-styled road materials, edges, or markings | No artificial road, path, driveway, bridge, or shortcut |
 
 **Rules for the art system**
 
-- Art selection must be **deterministic** for a fixed building ID, data revision, and art version, so a building does not change facade each time it scrolls into view.
-- Window positions must be computed from the available wall dimensions and should not spill past edges, corners, or roofs.
-- Facades must remain visually distinct from the ground map and avoid excessive texture repetition.
-- Missing labels and ambiguous classifications must lead to neutral art, not unfounded assumptions.
-- The system should allow future localized art packs without making manually authored cities a prerequisite for worldwide coverage.
+- Inventing **surface-level art** is encouraged: windows, roof textures, facade colors, doors, signs without real-world business names, shutters, and decorative details on *mapped buildings*. Their specific appearance is fictional and need not match the actual building.
+- Do **not** invent extra building footprints, annexes, freestanding structures, roads, paths, entrances that imply a new traversable route, or other missing physical features.
+- Art selection is **deterministic** for a stable source feature or geometry fingerprint, OpenFreeMap data revision, and bitmon art version. A guessed residential-like facade must not change randomly whenever the map scrolls.
+- Window positions and facade elements must stay on the visible walls of the existing building; roof treatment and shadows must not make another building appear nearby.
+- When context is ambiguous, use neutral variety rather than forcing a specific classification. If inference is used, keep it internal to rendering; no asserted real-world usage labels.
+- Never add enrichment queries to raw OpenStreetMap, third-party building databases, proprietary map APIs, aerial imagery, or a custom geographic tile source. A mirror or self-hosted copy of **the same OpenFreeMap dataset/schema** is acceptable for availability.
+- Keep the renderer robust across changes in OpenFreeMap tile content, source generalization, and schema versions; a missing field is a normal case.
 
-**Important data constraint:** Standard OpenFreeMap/OpenMapTiles building vector tiles expose geometry and fields such as approximate rendered height, minimum height, color, and 3D-visibility flags. They do **not necessarily expose original `building=*`, `building:levels`, `roof:shape`, or other detailed OSM tags needed to pick residential-vs-office facade art.** This product requirement therefore implies an **additional enriched building-feature source or a custom vector-tile pipeline** preserving the needed attributes. Do not plan to infer residential class from `render_height` alone. See §15.
+**Data limitation and intentional trade-off:** OpenFreeMap uses the OpenMapTiles schema. Its common building fields provide geometry and approximate rendering hints, but not the rich original building-use tags needed for reliably identifying residential versus office buildings. **We accept lower classification accuracy rather than introduce another geographic source.** The player's world is faithful to mapped **features**, while building facades remain original artistic interpretations. See §15.
 
 ### VIS-04 — Layering and occlusion
 
@@ -347,16 +351,16 @@ The first playable milestone is a **vertical slice** rather than a finished plan
 1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
 2. Show a controlled player character and a usable, consistent top-down/oblique **2.5D view**.
 3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
-4. Show at least **two distinguishable facade treatments**, including residential windows when **verified building classification data** are available; unknown buildings receive neutral art.
+4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
 5. Keep roads, buildings, player collision, and camera aligned while moving and crossing tile boundaries.
 6. Create a verified trainer before issuing the first authenticated encounter, with clear registration/activation state.
 7. Complete one local deterministic encounter, one capture, local pending save, and successful verified finalization.
-8. Show errors or degraded rendering rather than falsely implying detailed map data exist where they do not.
+8. Show errors or degraded rendering rather than falsely implying detailed map data exist where they do not; verify that areas with no source footprints contain **no generated buildings**, and no roads appear where OpenFreeMap contains none.
 
 ### P1 — Required for a usable first game release
 
 - Map/world streaming across multiple urban and rural test regions; a documented travel mechanism.
-- A polished visual vocabulary for roads, parks, water, vegetation, and several building categories.
+- A polished visual vocabulary for existing OpenFreeMap roads, parks, water, vegetation, and several **inferred facade styles**; no additional geographic dataset.
 - More species, levels, moves, inventory, quests/progression, and reliable recovery/export.
 - Regional/habitat encounter design with a **specified anti-hindsight location commitment model**.
 - Same-tier swaps with level reset and 24-hour rate limiting.
@@ -365,7 +369,7 @@ The first playable milestone is a **vertical slice** rather than a finished plan
 
 ### P2 — Later enhancements, not release blockers
 
-- Additional decorative building variants, roof shapes, richer nighttime lighting, seasonal art, animated crowds, and curated landmark scenes.
+- Additional decorative variants and roof treatments **on existing mapped buildings**, richer nighttime lighting, seasonal art, animated crowds, and surface-only landmark art (never new building/road geometry).
 - Optional localized art packs, more extensive points of interest, or enhanced environmental audio.
 - Advanced portability/mirroring, third-party sponsorship integrations, and independently hosted game portals.
 
@@ -373,13 +377,13 @@ The first playable milestone is a **vertical slice** rather than a finished plan
 
 | Scenario | Pass condition |
 |---|---|
-| Real intersection | A selected real-world intersection has matching road geometry and connectivity on the map. |
-| Residential block with known tags | At least one mapped residence uses the approved residential facade/window set; the decision is traceable to data fields. |
-| Building with unknown class | A generic facade appears; the app does not invent a residential/commercial classification. |
-| Tall vs short building | Different recorded heights or levels produce appropriately distinct raised forms, with a documented fallback when unknown. |
+| Real intersection | A selected intersection represented in OpenFreeMap has matching road geometry and connectivity; no new road links are generated. |
+| Mapped residential-looking block | At least one OpenFreeMap building receives the approved residential-like window set based on documented tile context; it is not presented as a verified residence. |
+| Building with unknown class | A generic or tentative context-based facade appears without asserting an actual residential/commercial building use. |
+| Tall vs short building | Different OpenFreeMap `render_height` values produce appropriately distinct raised forms, with a documented visual-only fallback when unknown. |
 | Tile seam | A road and facade crossing a tile boundary do not visibly separate or change style. |
 | Dense city | Gameplay remains responsive under the agreed device and frame-time budget, with predictable level-of-detail fallback. |
-| Sparse rural area | The scene remains navigable even if building metadata are incomplete. |
+| Sparse rural area | The scene degrades gracefully when buildings or roads are missing in the tiles; the renderer never fills them in by invention. |
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
 | Known-beacon location exploit | A player cannot choose a better location **after** seeing encounter randomness and still claim the result as a valid earlier slot. |
 | Unregistered account | No verified bitmon can be claimed without pre-registered eligible trainer identity. |
@@ -395,7 +399,7 @@ These questions need product decisions; implementing guesses as if already settl
 3. **Map coordinate access:** Can anyone pick any starting coordinate? Can they freely revisit different regions? How does the game avoid location-based encounter seed shopping?
 4. **Encounter location commitment:** Exactly when and how is a region/habitat fixed relative to the public randomness beacon? This is essential to fair, worldwide encounters.
 5. **Walkable space:** Does play primarily follow mapped paths, or allow free walking through parks, fields, and plazas? What to do with roads lacking foot-access information?
-6. **Building data source:** Which enriched OSM tags must be preserved, how is the data tiled or fetched, and how are updates versioned?
+6. **Facade inference rulebook:** Which existing OpenFreeMap attributes/context influence facade variants, how should uncertain inferences be weighted, and how do source-tile updates affect deterministic art? **No additional geographic data source is allowed.**
 7. **Camera/art direction:** Exact angle, camera rotation policy, sprite resolution, texture treatment, roof presentation, and building-height stylization.
 8. **Interiors:** Are any buildings enterable in the first release? No such feature is assumed here.
 9. **Gym placement:** How are gyms distributed fairly across a worldwide map? How does a player find and reach them?
@@ -405,45 +409,55 @@ These questions need product decisions; implementing guesses as if already settl
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 
-These notes distinguish the desired experience from what existing open mapping tools actually supply.
+These notes distinguish the desired player experience from the information actually available in the selected map source.
+
+### Geographic-source rule
+
+**Only OpenFreeMap vector tiles and their included attributes are permitted as the geographic source for the bitmon world.** MapLibre renders and styles those data. Original art and deterministic game logic are permitted, but must not invent geographically represented buildings or roads.
+
+- **Allowed:** OpenFreeMap public tiles, downloaded OpenFreeMap tile extracts, or self-hosted/mirrored copies of the same source data; MapLibre; original bitmon sprites, textures, procedural building facades, and visual effects.
+- **Not allowed for map geometry or inference:** supplementary raw OpenStreetMap lookups, separate OSM enrichment feeds, other basemap providers, third-party building data, satellite/aerial interpretation, or user-generated geometry that changes the canonical map.
+- **No fabricated geometry:** buildings may be raised only where a building footprint appears in the current tile data; roads/paths may be drawn only where corresponding transportation features appear. The game cannot insert a missing residential block, alley, street, driveway, bridge, or shortcut.
+- **Source incompleteness:** If OpenFreeMap omits a real-world feature, bitmon omits it as well. Do not claim completeness of Earth beyond the source's coverage or precision.
+- **Game features:** UI markers for battles, gyms, and other gameplay objects can exist without pretending to be new geographic roads or buildings. If a location needs physical representation, attach it to an existing mapped feature or represent it as a non-physical interface element.
 
 ### Map stack
 
-- **OpenFreeMap:** open-source global map delivery; offers public vector tiles/styles, downloadable full-planet data, and a self-hosting path. It uses **OpenStreetMap** data and the **OpenMapTiles** schema. It is the *source/basemap infrastructure*, not a game engine or source of RPG facade art.
-- **MapLibre GL JS:** renders map/vector tiles and styles, supports polygon `fill-extrusion` for raised buildings, and provides custom rendering layers when additional facade/roof art requires a separate rendering path.
-- **bitmon rendering/content layer:** our original camera treatment, textures, 2.5D facades/windows/roofs, player sprites, collisions, game markers, deterministic building-style selections, and caching.
-- **Enriched building data:** additional original OSM-derived tags and/or a custom tile generation step to distinguish residences, offices, factories, schools, roof forms, and facade materials. **Do not assume standard OpenFreeMap tiles contain these fields.**
+- **OpenFreeMap:** sole source of world geography. Its public service and downloadable/self-hostable tiles are based on OpenStreetMap and use the OpenMapTiles schema. The OpenFreeMap map-layer information is not a comprehensive database of every original OSM tag.
+- **MapLibre GL JS:** map visualization and polygon extrusion, with a custom rendering layer or sprites where needed for facade/roof/window art.
+- **bitmon art layer:** deterministic render rules, sprite textures, building volume treatments, ambient decoration, collision rules, and cache management, always anchored to existing map geometry.
+- **No enriched geographic feed:** the deliberate product decision is to infer a believable visual language from the OpenFreeMap attributes already delivered. Trade precision for simplicity; do not expand to separate data sources without a new, explicit product decision.
 
-### Recommended data precedence for a building
+### Building and road rendering precedence
 
-1. Use mapped footprint as geometry when present.
-2. If available, use explicit height, `building:levels`, and `min_height`/parts; otherwise a deterministic fallback, clearly treated as stylization.
-3. Use an **explicit** building-class field from enriched data to select artwork. If missing, choose generic.
-4. Use mapped material, color, and roof tags when preserved and credible; otherwise a coordinated game palette.
-5. Use a stable source ID or geometry-based identifier plus data/art versions for deterministic facade selection.
+1. **Existence test:** Build a visual structure **only if** OpenFreeMap contains a building polygon; draw a road/path **only if** the transportation layer contains that line or area. No source feature means no rendered physical feature.
+2. **Building geometry:** Use its polygon, mapped parts, `render_height`, `render_min_height`, `hide_3d`, and `colour` when available. Respect building-outline or part flags; avoid overlapping duplicate volumes.
+3. **Unknown height:** Choose a deterministic, visually sensible fallback **for an already-mapped building**; never present it as a measured height.
+4. **Facade selection:** Evaluate only tile-provided contextual signals (including mapped nearby landuse/POIs where present) and stable feature/geometry fingerprints. Choose a visual facade category with an explicit fallback for missing or conflicting evidence. Inference is **art**, not an asserted building classification.
+5. **Windows and roofs:** Place original decorative patterns on the mapped building's visible surfaces; do not extend its footprint or create neighboring structures.
+6. **Road styling:** Keep mapped road/path positions and topology intact. Stylized widths, textures, colors, or outlines must not create fictitious navigable connections.
+7. **Consistency:** Version the OpenFreeMap source snapshot and art rules when practical so player views and collision behavior can be reproduced across sessions.
 
 ### Important restrictions
 
-- **Attribution:** keep required OpenStreetMap/OpenMapTiles attribution visible in the game map and satisfy source license requirements. OpenFreeMap's own documentation describes the required map attribution; simply using open tools does not make geographic data public-domain.
-- **OSM data licensing:** OpenStreetMap data are governed by ODbL. Review obligations before redistributing enriched derived databases, while independently authored art remains a separate licensing question.
-- **Coverage:** World-scale availability does not imply complete footprints, accurate heights, building classes, or pedestrian access tags for every coordinate.
-- **Real-world claims:** The game is fictional and should not represent inferred building usage, roads, or hazards as authoritative navigation advice.
-- **Decentralization:** Public OpenFreeMap hosting is convenient but not a guarantee of permanent service. Preserve the ability to point the client at compatible self-hosted tiles.
-- **Visual IP:** Use genre influence for camera/readability only; all bitmon art, sprites, music, text, and visual UI must be original or properly licensed.
+- **Attribution:** display the required credits for OpenFreeMap/OpenMapTiles/OpenStreetMap in accordance with the chosen tile style and source licenses, including when rendering with original bitmon art.
+- **License:** OpenFreeMap software licensing does not erase OpenStreetMap underlying database obligations; confirm requirements for redistribution/self-hosted tile copies.
+- **Availability:** OpenFreeMap public hosting is an external dependency and has no guaranteed SLA. Permit compatible self-hosted/mirrored OpenFreeMap tiles without mixing in new geography.
+- **Tile generalization:** Tiles may simplify or omit features at different zooms. Gameplay should use a documented appropriate zoom/detail level and should not extrapolate unobserved building/road geometry.
+- **Claims:** building type and facade visualizations are not authoritative real-world descriptions or navigation advice.
+- **Visual IP:** all bitmon art, sprites, music, text, and UI must be original or appropriately licensed.
 
 ### Reference material (reviewed 2 November 2026)
 
-- OpenFreeMap home, tile service, self-hosting, attribution, licensing: https://openfreemap.org/
-- MapLibre GL JS example using **OpenFreeMap** vector data for 3D building extrusions: https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/
-- MapLibre GL JS examples and custom layers: https://maplibre.org/maplibre-gl-js/docs/examples/ and https://maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/
-- OpenMapTiles vector schema, particularly `building`, `transportation`, and `landuse`: https://openmaptiles.org/docs/schema/
-- OpenMapTiles building source fields (`render_height`, `render_min_height`, `colour`, `hide_3d`): https://github.com/openmaptiles/openmaptiles/blob/master/layers/building/building.yaml
-- OpenStreetMap Foundation attribution guidance: https://osmfoundation.org/wiki/Attribution_Guidelines
+- OpenFreeMap overview, data distribution, attribution, licensing: https://openfreemap.org/
+- OpenMapTiles schema and available `building`, `transportation`, `landuse`, and POI attributes: https://openmaptiles.org/docs/schema/
+- MapLibre building extrusion: https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/
+- MapLibre custom layers: https://maplibre.org/maplibre-gl-js/docs/API/interfaces/CustomLayerInterface/
 
 ---
 
 ## 16. Definition of done for this document
 
-This PRD is an **initial baseline** that guides implementation by describing the experience a player should receive. Each numbered requirement can become a feature epic and an acceptance test. Exact game mechanics, cryptographic circuits, smart contracts, map-data processing, art pipeline, and architecture should live in separate implementation specs aligned to this PRD.
+This PRD is a **versioned development baseline** that guides implementation by describing the experience a player should receive. Every numbered requirement has a row in the [Development Tracker](DEVELOPMENT_TRACKER.md); progress and decision history are updated there, separately from normative product requirements. Exact game mechanics, cryptographic circuits, smart contracts, map-data processing, art pipeline, and architecture should live in separate implementation specs aligned to this PRD.
 
 **The next product decision with the highest downstream impact is how players travel through 1:1 Earth and when their encounter region is committed.** It directly affects navigation, world design, fair spawns, and whether real-world map data can safely drive gameplay.
