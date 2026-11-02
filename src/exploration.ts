@@ -6,7 +6,7 @@ type Polygon = Ring[]
 type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon }
 
 const METERS_PER_RADIAN = 6_371_008.8
-const SPEED_METERS_PER_SECOND = 4.5
+const SPEED_METERS_PER_SECOND = 10
 const CAMERA_TURN_RATE = 6
 const DEAD_ZONE = 0.16
 const START: Position = { lon: 9.1869, lat: 45.4715 }
@@ -48,7 +48,12 @@ function contains(area: CollisionArea, point: Position): boolean {
 }
 
 
-const SPRITE_ROWS = { down: 0, left: 1, right: 2, up: 3 } as const
+const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft: 5, left: 6, downLeft: 7 } as const
+const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
+const TRAINER_HEIGHT_METERS = 1.8
+const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
+const JOYSTICK_START_MIN = .2
+const JOYSTICK_START_MAX = .8
 const COLLISION_RADIUS_METERS = 28
 const CACHE_REFRESH_METERS = 12
 const METERS_PER_DEGREE = METERS_PER_RADIAN * Math.PI / 180
@@ -72,6 +77,7 @@ function closestOnSegment(origin: Position, a: number[], b: number[]): Position 
 }
 
 export function startExploration(map: MapLibreMap): void {
+  const app = document.querySelector<HTMLElement>('#app')!
   const joystick = document.querySelector<HTMLElement>('#joystick')!
   const knob = document.querySelector<HTMLElement>('#joystick-knob')!
   const movementStatus = document.querySelector<HTMLElement>('#movement-status')!
@@ -79,8 +85,13 @@ export function startExploration(map: MapLibreMap): void {
   avatar.className = 'trainer'
   avatar.setAttribute('role', 'img')
   avatar.setAttribute('aria-label', 'Trainer avatar')
-  // The atlas contains four geographic-facing directions, each with one
-  // independent idle drawing and four distinct walking frames.
+  // A 1.8 m trainer is tiny at neighborhood zoom. Keep a small readability
+  // floor rather than drawing him at building scale.
+  const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(START.lat)) /
+    (512 * 2 ** map.getZoom())
+  const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel)
+  avatar.style.height = `${heightPx}px`
+  avatar.style.width = `${heightPx * .75}px`
   avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
   const avatarMarker = new Marker({
     element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
@@ -94,6 +105,7 @@ export function startExploration(map: MapLibreMap): void {
   let hasPlacedSpawn = false
   let stick = { x: 0, y: 0 }
   let activePointer: number | null = null
+  let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
   let animationTime = 0
   let lastAppearance = ''
@@ -103,13 +115,12 @@ export function startExploration(map: MapLibreMap): void {
 
   function renderAvatar(moving: boolean): void {
     const relativeHeading = angleDelta(heading, map.getBearing())
-    const direction = Math.abs(relativeHeading) <= 45 ? 'up'
-      : relativeHeading > 45 && relativeHeading < 135 ? 'right'
-        : relativeHeading < -45 && relativeHeading > -135 ? 'left' : 'down'
+    const octant = (Math.round(relativeHeading / 45) + 8) % 8
+    const direction = SCREEN_DIRECTIONS[octant]
     const step = moving ? 1 + Math.floor(animationTime / .12) % 4 : 0
     const appearance = direction + ':' + step
     if (appearance === lastAppearance) return
-    avatar.style.backgroundPosition = `${step * 25}% ${SPRITE_ROWS[direction] * (100 / 3)}%`
+    avatar.style.backgroundPosition = `${step * 25}% ${SPRITE_ROWS[direction] * (100 / 7)}%`
     lastAppearance = appearance
   }
 
@@ -278,38 +289,50 @@ export function startExploration(map: MapLibreMap): void {
     activePointer = null
     stick = { x: 0, y: 0 }
     knob.style.transform = 'translate(0px, 0px)'
-    joystick.classList.remove('engaged')
+    joystick.hidden = true
     movementStatus.hidden = true
     animationTime = 0
     renderAvatar(false)
   }
 
   function moveStick(clientX: number, clientY: number): void {
-    const bounds = joystick.getBoundingClientRect()
-    const radius = bounds.width * .34
-    const dx = clientX - (bounds.left + bounds.width / 2)
-    const dy = clientY - (bounds.top + bounds.height / 2)
+    const radius = joystick.offsetWidth * .34
+    const dx = clientX - touchOrigin.x
+    const dy = clientY - touchOrigin.y
     const fraction = Math.min(1, radius / (Math.hypot(dx, dy) || 1))
     stick = { x: dx * fraction / radius, y: dy * fraction / radius }
     knob.style.transform = `translate(${stick.x * radius}px, ${stick.y * radius}px)`
     requestTick()
   }
 
-  joystick.addEventListener('pointerdown', (event) => {
-    if (activePointer !== null) return
+  // The finger may start anywhere in the middle 60% of the portrait viewport.
+  // Upper/lower HUD bands and map attribution never initiate movement.
+  app.addEventListener('pointerdown', (event) => {
+    if (activePointer !== null || !event.isPrimary ||
+      (event.pointerType === 'mouse' && event.button !== 0) ||
+      window.matchMedia('(orientation: landscape)').matches) return
+    if (event.target instanceof Element &&
+      event.target.closest('a, button, input, textarea, select')) return
+    const bounds = app.getBoundingClientRect()
+    const verticalFraction = (event.clientY - bounds.top) / bounds.height
+    if (verticalFraction < JOYSTICK_START_MIN || verticalFraction > JOYSTICK_START_MAX) return
+
     event.preventDefault()
     activePointer = event.pointerId
+    touchOrigin = { x: event.clientX, y: event.clientY }
     controlBearing = map.getBearing()
-    joystick.setPointerCapture(event.pointerId)
-    joystick.classList.add('engaged')
+    joystick.style.left = `${event.clientX - bounds.left}px`
+    joystick.style.top = `${event.clientY - bounds.top}px`
+    joystick.hidden = false
+    app.setPointerCapture(event.pointerId)
     moveStick(event.clientX, event.clientY)
   })
-  joystick.addEventListener('pointermove', (event) => {
+  app.addEventListener('pointermove', (event) => {
     if (event.pointerId === activePointer) moveStick(event.clientX, event.clientY)
   })
   for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    joystick.addEventListener(eventName, (event) => {
-      if ((event as PointerEvent).pointerId === activePointer) resetStick()
+    app.addEventListener(eventName, (event) => {
+      if (event.pointerId === activePointer) resetStick()
     })
   }
   const directionKeys = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'])
