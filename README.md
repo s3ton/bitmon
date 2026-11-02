@@ -24,6 +24,10 @@ The source repository is **public**. The currently deployed build is [bitmon Sta
 - The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
 - **Still pending:** owner re-test of movement, map collision and sprite quality, cross-platform Android/iOS support, service-worker/offline behavior, tile-edge handling, screenshots and performance.
 
+## Toolchain
+
+Use **Node.js 26 LTS** (local `.nvmrc`, and GitHub Actions). Core package versions are pinned: MapLibre GL JS 6.16.0, Vite 8.3.5, TypeScript 7.0.2. An npm lockfile is not yet tracked; dependency installation is still performed with `npm install`, so transitives are not reproducibly pinned. Changes to the published Pages workflow must reach `main` before its main-context deployment action will use the new workflow versions.
+
 ## Local build
 
 ```sh
