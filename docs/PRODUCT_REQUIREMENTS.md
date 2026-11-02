@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.11 — fix Preview installation identity and vertical input mapping; add side zoom slider to heading-up exploration  
+**Version:** 0.12 — correct joystick screen-space vertical mapping; double displayed avatar size and extend exploration zoom to 20  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -138,9 +138,9 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Use a **low-poly 2.5D scene**: map-aligned ground geometry, low-triangle-count raised building forms, depth-sorted sprites, controlled shadows and sparse decoration.
 - Favor **clear silhouettes, simple mesh geometry, cohesive flat/faceted shading and low draw-call cost**, not photorealism or pixel-art textures.
 - Frame all gameplay for a narrow **portrait smartphone viewport**; the character, mapped routes and nearby interactions must remain readable.
-- **During exploration camera pitch stays fixed, bearing follows accepted travel heading and zoom can be changed by the player** using a small vertical slider on the right edge of a portrait screen. Prototype zoom range: **15.5–18.5**, initially **16.4**, in **0.1** increments. Bearing uses shortest-angle easing (including wraparound) and holds when idle. Manual drag rotation and camera tilt remain disabled.
+- **During exploration camera pitch stays fixed, bearing follows accepted travel heading and zoom can be changed by the player** using a small vertical slider on the right edge of a portrait screen. Prototype zoom range: **15.5–20**, initially **16.4**, in **0.1** increments. Bearing uses shortest-angle easing (including wraparound) and holds when idle. Manual drag rotation and camera tilt remain disabled.
 - The target feel is a classic handheld top-down creature RPG (the fourth/fifth-generation era is a **visual reference only**, not a license to copy character designs, tiles, interfaces, sounds, or maps).
-- The main player character remains legible without appearing building-sized: target an adult-human size (nominal 1.8 m) with a small minimum display allowance. Recalculate the trainer's screen size when the player changes zoom, keeping the feet anchored geographically.
+- The main player character retains a nominal 1.8 m projection, but the displayed sprite is scaled to **2×** that projection (and to a **16 CSS px** minimum) for smartphone readability; the geographic position and collision dimensions do not change. Recalculate the sprite when the player changes zoom, keeping the feet anchored geographically. Verify apparent size against buildings on a real phone.
 - Perspective, building height exaggeration, and camera pitch are art/UX parameters to test, not claims that geographic features are fully photorealistic.
 - The exploration camera keeps its fixed 2.5D pitch while following smoothly through turns and tile boundaries. The zoom slider changes presentation only, never position or passability. Later battles restore the exact pre-battle bearing, pitch, **user-selected zoom**, and follow state.
 - Labels and major navigation cues must remain readable above or around extruded geometry.
@@ -207,7 +207,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 **As a player**, I control a character rather than dragging a normal web map all the time.
 
-- Use an **invisible-by-default floating virtual joystick**: a touch/pointer starting in the middle **60% of the portrait screen** (between 20% and 80% of screen height) anchors the joystick under the finger. It appears during the gesture and disappears on release/cancel. The **top/bottom 20%** cannot initiate movement; UI controls, including the zoom slider, must capture gestures without initiating movement. Fix the observed inverted thumb vertical mapping and verify screen-relative direction on the device. Maintain a small dead zone and immediate idle on release. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
+- Use an **invisible-by-default floating virtual joystick**: a touch/pointer starting in the middle **60% of the portrait screen** (between 20% and 80% of screen height) anchors the joystick under the finger. It appears during the gesture and disappears on release/cancel. The **top/bottom 20%** cannot initiate movement; UI controls, including the zoom slider, must capture gestures without initiating movement. Dragging **up** must request screen-forward movement, and dragging **down** screen-backward movement relative to the camera bearing captured at gesture start; the camera continues to turn toward actual accepted travel heading, so the screen itself may rotate during a sustained gesture. Verify both movement and avatar orientation on a device. Maintain a small dead zone and immediate idle on release. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
 - Store true geographic longitude/latitude and move at **10 meters per second** at full input deflection; apply analog input magnitude and elapsed time independently of frame rate, source loading and camera presentation. Normalize diagonal speed to the same 10 m/s maximum; avoid background-time jumps.
 - Convert joystick control to a stable geographic movement heading through camera turns without a camera/input feedback loop; use accepted displacement to set the camera target bearing, not noise.
 - Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision. Movement continues through **previously verified cached local collision geometry** during transient tile loading and pauses at the cache boundary until new geometry is ready. Missing access data does not justify inventing traversable connections.
@@ -422,7 +422,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 2. Display a real neighborhood with the original **low-poly 2.5D** rendering, using only actual OpenFreeMap roads and building footprints.
 3. Show a small, normal-person-proportioned original **male walking avatar** with **eight directional frame cycles** (including diagonals), an idle pose, and frames advancing only while moving.
 4. Move the avatar through real coordinates at **10 m/s maximum** via a **floating joystick that appears only during gestures begun within the middle 60%** of the portrait screen. Support diagonals, frame-rate independence and source-footprint building/water collision; halt at genuinely unknown source geometry.
-5. Use a **fixed-pitch oblique exploration camera with a right-side 15.5–18.5 zoom slider**; follow the avatar and smoothly turn toward actual walking heading, hold bearing while idle, and disable manual camera rotation/tilt.
+5. Use a **fixed-pitch oblique exploration camera with a right-side 15.5–20 zoom slider**; follow the avatar and smoothly turn toward actual walking heading, hold bearing while idle, and disable manual camera rotation/tilt.
 6. Retain smooth rendering, camera position and walking animation when crossing map tile boundaries.
 7. Repeat the demo on a sparsely mapped area; no missing roads or buildings may be procedurally invented.
 
