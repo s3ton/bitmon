@@ -41,7 +41,10 @@ function contains(area: CollisionArea, point: Position): boolean {
       point.lat < area.minLat || point.lat > area.maxLat ||
       !inRing(point, area.rings[0])) return false
   // Holes are walkable; the source's actual polygon rings define the boundary.
-  return !area.rings.slice(1).some((hole) => inRing(point, hole))
+  for (let i = 1; i < area.rings.length; i++) {
+    if (inRing(point, area.rings[i])) return false
+  }
+  return true
 }
 
 function trainerSvg(direction: 'up' | 'down' | 'left' | 'right', stride: number): string {
@@ -133,10 +136,13 @@ export function startExploration(map: MapLibreMap): void {
         const polygons: Polygon[] = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
         for (const rings of polygons) {
           if (!rings.length || rings[0].length < 3) continue
-          const bounds = rings[0].reduce((b, point) => ({
-            minLon: Math.min(b.minLon, point[0]), maxLon: Math.max(b.maxLon, point[0]),
-            minLat: Math.min(b.minLat, point[1]), maxLat: Math.max(b.maxLat, point[1]),
-          }), { minLon: Infinity, maxLon: -Infinity, minLat: Infinity, maxLat: -Infinity })
+          const bounds = { minLon: Infinity, maxLon: -Infinity, minLat: Infinity, maxLat: -Infinity }
+          for (const point of rings[0]) {
+            bounds.minLon = Math.min(bounds.minLon, point[0])
+            bounds.maxLon = Math.max(bounds.maxLon, point[0])
+            bounds.minLat = Math.min(bounds.minLat, point[1])
+            bounds.maxLat = Math.max(bounds.maxLat, point[1])
+          }
           // Only keep geometry near this player, regardless of world tile count.
           if (bounds.maxLon < position.lon - .003 || bounds.minLon > position.lon + .003 ||
               bounds.maxLat < position.lat - .003 || bounds.minLat > position.lat + .003) continue
