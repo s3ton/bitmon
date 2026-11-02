@@ -114,28 +114,46 @@ body { overflow: hidden; }
   #joystick, #movement-status { display: none; }
 }
 
-/* Camera feel can be compared on the installed Preview without touching movement. */
+/* A native disclosure keeps camera settings off the map until requested. */
 #camera-control {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 16px);
   right: calc(env(safe-area-inset-right) + 10px);
   z-index: 4;
+}
+#camera-control > summary {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 124px;
-  padding: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(35, 61, 57, .2);
   border-radius: 12px;
   background: rgba(248, 246, 232, .94);
   box-shadow: 0 3px 14px rgba(35, 61, 57, .12);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
-#camera-control label { font-size: 11px; font-weight: 700; }
+#camera-control > summary::-webkit-details-marker { display: none; }
+#camera-control > summary:focus-visible { outline: 2px solid #2e514d; outline-offset: 2px; }
+.camera-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 192px;
+  padding: 12px;
+  border: 1px solid rgba(35, 61, 57, .2);
+  border-radius: 12px;
+  background: rgba(248, 246, 232, .97);
+  box-shadow: 0 3px 14px rgba(35, 61, 57, .12);
+}
+.camera-panel label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; }
 #camera-preset {
   width: 100%;
-  min-height: 32px;
+  min-height: 40px;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   color: inherit;
   border-radius: 7px;
   border: 1px solid #9baea3;
