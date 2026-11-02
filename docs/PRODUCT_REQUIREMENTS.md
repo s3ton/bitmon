@@ -330,9 +330,11 @@ The game should not require disclosure of the player's real-world location merel
 
 - Players should be able to load an alternative compatible client and continue using verifiable progression rules if the original website disappears.
 - Required map, asset, protocol, and rules versions should be documented sufficiently for independent compatible clients.
-- If the public map-tile endpoint becomes unavailable, switching to a compatible mirror or self-hosted OpenFreeMap/OpenMapTiles tiles should remain feasible.
+- If the public OpenFreeMap tile endpoint becomes unavailable, the player should be able to switch to a mirror or self-hosted copy of the **same OpenFreeMap geographic dataset**; this must not introduce alternative map geometry.
 
 ## 12. UX and accessibility
+
+### UX-01 — Usability and accessibility
 
 - The player has a clear world view, an obvious current position, nearby interactive points, and a readable party/collection panel.
 - Basic UI is usable with keyboard and touch; controls and text should work on common phone screen sizes.
