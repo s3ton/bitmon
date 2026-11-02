@@ -1,10 +1,10 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.7 (2 November 2026)  
+**Baseline PRD:** v0.15 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Task 001 map/PWA foundation deployed from `main` after [#3](https://github.com/s3ton/bitmon/pull/3) and [#4](https://github.com/s3ton/bitmon/pull/4); owner confirms installed PWA and high perceived geographic fidelity on a phone. Task 002 implementation is on [PR #8](https://github.com/s3ton/bitmon/pull/8) against `preview`. E0 acceptance, geometry audit and cross-device checks remain open. **Last evidence review:** 2 November 2026.
+**Current reporting state:** The owner explicitly approved promotion of the reviewed Preview exploration feature set to Stable after moving camera settings into a top-right hamburger menu. Preview includes 10 m/s movement, eight-way sprites, 2× visual avatar scale, 10–90% joystick activation, corrected vertical direction, a 15.5–20 zoom slider and Balanced soft-follow camera presets. Release PR [#11](https://github.com/s3ton/bitmon/pull/11) is the reviewed Preview → Main promotion route. Code/build CI and Pages deployment are separate gates; smartphone E0 visual/collision acceptance has **not** been established. **Last evidence review:** 2 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -33,13 +33,13 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Smooth heading-up camera, fixed pitch/zoom | E0 | In review | Phone checks cardinal/diagonal direction, shortest turn at 0°/360°, stop/idle bearing, stable zoom/pitch | [#8](https://github.com/s3ton/bitmon/pull/8) |
+| VIS-01 | Soft-follow camera with preset delay/capped yaw, fixed pitch and 15.5–20 zoom slider | E0 | In review — device check pending | Phone checks hamburger accessibility/preset dismissal, delayed turns, no reverse flip/idle coast, visible zoom, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Touch-driven geographic movement, diagonals and minimal building/water collision | E0 | In review | Phone joystick/motion, blocked mapped polygons, seam crossings and unloaded-tile pause | [#8](https://github.com/s3ton/bitmon/pull/8) |
-| EXPL-01 | Original male avatar with four camera-relative facing cycles and idle | E0 | In review | Four directions, stop/idle, heading changes while rotating camera, geographic anchoring | [#8](https://github.com/s3ton/bitmon/pull/8) |
+| MOVE-01 | 10 m/s geographic movement, screen-relative vertical touch mapping, floating 80% joystick and diagonals | E0 | Blocked — owner reports inversion | Device verifies swipe up/down against intended direction, slider never triggers joystick, 10 m/s maximum and mapped collision | [#13](https://github.com/s3ton/bitmon/pull/13), control/zoom fix PR |
+| EXPL-01 | Illustrated avatar with 2× visual scale; 8 directions × idle + four walking frames | E0 | In review — owner art/scale approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | [#13](https://github.com/s3ton/bitmon/pull/13) |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
@@ -59,8 +59,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | INDEPENDENCE-01 | Alternative client/map endpoint continuity | P1 | Not started | Equivalent OpenFreeMap mirror/self-hosted tiles and independent settlement | — |
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
 | MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| PWA-01 | Install and launch from Android/iOS home screens | E0 | In review | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| DIST-01 | Public repository GitHub Pages prototype | P0 | In review | Build and deploy succeeded on `main`; owner confirms site loads. Verify install/worker scope and deployed artifact contents before marking Done | [#3](https://github.com/s3ton/bitmon/pull/3), [#4](https://github.com/s3ton/bitmon/pull/4), [deploy](https://github.com/s3ton/bitmon/actions/runs/41504378759) |
+| PWA-01 | Install independently named/iconed Preview and Stable PWA home-screen apps | E0 | In review — duplicate install identity reported | Verify Preview prompts a separate installation with its own name/icon, Stable remains installed, standalone launch and scoped caches work | [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
+| DIST-01 | Separate Preview/Stable Pages builds with explicit unique Preview PWA ID | P0 | In review — owner reports install conflict | Confirm working links, independently installable icons and root stable stays unchanged by `preview` pushes | [#15](https://github.com/s3ton/bitmon/pull/15), [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
 
 ## 3. Map fidelity release gates
 
@@ -84,13 +84,13 @@ These requirements are **fixed decisions**, not open design options. A change re
 | Milestone | Scope | Status | Exit evidence |
 |---|---|---|---|
 | M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | In review | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
-| M1 / E0 — Animated avatar exploration | Low-poly OpenFreeMap map, fixed-pitch heading-up camera, geo touch movement, trainer animation and polygon collision | In review | Owner accepts four directions/diagonals, smooth turns, collision/seams and PWA on portrait phone; no fabricated geometry |
+| M1 / E0 — Animated avatar exploration | OpenFreeMap geometry, heading-up camera, 10 m/s floating-zone controls, compact eight-way sprite atlas and source collision | Blocked — previous failed device test | Owner confirms street-scale avatar, smooth diagonal walk/turning, valid 10–90% touch activation and collision/PWA on phone |
 | M2 — First verified encounter and same-world battle | Registration-first onboarding, active identity, same-world camera zoom, local battle and proof/finalization | Not started | Battle retains mapped backdrop and returns camera; valid capture and replay rejection |
 | M3 — Installable smartphone PWA slice | Portrait UI, local saves, collection, install manifest, app shell, GitHub Pages distribution | In progress | P0 acceptance on Android and iPhone, installed from GitHub Pages URL |
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
 | M5 — First release readiness | Wider region coverage, travel, fair region binding, performance, recovery | Not started | P1 acceptance and security reviews complete |
 
-Milestones are **proposed sequencing**, not calendar commitments. M1/E0 includes a proposed avatar/movement implementation on PR #8 awaiting owner smartphone validation; M3 includes a confirmed owner-installed PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
+Milestones are **proposed sequencing**, not calendar commitments. M1/E0's code is integrated through PRs #8, #10, #12 and #13, but its **first owner device check failed** and the corrective build awaits release and retest; M3 includes a confirmed owner-installed Task 001 PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
 
 ## 5. Decisions and requirement change log
 
@@ -115,8 +115,16 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
 | 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 | 2026-11-02 | DEC-017 | **Superseded by DEC-018** | Public-source-repository Pages testing was initially proposed from feature/`preview` | **v0.5** DIST-01 |
-| 2026-11-02 | DEC-018 | **Accepted** | Deploy compiled PWA artifacts to GitHub Pages **only from `main`** following feature PR into `preview` and separate reviewed `preview` → `main` release PR. Keep the website a test prototype | **v0.6** DIST-01 |
+| 2026-11-02 | DEC-018 | **Superseded by DEC-022 for preview publishing** | Earlier Pages workflow published only on `main` pushes; retained separation of `preview`/`main` release responsibilities | **v0.6** DIST-01 |
 | 2026-11-02 | DEC-019 | **Accepted — supersedes DEC-014** | Exploration pitch/zoom remain fixed; camera smooth-turns to actual accepted movement heading via shortest path, retaining bearing when idle; manual rotate/tilt disabled | **v0.7** VIS-01, MOVE-01, EXPL-01, CAM-01, E0/P0 |
+| 2026-11-02 | DEC-020 | **Accepted** | Original illustrated four-direction character atlas with discrete walking poses replaces procedural placeholder SVG; spawn must be collision-safe on OpenFreeMap world | **v0.8** EXPL-01, MOVE-01 |
+| 2026-11-02 | DEC-021 | **Accepted** | Trainer is small and roughly human-scale (1.8 m target with 8 px readability floor); exploration full-speed 10 m/s; animate 8-way including mirrored diagonals; float hidden joystick under finger only for pointer starts within 20–80% viewport height | **v0.9** VIS-01, MOVE-01, EXPL-01, E0/P0 |
+| 2026-11-02 | DEC-022 | **Accepted — supersedes DEC-018 trigger policy** | One Pages site hosts Preview (`/bitmon/preview/`) and Stable (`/bitmon/`) from distinct branches, with protected `main` deployment and scoped caches | **v0.10** DIST-01, PWA-01 |
+| 2026-11-02 | DEC-023 | **Accepted** | Correct origin-root Preview manifest-ID collision via explicit `/bitmon/preview/` ID and purple Preview icon; introduce right-side zoom slider (initial 15.5–18.5) while pitch stays fixed and heading-following remains automatic; attempted joystick Y correction proved inverted on phone | **v0.11** PWA-01, DIST-01, MOVE-01, VIS-01, CAM-01 |
+| 2026-11-02 | DEC-024 | **Accepted — supersedes DEC-023 joystick mapping and zoom upper limit** | Interpret touch Y as down-positive and negate it for camera-relative geographic heading, just as keyboard input does; scale displayed trainer dimensions 2× without changing world collision; extend slider and map maximum zoom to 20 | **v0.12** MOVE-01, VIS-01, EXPL-01, CAM-01 |
+| 2026-11-02 | DEC-025 | **Accepted — supersedes DEC-021 activation zone only** | Increase floating joystick start zone to viewport fractions 0.1–0.9 (middle 80%); keep top/bottom 10% excluded. Double-size sprite is a rendering/readability adjustment, not a physical growth of the trainer; collision probes remain in geographic meters regardless of zoom. | **v0.13** MOVE-01, EXPL-01, MOBILE-01 |
+| 2026-11-02 | DEC-026 | **Accepted — refines DEC-019 camera responsiveness** | Replace immediate heading chase with delayed soft-follow yaw, capped angular speed, 12° turn dead zone, reverse-input guard and idle freeze. Add Relaxed/Balanced/Responsive presets for mobile tuning; position follows immediately and camera/input geography remains independent. | **v0.14** VIS-01, MOVE-01, EXPL-01, MOBILE-01 |
+| 2026-11-02 | DEC-027 | **Accepted** | Move the camera presets under a compact top-right hamburger menu. Open/close through a native accessible disclosure; selecting a preset dismisses it. Keep the zoom slider visible at the right of the map. Owner explicitly approves promotion of all currently reviewed Preview gameplay to Stable through a separate release PR, subject to CI and deployment verification. | **v0.15** VIS-01, MOVE-01, MOBILE-01, DIST-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -126,7 +134,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | Heading-following bearing is decided by DEC-019; tune fixed pitch/zoom values, turn rate, dead zone, sprite frame rate/scale, roof occlusion, safe-area joystick size and mobile budgets | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — experimental tuning |
+| OPEN-05 | DEC-026 introduces camera response presets and DEC-024 extends 15.5–20 zoom; remaining tuning includes final preset calibration, readable sprite scaling, joystick orientation after camera turns, diagonal art, and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -157,11 +165,11 @@ This section records **requirements evolution** separately from actual implement
 | Smartphone installation and map impression | Owner reports PWA installed and launched on their phone and that the neighborhood map looks extremely faithful (2 Nov 2026) | Confirmed owner report; device/OS unspecified; not a formal source-geometry audit |
 | Full E0 / PWA acceptance | Source geometry audit, representative OS/device installs, screenshots, new walking avatar and joystick | Not complete; owner Task 002 phone tests pending |
 
-**Implemented:** Vite + TypeScript + MapLibre; a recognizable fixed-start Brera, Milan map sourced from OpenFreeMap; styled roads/paths, terrain and water; low-poly building extrusions from mapped footprint geometry with source height or deterministic fallback; fixed 45° pitch and -20° bearing; portrait orientation prompt; manifest, icons and a limited offline application shell. GitHub Pages deploys compiled `dist/` output on pushes to `main` only. The repository is public, and no separate distribution repository exists.
+**Implemented baseline:** Vite + TypeScript + MapLibre/OpenFreeMap, oblique map/extrusions, portrait prompt, app manifest and offline shell. The **current deployed site** still publishes from `main` only. The new two-channel workflow is proposed in its own PR and remains **unverified** until the infrastructure-only main release is merged and a Pages run succeeds. No second repository or full real-device acceptance is claimed.
 
 **Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
-**Task 001 baseline limitations:** Released `main` still lacks trainer avatar, walking animation and touch movement; these are introduced in Task 002 PR #8 and are not yet released to `main`. There are no encounters, battles, wallet, blockchain or backend. M0, M1 and M3 remain incomplete as full milestone definitions.
+**Current released build limitations:** PR #9 deployed Task 002 but the first owner phone test found movement blocked and original sprite quality unacceptable. Corrective PRs #10/#12 and eight-way/scale/control PR #13 are merged in `preview`, not yet on `main`; none has passed owner phone acceptance. No battles, captures, wallets, blockchain or backend exist.
 
 ### Task 002 — Walking trainer, geographic joystick, direction-following camera (2 November 2026)
 
@@ -175,4 +183,32 @@ This section records **requirements evolution** separately from actual implement
 
 **Task 003 — Geographic visual audit and E0 map readability:** assess dense and sparse OpenFreeMap regions for invented/missing geometry, improve deterministic facade variation and avatar/building occlusion using existing source tiles, and tune performance on mid-range phones. Keep creatures and blockchain deferred until E0 acceptance.
 
-**Release workflow:** Feature PR → `preview` → separate reviewed `preview` → `main` PR → automatic `main`-only GitHub Pages deployment. Documentation-only changes on `preview` are not published to `main` until the next approved release PR.
+**Release workflow (DEC-022):** Feature PR → `preview` → successful push CI → trusted main-context workflow rebuilds both PWAs and deploys only `/bitmon/preview/` code changes; Stable root always rebuilds from unchanged `main`. Once phone-approved, separate reviewed `preview` → `main` PR changes Stable gameplay. Bootstrap requires a small **infrastructure-only reviewed main release** before the first automatic Preview URL exists.
+
+### Task 002 corrective response — phone report (2 November 2026)
+
+Owner reports an immobile trainer after the PR #9 Pages release and rejects placeholder trainer art. Potential causes: starting inside mapped building and gating movement on globally loaded tile source state. Fix PR #10 adds collision-safe nearby map-derived start, checked-area collision cache while source tiles load, and an illustrated 20-frame sprite atlas with independent idle/walk poses per direction. **The corrective build has not passed owner smartphone acceptance**, and no tests or visuals are falsely marked as device-verified.
+
+### Task 002 visual and floating-control refinement — 2 November 2026
+
+Owner requested reducing the building-scale trainer to normal-human proportions, full input speed **10 m/s**, dedicated diagonal-facing frame cycles (left/right reuse by mirroring), and a virtual joystick that is **hidden until a pointer begins within the middle 60% of portrait height**. Implemented in merged [PR #13](https://github.com/s3ton/bitmon/pull/13) and verified by [TypeScript/build workflow](https://github.com/s3ton/bitmon/actions/runs/41520401521). The top/bottom 20% do not initiate movement, and the joystick disappears on release. Implementation uses an 8-row/40-frame SVG atlas, background-position facing selection, WGS84 marker with an approximately 1.8 m visual target and 8 px readability floor, and pointer capture on the app surface. No mobile device tests have yet passed; measure apparent scale and art quality on the installed phone before marking VIS-01/MOVE-01/EXPL-01 done.
+
+### Dual-channel PWA testing — deployment infrastructure (2 November 2026)
+
+The owner identified that requiring an untested gameplay PR to merge into `main` before phone validation defeats the `preview` release gate. DEC-022 defines **two installable PWAs on one GitHub Pages domain**. Source branch `preview` can be tested in the `/bitmon/preview/` app after successful review/CI; stable `/bitmon/` remains compiled from `main` until separate release approval. Main-only Pages environment protection is retained by using the default-branch `workflow_run` context. Separate PWA manifest identities, service-worker scopes, CacheStorage prefixes and a preview visual label/icon are part of the infrastructure. Manual verification of both installations and updates is outstanding; do **not** claim either channel is live before the main infrastructure PR's deployment succeeds.
+
+### Owner Preview issues and Task 002 follow-up — 2 November 2026
+
+After deployment of dual-channel Pages, the owner reported the Preview installation is recognized as already installed, joystick up/down input appears reversed, and requests a right-side zoom slider. **Identified manifest fault:** using `id: "."` for both installs resolves to the same origin-root ID. Corrective work gives Preview a unique explicit `/bitmon/preview/` manifest ID plus distinctive purple Preview icon/name (without changing Stable's prior ID), reverses touch vertical mapping only, and adds a portrait side range slider (15.5–18.5) that adjusts MapLibre zoom while preserving heading/pitch, updates avatar visual size and never triggers the joystick. Source tiles, PWA domains and stable gameplay remain unchanged. The owner subsequently verified that joystick down still moves forward in the merged Preview, so the old touch-only Y sign is incorrect. A follow-up fix unifies touch/keyboard Y inversion, doubles rendered sprite size, and increases zoom maximum to 20. Manual verification of these changes **pending**.
+
+### Joystick activation zone revision — 2 November 2026
+
+The owner requested that only the top and bottom 10% of the portrait viewport reject joystick starts, expanding the interactive region from the original 60% to 80% (`0.1 ≤ y/viewportHeight ≤ 0.9`). The earlier DEC-021 20–80% range is historical and superseded by DEC-025. Existing zoom/UI input exclusions, hidden-until-pointerdown behavior, camera control and 10 m/s movement are unchanged. This change does not increase the trainer's real-world size: the previous 2× increase was visual only and collision stays meter-based. Owner phone verification is pending.
+
+### Preview camera soft-follow refinement — 2 November 2026
+
+The owner reported that rotating the camera almost instantly toward every joystick direction felt unnatural, especially for reverse and short sideways input. DEC-026 sets a Balanced soft-follow default (0.4 s stable-travel delay, max 60°/s, 0.8 s damping, 12° dead zone), with Relaxed and Responsive selector presets to compare on a smartphone. Player position updates immediately, but yaw is suppressed on backward gestures (≥135° relative to the control basis), small heading changes and brief sideways taps. Releasing input or being blocked freezes yaw immediately. The camera rotates only presentation; actual geographic movement retains its snapshot input bearing, 10 m/s full speed and existing OpenFreeMap collision. No phone acceptance or quantitative motion-sickness measurements are claimed.
+
+### Hamburger settings and owner-directed Stable release — 2 November 2026
+
+The top-right camera selector is now a hamburger button (44 × 44 CSS px) with a native disclosure panel containing Relaxed/Balanced/Responsive choices. Selecting a preset closes the panel; zoom remains exposed separately on the right side. All settings interaction is excluded from joystick gestures. The owner explicitly requested promoting the full current Preview feature set to Main after this refinement; the release PR remains a separate integration gate with CI and Pages publication evidence tracked independently. This owner-directed release does not imply phone-based E0 gameplay acceptance or that additional systems are finished.

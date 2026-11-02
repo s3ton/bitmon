@@ -6,8 +6,16 @@ type Polygon = Ring[]
 type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon }
 
 const METERS_PER_RADIAN = 6_371_008.8
-const SPEED_METERS_PER_SECOND = 4.5
-const CAMERA_TURN_RATE = 6
+const SPEED_METERS_PER_SECOND = 10
+// Presets deliberately keep translation responsive while limiting automatic yaw.
+const CAMERA_PRESETS = {
+  relaxed: { delay: .7, maxDegreesPerSecond: 35, dampingSeconds: 1.2 },
+  balanced: { delay: .4, maxDegreesPerSecond: 60, dampingSeconds: .8 },
+  responsive: { delay: .15, maxDegreesPerSecond: 100, dampingSeconds: .45 },
+} as const
+type CameraPreset = keyof typeof CAMERA_PRESETS
+const CAMERA_HEADING_DEAD_ZONE = 12
+const CAMERA_BACKWARD_ANGLE = 135
 const DEAD_ZONE = 0.16
 const START: Position = { lon: 9.1869, lat: 45.4715 }
 
@@ -47,64 +55,84 @@ function contains(area: CollisionArea, point: Position): boolean {
   return true
 }
 
-function trainerSvg(direction: 'up' | 'down' | 'left' | 'right', stride: number): string {
-  const back = direction === 'up'
-  const side = direction === 'left' || direction === 'right'
-  const flipped = direction === 'left' ? 'translate(48 0) scale(-1 1)' : ''
-  const swing = stride * 17
-  // An original, deliberately small vector trainer. Feet and shadow share one ground anchor.
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 80" aria-hidden="true">
-    <ellipse cx="24" cy="75" rx="14" ry="4" fill="#203b37" opacity=".25"/>
-    <g transform="${flipped}">
-      <g transform="rotate(${swing} 20 52)">
-        <path d="M17 48h8l-1 18-1 4h-8l1-8z" fill="#293d52"/>
-        <path d="M14 67h10v5H12z" fill="#513f32"/>
-      </g>
-      <g transform="rotate(${-swing} 29 52)">
-        <path d="M25 48h8l1 18v4h-9l-1-8z" fill="#354b60"/>
-        <path d="M24 67h11v5H24z" fill="#624835"/>
-      </g>
-      ${back ? '<rect x="10" y="32" width="28" height="24" rx="7" fill="#d3a354"/><rect x="16" y="38" width="16" height="12" rx="3" fill="#eac675"/>' : ''}
-      <g transform="rotate(${-swing * .55} 12 37)">
-        <path d="M13 31 8 37 10 49 15 48 18 36z" fill="#b88d68"/>
-        <path d="M10 35 7 42 12 44 17 36z" fill="#2b6a65"/>
-      </g>
-      <g transform="rotate(${swing * .55} 36 37)">
-        <path d="M35 31 40 37 38 49 33 48 30 36z" fill="#b88d68"/>
-        <path d="M38 35 41 42 36 44 31 36z" fill="#2b6a65"/>
-      </g>
-      <path d="M16 30h16l5 20-13 4-13-4z" fill="#377e75"/>
-      <path d="M18 33h12v15H18z" fill="#4a988a"/>
-      ${back ? '<path d="M14 34h20v21H14z" fill="#d5a352"/><path d="M19 38h10v10H19z" fill="#edca77"/>' :
-        '<path d="M22 32h4v19h-4z" fill="#e4c37b"/><path d="M19 50h10v3H19z" fill="#244f4a"/>'}
-      <rect x="20" y="26" width="8" height="7" rx="2" fill="#c58f6f"/>
-      <path d="M15 13q9-9 18 0v13q-3 8-9 8t-9-8z" fill="#c99771"/>
-      ${back ? '<path d="M15 14q8-8 18 0v14q-8 6-18 0z" fill="#423a36"/>' :
-        side ? '<circle cx="30" cy="23" r="1.5" fill="#2a2927"/><path d="M33 26h3l-3 2z" fill="#ab7659"/>' :
-        '<circle cx="20" cy="23" r="1.4" fill="#2a2927"/><circle cx="28" cy="23" r="1.4" fill="#2a2927"/><path d="M22 28h4" stroke="#8d5f4d" stroke-width="1.5"/>'}
-      <path d="M13 14q1-14 11-14 12 0 13 14v5H13z" fill="#dd6c3f"/>
-      <path d="M13 14h25v5H12z" fill="#f3a45c"/>
-      <path d="M20 5h8v5h-8z" fill="#f3c579"/>
-    </g>
-  </svg>`
+
+const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft: 5, left: 6, downLeft: 7 } as const
+const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
+const TRAINER_HEIGHT_METERS = 1.8
+const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
+const AVATAR_RENDER_SCALE = 2
+const JOYSTICK_START_MIN = .1
+const JOYSTICK_START_MAX = .9
+const COLLISION_RADIUS_METERS = 28
+const CACHE_REFRESH_METERS = 12
+const METERS_PER_DEGREE = METERS_PER_RADIAN * Math.PI / 180
+
+function distanceMeters(a: Position, b: Position): number {
+  return Math.hypot(
+    (a.lon - b.lon) * METERS_PER_DEGREE * Math.cos(radians(a.lat)),
+    (a.lat - b.lat) * METERS_PER_DEGREE,
+  )
+}
+
+function closestOnSegment(origin: Position, a: number[], b: number[]): Position {
+  const lonScale = METERS_PER_DEGREE * Math.cos(radians(origin.lat))
+  const ax = (a[0] - origin.lon) * lonScale
+  const ay = (a[1] - origin.lat) * METERS_PER_DEGREE
+  const dx = (b[0] - a[0]) * lonScale
+  const dy = (b[1] - a[1]) * METERS_PER_DEGREE
+  const lenSq = dx * dx + dy * dy
+  const t = lenSq ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq)) : 0
+  return { lon: a[0] + (b[0] - a[0]) * t, lat: a[1] + (b[1] - a[1]) * t }
 }
 
 export function startExploration(map: MapLibreMap): void {
+  const app = document.querySelector<HTMLElement>('#app')!
   const joystick = document.querySelector<HTMLElement>('#joystick')!
   const knob = document.querySelector<HTMLElement>('#joystick-knob')!
   const movementStatus = document.querySelector<HTMLElement>('#movement-status')!
+  const cameraMenu = document.querySelector<HTMLDetailsElement>('#camera-control')!
+  const cameraPresetSelect = document.querySelector<HTMLSelectElement>('#camera-preset')!
   const avatar = document.createElement('div')
   avatar.className = 'trainer'
   avatar.setAttribute('role', 'img')
   avatar.setAttribute('aria-label', 'Trainer avatar')
+  // Keep geographic player position and collision size unchanged while
+  // enlarging only the displayed sprite for phone readability.
+  avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
+  const avatarMarker = new Marker({
+    element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
+  }).setLngLat([START.lon, START.lat]).addTo(map)
+
   let position = { ...START }
+  // Size the sprite from the nominal 1.8 m projection with a readability floor,
+  // then double both dimensions without changing geographic collision.
+  function updateAvatarScale(): void {
+    const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
+      (512 * 2 ** map.getZoom())
+    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel) * AVATAR_RENDER_SCALE
+    avatar.style.height = `${heightPx}px`
+    avatar.style.width = `${heightPx * .75}px`
+  }
+  map.on('zoom', updateAvatarScale)
+  updateAvatarScale()
+
   let heading = map.getBearing()
-  let targetBearing = heading
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
+  let hasPlacedSpawn = false
   let stick = { x: 0, y: 0 }
   let activePointer: number | null = null
+  let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
+  let cameraPreset: CameraPreset = 'balanced'
+  let steadyHeading: number | null = null
+  let steadySeconds = 0
+  cameraPresetSelect.addEventListener('change', () => {
+    cameraPreset = cameraPresetSelect.value as CameraPreset
+    steadyHeading = null
+    steadySeconds = 0
+    cameraMenu.open = false
+  })
   let animationTime = 0
   let lastAppearance = ''
   const keys = new Set<string>()
@@ -113,19 +141,16 @@ export function startExploration(map: MapLibreMap): void {
 
   function renderAvatar(moving: boolean): void {
     const relativeHeading = angleDelta(heading, map.getBearing())
-    const direction = Math.abs(relativeHeading) <= 45 ? 'up'
-      : relativeHeading > 45 && relativeHeading < 135 ? 'right'
-        : relativeHeading < -45 && relativeHeading > -135 ? 'left' : 'down'
-    const step = moving ? [0, 1, 0, -1][Math.floor(animationTime / .135) % 4] : 0
-    const appearance = direction + ':' + step + ':' + moving
-    if (appearance !== lastAppearance) {
-      avatar.innerHTML = trainerSvg(direction, step)
-      lastAppearance = appearance
-    }
+    const octant = (Math.round(relativeHeading / 45) + 8) % 8
+    const direction = SCREEN_DIRECTIONS[octant]
+    const step = moving ? 1 + Math.floor(animationTime / .12) % 4 : 0
+    const appearance = direction + ':' + step
+    if (appearance === lastAppearance) return
+    avatar.style.backgroundPosition = `${step * 25}% ${SPRITE_ROWS[direction] * (100 / 7)}%`
+    lastAppearance = appearance
   }
 
-  // Source features carry true WGS84 polygon rings; do not use screen-space
-  // rendered extrusions for collisions (those change with camera pitch/bearing).
+  // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
     if (!map.isSourceLoaded('openmaptiles')) return
     const areas: CollisionArea[] = []
@@ -143,34 +168,84 @@ export function startExploration(map: MapLibreMap): void {
             bounds.minLat = Math.min(bounds.minLat, point[1])
             bounds.maxLat = Math.max(bounds.maxLat, point[1])
           }
-          // Only keep geometry near this player, regardless of world tile count.
-          if (bounds.maxLon < position.lon - .003 || bounds.minLon > position.lon + .003 ||
-              bounds.maxLat < position.lat - .003 || bounds.minLat > position.lat + .003) continue
+          if (bounds.maxLon < position.lon - .002 || bounds.minLon > position.lon + .002 ||
+              bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
           areas.push({ ...bounds, rings })
         }
       }
     }
     collisionAreas = areas
     collisionOrigin = { ...position }
+
+    // Initial Brera coordinates can fall inside a real mapped building.
+    // Spawn at a nearby mapped route, not by disabling building collisions.
+    if (!hasPlacedSpawn) {
+      const search = (candidate: Position) => !isBlocked(candidate) &&
+        distanceMeters(START, candidate) <= 70
+      let best: Position | null = null
+      let bestDistance = Infinity
+      if (isBlocked(position)) {
+        for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: 'transportation' })) {
+          if (!['path', 'pedestrian', 'minor', 'service', 'tertiary', 'track'].includes(String(feature.properties?.class))) continue
+          const geometry = feature.geometry
+          if (geometry.type !== 'LineString' && geometry.type !== 'MultiLineString') continue
+          const lines: number[][][] = geometry.type === 'LineString'
+            ? [geometry.coordinates] : geometry.coordinates
+          for (const line of lines) {
+            for (let i = 1; i < line.length; i++) {
+              const candidate = closestOnSegment(START, line[i - 1], line[i])
+              const distance = distanceMeters(START, candidate)
+              if (distance < bestDistance && search(candidate)) {
+                best = candidate
+                bestDistance = distance
+              }
+            }
+          }
+        }
+        // Source roads may be absent. Select the nearest safe coordinate
+        // using only the existing source polygons, without drawing a new road.
+        if (!best) {
+          for (let radius = 2; radius <= 60 && !best; radius += 2) {
+            for (let bearing = 0; bearing < 360; bearing += 20) {
+              const candidate = displace(START,
+                Math.sin(radians(bearing)) * radius, Math.cos(radians(bearing)) * radius)
+              if (search(candidate)) { best = candidate; break }
+            }
+          }
+        }
+        if (best) {
+          position = best
+          avatarMarker.setLngLat([position.lon, position.lat])
+          map.jumpTo({ center: [position.lon, position.lat] })
+          collisionOrigin = { ...position }
+        }
+      }
+      if (!isBlocked(position)) {
+        hasPlacedSpawn = true
+        movementStatus.hidden = true
+      } else {
+        movementStatus.hidden = false
+        movementStatus.textContent = 'No clear starting spot in loaded map data.'
+      }
+    }
   }
 
   function isBlocked(candidate: Position): boolean {
-    // A small foot-contact margin keeps the sprite out of mapped walls/water.
+    // All feet contact points must remain outside mapped building/water polygons.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
       .some((point) => collisionAreas.some((area) => contains(area, point)))
   }
 
   function requestTick(): void {
-    if (frame === null) {
-      lastFrameTime = performance.now()
-      frame = requestAnimationFrame(tick)
-    }
+    if (frame !== null) return
+    if (!lastFrameTime) lastFrameTime = performance.now()
+    frame = requestAnimationFrame(tick)
   }
 
   function tick(now: number): void {
     frame = null
-    const dt = Math.min((now - lastFrameTime) / 1000, .05)
+    const dt = Math.min(Math.max((now - lastFrameTime) / 1000, 0), .05)
     lastFrameTime = now
     const landscape = window.matchMedia('(orientation: landscape)').matches
     const keyboardX = Number(keys.has('ArrowRight') || keys.has('d')) - Number(keys.has('ArrowLeft') || keys.has('a'))
@@ -180,19 +255,21 @@ export function startExploration(map: MapLibreMap): void {
     const y = usingStick ? stick.y : keyboardY
     const length = Math.hypot(x, y)
     let walking = false
-    const tilesReady = map.isSourceLoaded('openmaptiles')
-    movementStatus.hidden = !length || landscape || tilesReady
-    if (!landscape && length > DEAD_ZONE && tilesReady) {
-      if (!collisionOrigin || Math.abs(position.lon - collisionOrigin.lon) > .0006 ||
-        Math.abs(position.lat - collisionOrigin.lat) > .0006) refreshCollision()
-
+    let blocked = false
+    // A transient tile-loading state must not freeze walking while the
+    // player's already-verified local collision neighborhood is still valid.
+    if (collisionOrigin && distanceMeters(position, collisionOrigin) > CACHE_REFRESH_METERS) refreshCollision()
+    const ready = collisionOrigin !== null &&
+      distanceMeters(position, collisionOrigin) < COLLISION_RADIUS_METERS && !isBlocked(position)
+    if (!landscape && length > DEAD_ZONE && ready) {
       const magnitude = Math.min(1, (length - DEAD_ZONE) / (1 - DEAD_ZONE))
+      // Both touch and keyboard report screen Y as positive downward.
+      // Up is forward relative to the bearing captured at gesture start;
+      // down must go backward, even while the camera turns to follow travel.
       const desiredHeading = controlBearing + degrees(Math.atan2(x, -y))
       const distance = SPEED_METERS_PER_SECOND * magnitude * dt
       const east = Math.sin(radians(desiredHeading)) * distance
       const north = Math.cos(radians(desiredHeading)) * distance
-      // Sliding along a wall is allowed, but never accept a position in mapped
-      // solid geometry. If tiles aren't loaded we do not guess passability.
       let actualEast = east
       let actualNorth = north
       let candidate = displace(position, east, north)
@@ -208,65 +285,101 @@ export function startExploration(map: MapLibreMap): void {
         } else {
           actualEast = 0
           actualNorth = 0
+          blocked = true
         }
       }
       if (actualEast || actualNorth) {
         position = candidate
         walking = true
         heading = degrees(Math.atan2(actualEast, actualNorth))
-        targetBearing = heading
         animationTime += dt
         avatarMarker.setLngLat([position.lon, position.lat])
       }
     }
     if (!walking) animationTime = 0
-    const turn = angleDelta(targetBearing, map.getBearing())
-    const nextBearing = Math.abs(turn) < .05
-      ? map.getBearing() : map.getBearing() + turn * (1 - Math.exp(-CAMERA_TURN_RATE * dt))
-    if (walking || Math.abs(turn) >= .05) {
-      map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing })
+    movementStatus.hidden = landscape || length <= DEAD_ZONE || (ready && !blocked)
+    if (!movementStatus.hidden) {
+      movementStatus.textContent = !ready
+        ? 'Checking nearby OpenFreeMap terrain…' : 'A mapped building or water blocks this way.'
     }
+    // A camera turn should be earned by sustained movement, not each twitch.
+    // Walking backward keeps the camera where it is, so pulling down never
+    // triggers a sudden 180° flip. The input bearing stays fixed per gesture,
+    // independent of these visual camera turns.
+    let nextBearing = map.getBearing()
+    const inputAngle = degrees(Math.atan2(x, -y))
+    if (walking && Math.abs(inputAngle) < CAMERA_BACKWARD_ANGLE) {
+      if (steadyHeading === null || Math.abs(angleDelta(heading, steadyHeading)) > CAMERA_HEADING_DEAD_ZONE) {
+        steadyHeading = heading
+        steadySeconds = 0
+      } else {
+        steadySeconds += dt
+      }
+      const preset = CAMERA_PRESETS[cameraPreset]
+      const turn = angleDelta(heading, nextBearing)
+      if (steadySeconds >= preset.delay && Math.abs(turn) > CAMERA_HEADING_DEAD_ZONE) {
+        const smoothed = turn * (1 - Math.exp(-dt / preset.dampingSeconds))
+        const capped = Math.sign(smoothed) * Math.min(Math.abs(smoothed), preset.maxDegreesPerSecond * dt)
+        nextBearing += capped
+      }
+    } else {
+      steadyHeading = null
+      steadySeconds = 0
+    }
+    // Never continue a pending camera turn after stopping or hitting a wall.
+    if (walking) map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing })
     renderAvatar(walking)
-    if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(turn) >= .05) requestTick()
+    if ((usingStick && length > DEAD_ZONE) || keys.size) requestTick()
+    else lastFrameTime = 0
   }
-
-  const avatarMarker = new Marker({
-    element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
-  }).setLngLat([START.lon, START.lat]).addTo(map)
 
   function resetStick(): void {
     activePointer = null
     stick = { x: 0, y: 0 }
     knob.style.transform = 'translate(0px, 0px)'
-    joystick.classList.remove('engaged')
+    joystick.hidden = true
     movementStatus.hidden = true
+    animationTime = 0
+    renderAvatar(false)
   }
 
   function moveStick(clientX: number, clientY: number): void {
-    const bounds = joystick.getBoundingClientRect()
-    const radius = bounds.width * .34
-    const dx = clientX - (bounds.left + bounds.width / 2)
-    const dy = clientY - (bounds.top + bounds.height / 2)
+    const radius = joystick.offsetWidth * .34
+    const dx = clientX - touchOrigin.x
+    const dy = clientY - touchOrigin.y
     const fraction = Math.min(1, radius / (Math.hypot(dx, dy) || 1))
     stick = { x: dx * fraction / radius, y: dy * fraction / radius }
     knob.style.transform = `translate(${stick.x * radius}px, ${stick.y * radius}px)`
     requestTick()
   }
 
-  joystick.addEventListener('pointerdown', (event) => {
-    if (activePointer !== null) return
+  // The finger may start anywhere in the middle 80% of the portrait viewport.
+  // Top/bottom 10% and interactive HUD controls never initiate movement.
+  app.addEventListener('pointerdown', (event) => {
+    if (activePointer !== null || !event.isPrimary ||
+      (event.pointerType === 'mouse' && event.button !== 0) ||
+      window.matchMedia('(orientation: landscape)').matches) return
+    if (event.target instanceof Element &&
+      event.target.closest('#zoom-control, #camera-control, a, button, input, textarea, select')) return
+    const bounds = app.getBoundingClientRect()
+    const verticalFraction = (event.clientY - bounds.top) / bounds.height
+    if (verticalFraction < JOYSTICK_START_MIN || verticalFraction > JOYSTICK_START_MAX) return
+
     event.preventDefault()
     activePointer = event.pointerId
-    controlBearing = map.getBearing() // Lock transform for this gesture: no feedback loop.
-    joystick.setPointerCapture(event.pointerId)
-    joystick.classList.add('engaged')
+    touchOrigin = { x: event.clientX, y: event.clientY }
+    controlBearing = map.getBearing()
+    joystick.style.left = `${event.clientX - bounds.left}px`
+    joystick.style.top = `${event.clientY - bounds.top}px`
+    joystick.hidden = false
+    app.setPointerCapture(event.pointerId)
     moveStick(event.clientX, event.clientY)
   })
-  joystick.addEventListener('pointermove', (event) => {
+  app.addEventListener('pointermove', (event) => {
     if (event.pointerId === activePointer) moveStick(event.clientX, event.clientY)
   })
   for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    joystick.addEventListener(eventName, (event) => {
+    app.addEventListener(eventName, (event) => {
       if ((event as PointerEvent).pointerId === activePointer) resetStick()
     })
   }
@@ -281,6 +394,7 @@ export function startExploration(map: MapLibreMap): void {
   })
   window.addEventListener('keyup', (event) => {
     keys.delete(event.key.length === 1 ? event.key.toLowerCase() : event.key)
+    requestTick()
   })
   window.addEventListener('blur', () => { resetStick(); keys.clear() })
   document.addEventListener('visibilitychange', () => {
@@ -291,8 +405,11 @@ export function startExploration(map: MapLibreMap): void {
     keys.clear()
   })
   map.on('sourcedata', (event) => {
-    if (event.sourceId === 'openmaptiles' && event.isSourceLoaded) refreshCollision()
+    if (event.sourceId === 'openmaptiles' && event.isSourceLoaded &&
+      (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
+      refreshCollision()
+    }
   })
-  map.on('load', refreshCollision)
+  map.once('idle', refreshCollision)
   renderAvatar(false)
 }

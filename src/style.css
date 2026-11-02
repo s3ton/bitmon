@@ -8,7 +8,7 @@
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; }
 body { overflow: hidden; }
-#app { position: relative; height: 100dvh; }
+#app { position: relative; height: 100dvh; touch-action: none; }
 #map { position: absolute; inset: 0; }
 
 .world-label {
@@ -69,41 +69,38 @@ body { overflow: hidden; }
 }
 
 /* MapLibre anchors this marker at its genuine WGS84 world position. */
-.trainer { width: 52px; height: 86px; pointer-events: none; filter: drop-shadow(0 2px 2px #203b3733); }
-.trainer svg { width: 100%; height: 100%; overflow: visible; }
+.trainer { width: 6px; height: 8px; pointer-events: none; background-repeat: no-repeat; background-size: 500% 800%; image-rendering: auto; filter: drop-shadow(0 1px 1px #203b3777); }
 
 #joystick {
   position: absolute;
   z-index: 3;
-  left: calc(env(safe-area-inset-left) + 22px);
-  bottom: calc(env(safe-area-inset-bottom) + 52px);
-  width: 128px;
-  height: 128px;
+  width: 120px;
+  height: 120px;
+  transform: translate(-50%, -50%);
   border: 2px solid #f8f6e8ad;
   border-radius: 50%;
   background: #294c49a8;
   box-shadow: 0 3px 16px #142a2940, inset 0 0 0 18px #ffffff10;
-  touch-action: none;
+  pointer-events: none;
   user-select: none;
   -webkit-user-select: none;
 }
-#joystick.engaged { background: #294c49c9; }
+#joystick[hidden] { display: none; }
 #joystick-knob {
   position: absolute;
-  width: 54px;
-  height: 54px;
-  left: 35px;
-  top: 35px;
+  width: 52px;
+  height: 52px;
+  left: 34px;
+  top: 34px;
   border-radius: 50%;
   background: #f5e6c6;
   border: 3px solid #ffffffba;
   box-shadow: 0 2px 8px #1a322f55;
-  pointer-events: none;
 }
 #movement-status {
   position: absolute;
   z-index: 3;
-  bottom: calc(env(safe-area-inset-bottom) + 192px);
+  bottom: calc(env(safe-area-inset-bottom) + 24px);
   left: 18px;
   max-width: 205px;
   border-radius: 9px;
@@ -116,3 +113,84 @@ body { overflow: hidden; }
 @media (orientation: landscape) {
   #joystick, #movement-status { display: none; }
 }
+
+/* A native disclosure keeps camera settings off the map until requested. */
+#camera-control {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 16px);
+  right: calc(env(safe-area-inset-right) + 10px);
+  z-index: 4;
+}
+#camera-control > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(35, 61, 57, .2);
+  border-radius: 12px;
+  background: rgba(248, 246, 232, .94);
+  box-shadow: 0 3px 14px rgba(35, 61, 57, .12);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+#camera-control > summary::-webkit-details-marker { display: none; }
+#camera-control > summary:focus-visible { outline: 2px solid #2e514d; outline-offset: 2px; }
+.camera-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 192px;
+  padding: 12px;
+  border: 1px solid rgba(35, 61, 57, .2);
+  border-radius: 12px;
+  background: rgba(248, 246, 232, .97);
+  box-shadow: 0 3px 14px rgba(35, 61, 57, .12);
+}
+.camera-panel label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; }
+#camera-preset {
+  width: 100%;
+  min-height: 40px;
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  border-radius: 7px;
+  border: 1px solid #9baea3;
+  background: #fffdf5;
+}
+@media (orientation: landscape) { #camera-control { display: none; } }
+
+/* Explicit zoom control: outside the movement gesture listener's inputs. */
+#zoom-control {
+  position: absolute;
+  z-index: 4;
+  top: 33%;
+  right: calc(env(safe-area-inset-right) + 10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 56px;
+  padding: 10px 4px 12px;
+  border-radius: 14px;
+  background: rgba(248, 246, 232, .94);
+  border: 1px solid rgba(35, 61, 57, .2);
+  box-shadow: 0 3px 14px rgba(35, 61, 57, .15);
+  user-select: none;
+}
+#zoom-control label { font-size: 11px; font-weight: 700; }
+#zoom-value { font-size: 12px; font-variant-numeric: tabular-nums; }
+.zoom-track { position: relative; height: 155px; width: 44px; }
+#zoom-slider {
+  position: absolute;
+  width: 150px;
+  height: 42px;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  accent-color: #2e514d;
+  touch-action: none;
+}
+@media (orientation: landscape) { #zoom-control { display: none; } }

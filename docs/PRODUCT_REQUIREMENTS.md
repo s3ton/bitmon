@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.7 — Task 002: heading-following camera, geographic touch movement and directional avatar; retains main-only Pages release workflow  
+**Version:** 0.15 — move camera responsiveness presets into top-right hamburger settings menu; keep zoom slider on map  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -39,10 +39,10 @@ The game is primarily played locally after the player registers a verifiable tra
 - **Smartphones are the primary target.** Bitmon ships as an **installable PWA**, not initially as a native app-store binary.
 - **Portrait-only gameplay.** No landscape gameplay layout or support is planned.
 - **Low-poly 2.5D** is the required art direction; simple geometric building volumes, faceted or flat-shaded treatments, original art, and low visual complexity.
-- **Exploration camera uses a fixed oblique pitch and zoom** and follows the geographic avatar; bearing smoothly rotates toward actual walking heading (heading-up), with manual rotation/tilt disabled.
+- **Exploration camera keeps a fixed oblique pitch, but zoom is adjustable with a side slider**. The camera follows the geographic avatar and rotates toward walking heading (heading-up), without allowing manual bearing rotation or tilt.
 - **Battles stay in the same 2.5D real-world scene**: the camera zooms/reframes to focus on the encountered bitmon with the surrounding mapped world still behind it, then restores the previous exploration camera state and resumes heading-following behavior.
 - **The immediate development objective is exploration only:** a male avatar with a loopable four-direction walking animation, geographic touch movement, and a fixed-pitch, direction-following camera on the OpenFreeMap world. Battle mechanics and blockchain progression are not prerequisites for this first prototype.
-- **GitHub Pages test distribution:** `s3ton/bitmon` is public. Source changes enter `preview` via PR; a separate `preview` → `main` release PR triggers compilation and Pages deployment at `/bitmon/` only after merging to `main`. No second distribution repository is needed.
+- **GitHub Pages has two independently installable channels from the one public repository:** `bitmon Preview` at `/bitmon/preview/` automatically follows approved commits merged into `preview`; `bitmon Stable` at `/bitmon/` follows `main` only after a reviewed release PR. Pages deployment executes from protected `main` context, bundling both channel builds; preview changes never replace the stable code. No second repository required.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
 - **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
 - **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
@@ -68,7 +68,7 @@ The game is primarily played locally after the player registers a verifiable tra
 1. **Open or install bitmon on a smartphone.** Visit its public PWA URL, or launch it from the home-screen icon; see a short introduction explaining the real-Earth game world.
 2. **Create a verified trainer.** Connect or create a self-custodial wallet, choose a starter under fixed rules, select an initial permitted region, and register the trainer on-chain. Fees are self-paid or optionally sponsored.
 3. **Enter the world.** Start at a map coordinate and see roads, nearby buildings, parks, paths, and water in the bitmon visual language.
-4. **Explore.** Move a four-direction animated trainer through the world; the fixed-pitch/zoom oblique camera follows and turns smoothly to the direction of travel. Roads and existing low-poly buildings stream in as the player travels.
+4. **Explore.** Move an eight-direction animated trainer through the world; the fixed-pitch oblique camera follows and turns toward travel while the player adjusts zoom using a side slider. Roads and existing low-poly buildings stream in as the player travels.
 5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; the camera moves closer to the encountered bitmon while the **same mapped low-poly world** remains visible in the background.
 6. **Battle, capture, and train.** Play turn-based battles locally in the zoomed world view; legal actions change HP, status, inventory, levels, and the pending collection. When the encounter ends, the camera smoothly returns to the prior fixed exploration perspective and follows the trainer again.
 7. **Secure progress.** The UI distinguishes progress saved locally from progress verified on-chain. The player can finalize a batch when needed.
@@ -138,11 +138,11 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Use a **low-poly 2.5D scene**: map-aligned ground geometry, low-triangle-count raised building forms, depth-sorted sprites, controlled shadows and sparse decoration.
 - Favor **clear silhouettes, simple mesh geometry, cohesive flat/faceted shading and low draw-call cost**, not photorealism or pixel-art textures.
 - Frame all gameplay for a narrow **portrait smartphone viewport**; the character, mapped routes and nearby interactions must remain readable.
-- **During exploration the camera's pitch and zoom are fixed, but bearing is dynamic**. It follows the character's actual geographic position and turns smoothly toward accepted movement heading by the shortest angular path (including wraparound). Forward travel generally points up-screen; bearing holds when idle. Manual rotation and tilt remain disabled.
+- **During exploration camera pitch stays fixed; geographic position follows the avatar immediately, but camera bearing uses delayed soft-follow**, only turning after a sustained, stable movement heading. The camera does not automatically flip while walking backward or coast after stopping; short sidesteps and small steering corrections must not abruptly rotate the map. Use shortest-angle damping, a speed cap and a heading dead zone. Prototype camera presets (under a top-right 44 CSS px hamburger button opening an accessible, dismissible settings panel): **Relaxed** 0.7 s delay / 35° per second / 1.2 s damping, **Balanced** (default) 0.4 s / 60° per second / 0.8 s, and **Responsive** 0.15 s / 100° per second / 0.45 s. The heading dead zone is 12° and backward guard is 135° relative to the gesture's input basis. The right-edge zoom slider remains visible outside the settings menu and changes zoom from **15.5–20**, initially **16.4**, in **0.1** increments. Manual drag rotation and camera tilt remain disabled.
 - The target feel is a classic handheld top-down creature RPG (the fourth/fifth-generation era is a **visual reference only**, not a license to copy character designs, tiles, interfaces, sounds, or maps).
-- The main player character remains legible against the map; nearby buildings must not permanently hide the player.
+- The main player character retains a nominal 1.8 m projection, but the displayed sprite is scaled to **2×** that projection (and to a **16 CSS px** minimum) for smartphone readability; the geographic position and collision dimensions do not change. Recalculate the sprite when the player changes zoom, keeping the feet anchored geographically. Verify apparent size against buildings on a real phone.
 - Perspective, building height exaggeration, and camera pitch are art/UX parameters to test, not claims that geographic features are fully photorealistic.
-- The exploration camera keeps its fixed 2.5D pitch and zoom while following smoothly through turns and tile boundaries, without changing geographic geometry. Later battles must restore prior bearing, pitch, zoom and follow state before heading-up behavior resumes.
+- The exploration camera keeps its fixed 2.5D pitch while following position immediately and turning selectively through sustained movement and tile boundaries. The zoom slider changes presentation only, never position or passability. Later battles restore the exact pre-battle bearing, pitch, **user-selected zoom**, and follow state.
 - Labels and major navigation cues must remain readable above or around extruded geometry.
 
 ### VIS-02 — Buildings as stylized volumes
@@ -207,10 +207,10 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 **As a player**, I control a character rather than dragging a normal web map all the time.
 
-- Use a safe-area-aware portrait virtual joystick with one-thumb continuous cardinal/diagonal movement, a small dead zone, and immediate idle when released. Keyboard is optional for debugging; GPS is not required.
-- Store true geographic longitude/latitude and integrate speed in meters/second using elapsed time, independently of device frame rate, source tile loads, or camera presentation. Normalize diagonal speed and avoid background-time jumps.
+- Use an **invisible-by-default floating virtual joystick**: a touch/pointer starting in the middle **80% of the portrait screen** (between 10% and 90% of screen height) anchors the joystick under the finger. It appears during the gesture and disappears on release/cancel. The **top/bottom 10%** cannot initiate movement; UI controls, including the always-visible zoom slider and the hamburger settings menu, must capture gestures without initiating movement. Dragging **up** must request screen-forward movement, and dragging **down** screen-backward movement relative to the camera bearing captured at gesture start; the camera only eases toward sustained non-backward travel after a delay, so the screen can still rotate gradually during a long gesture without changing its original geographic control basis. Verify both movement and avatar orientation on a device. Maintain a small dead zone and immediate idle on release. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
+- Store true geographic longitude/latitude and move at **10 meters per second** at full input deflection; apply analog input magnitude and elapsed time independently of frame rate, source loading and camera presentation. Normalize diagonal speed to the same 10 m/s maximum; avoid background-time jumps.
 - Convert joystick control to a stable geographic movement heading through camera turns without a camera/input feedback loop; use accepted displacement to set the camera target bearing, not noise.
-- Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision; stop on blocked geometry and temporarily pause movement while source tiles are not ready. Missing access data does not justify inventing traversable connections.
+- Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision. Movement continues through **previously verified cached local collision geometry** during transient tile loading and pauses at the cache boundary until new geometry is ready. Missing access data does not justify inventing traversable connections.
 - Make orientation comprehensible to the player. A later navigation/access-rights system is required for comprehensive passability and long-distance travel.
 - **Touch is the primary input** for moving, exploring and future battle/menu actions in portrait; gamepad support is deferred.
 
@@ -219,10 +219,10 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **As a player**, I can control a recognizable male trainer avatar and see him walk naturally in the direction I move.
 
 - Provide an **original** male explorer/trainer design that reads clearly in a low-poly 2.5D portrait scene. No reused character art from existing franchises.
-- Use a **small directional walking animation** (at minimum up, down, left, and right) made from a coherent sequence of frames. Animate only while the character moves; show an idle/standing frame when stationary.
+- Use an original **illustrated low-poly/chibi trainer sprite atlas** with **eight directions** (N, NE, E, SE, S, SW, W, NW), an idle frame per direction and at least four walking frames per direction. Mirroring left/right diagonal artwork is allowed; diagonal travel must not display the wrong cardinal-facing pose. Cycle the frames only while moving.
 - Advance walking frames based on elapsed time or actual movement, not map tile loading or display refresh rate. Direction changes update the facing animation without teleporting or snapping the avatar's world position.
 - Keep sprite/mesh scale, ground contact, facing, foot positioning, and shadow consistent across frames; the walking cycle should not visually slide or jitter.
-- **Touch control** drives geographic movement; derive visible four-direction sprite facing from geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.
+- **Touch control** drives geographic movement; derive visible **eight-way** sprite facing from accepted geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.
 - Allow lightweight prototype sprite frames to be replaced by polished original assets without rewriting movement, animation timing, or camera logic.
 
 ### MOVE-02 — Traveling long distances
@@ -386,17 +386,17 @@ The game should not require disclosure of the player's real-world location merel
 - Provide a standards-based PWA manifest (name, icons, start URL, scope, `display: "standalone"`, and `orientation: "portrait"`) with installable HTTPS hosting.
 - On Android and iOS, provide the appropriate install/Add to Home Screen guidance. The first release needs **no downloadable APK/IPA** and no store listing.
 - **Portrait preference is not a universal hardware lock**. Some browsers, notably iOS browsers, may not honor orientation settings; use the **MOBILE-01** fallback instead of relying on an unsupported API.
-- Cache a lightweight application shell and preserve unsent local progress where feasible. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
+- Cache a lightweight application shell and preserve unsent local progress where feasible. `Preview` and `Stable` must have genuinely distinct, browser-computed manifest IDs, start URLs, visible names/icons and service-worker scopes. **Do not use relative `id: "."` for both**; that may resolve both to the same origin-root install identity. Keep the currently installed Stable manifest ID unchanged; Preview must use an explicit unique origin-relative path. Use channel-prefixed CacheStorage and future local-save keys. Updating either channel must not delete or overwrite the other's shell or progress. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
 - A connectivity loss or app update must not silently discard pending progress. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
 
 ### DIST-01 — Test distribution from the public source repository
 
-**As a player**, I can open and install the exploration test at `https://s3ton.github.io/bitmon/`.
+**As a tester**, I can install `bitmon Preview` from `https://s3ton.github.io/bitmon/preview/` while keeping an independently installable `bitmon Stable` at `https://s3ton.github.io/bitmon/`.
 
 - The repository **`s3ton/bitmon` is public**. For this exploration prototype, GitHub Actions deploys directly to its GitHub Pages site; do not create a separate distribution repository.
 - Publish **only the compiled `dist/` output**—HTML, CSS, JavaScript, manifest, service worker and icons/assets. Never include credentials, development sources, docs or Git history in the deployed artifact. Public repository content is independently visible by design.
-- Set GitHub Pages **Build and deployment → Source → GitHub Actions**. Only pushes to `main` deploy. Feature changes must enter `preview` by PR, followed by a separate, reviewed `preview` → `main` release PR. `preview` and feature branches never publish the live Pages site.
-- Manifest scope/start URL, application assets and the service worker must work under the GitHub Pages `/bitmon/` repository subpath.
+- Set GitHub Pages **Build and deployment → Source → GitHub Actions**. The protected Pages job runs from `main` on a `main` push, manual dispatch, or successful **push CI** completion on `preview` (trusted same-repository branch only). The job compiles both `main` and the checked `preview` SHA and uploads a single Pages artifact, with `/bitmon/` stable and `/bitmon/preview/` experimental. Only a separate reviewed release PR changes stable gameplay; no feature branch or pull request may directly deploy Pages.
+- Both channels must have correct relative asset URLs, **different computed manifest IDs** (Preview explicitly `/bitmon/preview/`), visibly different home-screen names/icons, and individual service-worker scopes (`/bitmon/` and `/bitmon/preview/`). The original Stable ID remains unchanged. Cache cleanup is restricted to the owning channel. Main's broader worker must not intercept preview-subpath requests. Because browser storage is origin-wide, future local saves must be prefixed by channel rather than relying on distinct URL paths.
 - The site is a **public test prototype**, not a completed or verified game. The deployed application can cache the shell but requires connectivity for uncached OpenFreeMap tiles.
 - Production release hosting is a separate future decision. Do not automatically deploy from every pull request.
 
@@ -420,9 +420,9 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 1. Run an installable **portrait-only smartphone PWA** that loads OpenFreeMap through MapLibre.
 2. Display a real neighborhood with the original **low-poly 2.5D** rendering, using only actual OpenFreeMap roads and building footprints.
-3. Show an original **male walking avatar** with **up/down/left/right frame cycles** and an idle pose; frames advance only while moving.
-4. Move the avatar through real coordinates with a **portrait-safe touch joystick**, diagonals, frame-rate-independent speed and basic source-footprint building/water collision; pause during missing source tiles.
-5. Use a **fixed-pitch/zoom oblique exploration camera** that follows the avatar and smoothly turns toward walking heading via the shortest angular path, retaining direction when idle and disabling manual camera rotation/tilt.
+3. Show a small, normal-person-proportioned original **male walking avatar** with **eight directional frame cycles** (including diagonals), an idle pose, and frames advancing only while moving.
+4. Move the avatar through real coordinates at **10 m/s maximum** via a **floating joystick that appears only during gestures begun within the middle 80%** of the portrait screen. Support diagonals, frame-rate independence and source-footprint building/water collision; halt at genuinely unknown source geometry.
+5. Use a **fixed-pitch oblique exploration camera with a right-side 15.5–20 zoom slider**; follow the avatar and smoothly turn toward actual walking heading, hold bearing while idle, and disable manual camera rotation/tilt.
 6. Retain smooth rendering, camera position and walking animation when crossing map tile boundaries.
 7. Repeat the demo on a sparsely mapped area; no missing roads or buildings may be procedurally invented.
 
@@ -431,7 +431,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 ### P0 — Must work in the first map/game vertical slice
 
 1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
-2. Show the animated walking avatar and a **smooth heading-following, fixed-pitch/zoom exploration camera** in a low-poly 2.5D portrait smartphone scene, with correct camera-relative sprite facing.
+2. Show the **human-scale, eight-direction animated avatar** and a smooth heading-following, fixed-pitch exploration camera with a visible right-side zoom slider, correct diagonal facing, and an independent middle-screen joystick activation zone.
 3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
 4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
 5. Keep roads, buildings, player collision, and camera aligned while **moving via touch controls on a portrait smartphone** and crossing tile boundaries.
@@ -473,13 +473,13 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
 | Known-beacon location exploit | A player cannot choose a better location **after** seeing encounter randomness and still claim the result as a valid earlier slot. |
 | Unregistered account | No verified bitmon can be claimed without pre-registered eligible trainer identity. |
-| Animated explorer | Geographic joystick movement animates the camera-relative four-direction pose; camera turns smoothly toward actual heading and holds orientation while idle. |
+| Animated explorer | Geographic joystick movement uses camera-relative eight-direction poses; vertical thumb input matches the intended direction, the camera turns smoothly toward heading, and idle retains the bearing. |
 | Same-world battle camera | On battle start the active camera zooms toward the encountered bitmon while the mapped world remains visible; after battle it returns to the exact exploration framing. **Deferred until after E0.** |
 | Fire gym | Fire and Fire/Wind are accepted; Water/Wind is rejected for both attack and defense. |
 | Sponsor outage | A player with their own gas and a valid proof can still finalize progress. |
 | Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
 | Landscape rotation | Unsupported orientation lock shows a rotate-phone message and preserves session state; no landscape gameplay is implemented. |
-| GitHub Pages distribution | The compiled PWA loads from the public repository subpath without publishing private source, secrets or source maps. |
+| GitHub Pages distribution | Preview installs as a distinct PWA with its own browser-computed manifest ID, purple Preview icon and name, while Stable retains its original identity and `main`-only gameplay. Preview updates after `preview` CI and each service-worker cache remains isolated. No credentials, private code or source maps appear in the Pages artifact. |
 
 ## 14. Open decisions blocking detailed development
 
@@ -497,7 +497,7 @@ These questions need product decisions; implementing guesses as if already settl
 10. **Starter and habitat design:** Initial bitmon types, starting conditions, balance of cities/rural areas, and whether region influences **species only** or also rarity.
 11. **Map revision consistency:** How often does basemap data refresh, and how do updated streets/buildings interact with saved gameplay/collisions and proof rules?
 12. **Device targets:** Minimum Android/iOS versions, smartphone portrait viewport sizes, touch target dimensions, frame rate, offline behavior, download and storage budgets. **Portrait-only smartphone-first is already fixed.**
-13. **Release automation:** GitHub Pages currently deploys from the public source repository's `main` only, after reviewed `preview` → `main` promotion. Long-term distribution/privacy remains open.
+13. **Release automation:** Main-context dual-channel Pages publishing is decided; only the Stable channel waits for a reviewed `preview` → `main` promotion. Preview publishes after successful `preview` push checks. Long-term release hosting/privacy remains open.
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 
