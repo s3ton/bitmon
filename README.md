@@ -17,9 +17,10 @@ The source repository is **public**. The compiled test PWA is live at [https://s
 
 - [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
 - The **Task 001 map-rendering foundation** is live on `main`: OpenFreeMap geographic tiles, extruded mapped buildings, oblique 45° camera pitch, portrait fallback and installable PWA shell.
-- [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) targets `preview` with an original directional SVG trainer, geographic movement through a safe-area touch joystick, basic OpenFreeMap source-polygon collision and a **smooth heading-following camera** at fixed pitch and zoom. **It has not yet been promoted to the deployed Pages app.**
+- [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) has been released from `main` via [PR #9](https://github.com/s3ton/bitmon/pull/9), but the owner's first phone test shows **movement is blocked** and the placeholder SVG avatar does not meet the desired illustration quality.
+- [**Corrective PR #10**](https://github.com/s3ton/bitmon/pull/10) targets `preview` with a collision-safe nearby mapped spawn, movement across cached verified local geometry during tile loading and an original 20-frame illustrated chibi-style avatar atlas. It is not yet deployed or phone-accepted.
 - The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
-- **Still pending:** Task 002 owner phone tests, Android/iOS cross-platform coverage, service-worker/offline verification, tile/collision/heading edge cases, screenshots and device performance. The [development tracker](docs/DEVELOPMENT_TRACKER.md) lists actual evidence and unmet acceptance gates.
+- **Still pending:** owner re-test of movement, map collision and sprite quality, cross-platform Android/iOS support, service-worker/offline behavior, tile-edge handling, screenshots and performance.
 
 ## Local build
 

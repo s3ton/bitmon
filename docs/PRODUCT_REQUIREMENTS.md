@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.7 — Task 002: heading-following camera, geographic touch movement and directional avatar; retains main-only Pages release workflow  
+**Version:** 0.8 — Task 002 fixes: collision-safe spawn, cached movement geometry and illustrated trainer walk-cycle atlas  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -207,10 +207,10 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 **As a player**, I control a character rather than dragging a normal web map all the time.
 
-- Use a safe-area-aware portrait virtual joystick with one-thumb continuous cardinal/diagonal movement, a small dead zone, and immediate idle when released. Keyboard is optional for debugging; GPS is not required.
+- Use a safe-area-aware portrait virtual joystick with one-thumb continuous cardinal/diagonal movement, a small dead zone, and immediate idle when released. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
 - Store true geographic longitude/latitude and integrate speed in meters/second using elapsed time, independently of device frame rate, source tile loads, or camera presentation. Normalize diagonal speed and avoid background-time jumps.
 - Convert joystick control to a stable geographic movement heading through camera turns without a camera/input feedback loop; use accepted displacement to set the camera target bearing, not noise.
-- Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision; stop on blocked geometry and temporarily pause movement while source tiles are not ready. Missing access data does not justify inventing traversable connections.
+- Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision. Movement continues through **previously verified cached local collision geometry** during transient tile loading and pauses at the cache boundary until new geometry is ready. Missing access data does not justify inventing traversable connections.
 - Make orientation comprehensible to the player. A later navigation/access-rights system is required for comprehensive passability and long-distance travel.
 - **Touch is the primary input** for moving, exploring and future battle/menu actions in portrait; gamepad support is deferred.
 
@@ -219,7 +219,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **As a player**, I can control a recognizable male trainer avatar and see him walk naturally in the direction I move.
 
 - Provide an **original** male explorer/trainer design that reads clearly in a low-poly 2.5D portrait scene. No reused character art from existing franchises.
-- Use a **small directional walking animation** (at minimum up, down, left, and right) made from a coherent sequence of frames. Animate only while the character moves; show an idle/standing frame when stationary.
+- Use an original **illustrated low-poly/chibi trainer sprite atlas** with four directions, a dedicated idle frame for each direction and at least four distinct walking frames for each direction. Cycle artwork only while moving, never redraw minimalist geometry as a substitute for polished poses.
 - Advance walking frames based on elapsed time or actual movement, not map tile loading or display refresh rate. Direction changes update the facing animation without teleporting or snapping the avatar's world position.
 - Keep sprite/mesh scale, ground contact, facing, foot positioning, and shadow consistent across frames; the walking cycle should not visually slide or jitter.
 - **Touch control** drives geographic movement; derive visible four-direction sprite facing from geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.
