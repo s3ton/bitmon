@@ -90,6 +90,7 @@ export function startExploration(map: MapLibreMap): void {
   const joystick = document.querySelector<HTMLElement>('#joystick')!
   const knob = document.querySelector<HTMLElement>('#joystick-knob')!
   const movementStatus = document.querySelector<HTMLElement>('#movement-status')!
+  const cameraMenu = document.querySelector<HTMLDetailsElement>('#camera-control')!
   const cameraPresetSelect = document.querySelector<HTMLSelectElement>('#camera-preset')!
   const avatar = document.createElement('div')
   avatar.className = 'trainer'
@@ -130,6 +131,7 @@ export function startExploration(map: MapLibreMap): void {
     cameraPreset = cameraPresetSelect.value as CameraPreset
     steadyHeading = null
     steadySeconds = 0
+    cameraMenu.open = false
   })
   let animationTime = 0
   let lastAppearance = ''
