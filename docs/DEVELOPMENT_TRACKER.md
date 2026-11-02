@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.3 (2 November 2026)  
+**Baseline PRD:** v0.4 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Planning / no implementation evidence recorded in the repository yet.
@@ -21,24 +21,25 @@
 
 Each requirement should eventually record an **owner**, GitHub issue/PR, test/demo evidence, remaining blocker, and last verified date. The statuses below describe **documented evidence**, not assumptions about work outside this repository.
 
-**Current overview:** 30 tracked requirements; **0 verified Done**, **30 Not started** based on the current repository evidence. This is a documentation baseline, not a claim that nobody has experimented elsewhere.
+**Current overview:** 32 tracked requirements; **0 verified Done**, **32 Not started** based on the current repository evidence. This is a documentation baseline, not a claim that nobody has experimented elsewhere.
 
 ## 2. Requirements implementation matrix
 
-The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md). Priority refers to the *first relevant slice* of the requirement: **P0** = map/game vertical slice, **P1** = usable first release. P0 completion does not imply that worldwide production coverage is complete.
+The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md). Priority refers to the *first relevant slice* of each requirement: **E0** = exploration-only PWA prototype (immediate focus), **P0** = later verified game vertical slice, **P1** = usable first release. E0 completion must not be confused with fully verified play or worldwide coverage.
 
 | ID | Player-facing capability | Priority | Status | First acceptance evidence to attach | Owner / issue / PR |
 |---|---|---|---|---|---|
-| WORLD-01 | Earth geography preserved in the mapped world | P0 | Not started | Compare a known OpenFreeMap neighborhood with bitmon at source coordinates; no fabricated features | — |
-| WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | P0 | Not started | Road-source feature audit; test no added road, intersection, alley or connector | — |
+| WORLD-01 | Earth geography preserved in the mapped world | E0 | Not started | Compare a known OpenFreeMap neighborhood with bitmon at source coordinates; no fabricated features | — |
+| WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | Not started | Road-source feature audit; test no added road, intersection, alley or connector | — |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Readable low-poly 2.5D camera in portrait | P0 | Not started | Portrait phone demonstration, camera and occlusion checks | — |
-| VIS-02 | Mapped building footprints become low-poly volumes | P0 | Not started | Source polygon ↔ simple rendered volume test; no unsourced building instance | — |
-| VIS-03 | OpenFreeMap-only inferred facade and window art | P0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
+| VIS-01 | Fixed-angle, non-rotating low-poly 2.5D exploration camera | E0 | Not started | Portrait phone follows avatar with constant bearing/pitch | — |
+| VIS-02 | Mapped building footprints become low-poly volumes | E0 | Not started | Source polygon ↔ simple rendered volume test; no unsourced building instance | — |
+| VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Touch-first movement on mapped space | P0 | Not started | Thumb-control movement, collision and passability demonstration on a phone | — |
+| MOVE-01 | Touch-first movement on mapped space | E0 | Not started | Thumb-control movement, collision and passability demonstration on a phone | — |
+| EXPL-01 | Original male avatar with four-direction walking cycles | E0 | Not started | Up/down/left/right frames loop while moving, idle when stopped, no jitter | — |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
@@ -47,6 +48,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | ENC-04 | Limited, fair and understandable encounter opportunities | P1 | Not started | Tests for quota, uniqueness, timing and rarity rules | — |
 | GAME-01 | Inspectable, coherent bitmon collection | P0 | Not started | Starter + one captured bitmon show traits and pending/finalized status | — |
 | GAME-02 | Deterministic combat and capture | P0 | Not started | Same input actions → same legal result across clients | — |
+| CAM-01 | Zoom into active OpenFreeMap world for battle and restore exploration camera | P0 (post-E0) | Not started | Battle retains mapped world backdrop; returns exact fixed camera pose | — |
 | GAME-03 | Pending save, finalization and recovery | P0 | Not started | Save locally, finalize, export/import and show correct status | — |
 | TRADE-01 | Same-tier, one-for-one restricted swaps | P1 | Not started | Atomic swap with level reset and 24-hour quota tests | — |
 | GYM-01 | Each gym has one immutable type | P1 | Not started | Fire and Fire/Wind allowed, Water/Wind rejected | — |
@@ -56,8 +58,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | FEES-01 | Optional sponsorship without sponsor dependency | P1 | Not started | Self-paid progression succeeds when sponsor is unavailable | — |
 | INDEPENDENCE-01 | Alternative client/map endpoint continuity | P1 | Not started | Equivalent OpenFreeMap mirror/self-hosted tiles and independent settlement | — |
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
-| MOBILE-01 | Smartphone-first, portrait-only gameplay | P0 | Not started | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | — |
-| PWA-01 | Install and launch from Android/iOS home screens | P0 | Not started | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | — |
+| MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | Not started | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | — |
+| PWA-01 | Install and launch from Android/iOS home screens | E0 | Not started | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | — |
 | DIST-01 | GitHub-only public compiled PWA, private source | P0 | Not started | GitHub Pages distribution, correct subpath scope, no private sources/secrets/maps | — |
 
 ## 3. Map fidelity release gates
@@ -77,11 +79,13 @@ These requirements are **fixed decisions**, not open design options. A change re
 
 ## 4. Development milestones
 
+**Build only the exploration experience first.** Do not implement combat, ZK, registration, trading, gyms or advertising as dependencies of E0. The future game requirements remain documented.
+
 | Milestone | Scope | Status | Exit evidence |
 |---|---|---|---|
 | M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | Not started | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
-| M1 — First low-poly 2.5D street | MapLibre map, mapped roads/buildings, portrait camera, touch controls, collision, facades | Not started | Map fidelity gates pass in a playable portrait smartphone neighborhood |
-| M2 — First verified encounter | Registration-first onboarding, active identity, one local battle and proof/finalization | Not started | End-to-end valid capture and invalid replay rejection |
+| M1 / E0 — Animated avatar exploration | Low-poly MapLibre map, source-mapped streets/buildings, fixed camera, portrait touch movement, animated male avatar, installable shell | Not started | Playable E0 on a portrait smartphone with four walking directions, stable camera, and zero fabricated buildings/roads |
+| M2 — First verified encounter and same-world battle | Registration-first onboarding, active identity, same-world camera zoom, local battle and proof/finalization | Not started | Battle retains mapped backdrop and returns camera; valid capture and replay rejection |
 | M3 — Installable smartphone PWA slice | Portrait UI, local saves, collection, install manifest, app shell, GitHub Pages distribution | Not started | P0 acceptance on Android and iPhone, installed from GitHub Pages URL |
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
 | M5 — First release readiness | Wider region coverage, travel, fair region binding, performance, recovery | Not started | P1 acceptance and security reviews complete |
@@ -107,6 +111,9 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-011 | **Accepted** | **Portrait-only** gameplay; no landscape game layout; use a rotate-device fallback where orientation lock is unsupported | **v0.3** MOBILE-01 |
 | 2026-11-02 | DEC-012 | **Accepted** | Original **low-poly 2.5D** style replaces pixel-art framing; simpler meshes/materials and mobile rendering priority | **v0.3** VIS-01/02/03/05 |
 | 2026-11-02 | DEC-013 | **Accepted** | **GitHub-only publishing**: private source repository, separate public build-only PWA repository hosted with GitHub Pages | **v0.3** DIST-01 |
+| 2026-11-02 | DEC-014 | **Accepted** | **Fixed-angle exploration camera:** follows the avatar; bearing and pitch do not rotate while walking | **v0.4** VIS-01, EXPL-01 |
+| 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
+| 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 
 ### Open decisions to resolve before related implementation
 
@@ -116,7 +123,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | Low-poly camera pitch, geometric detail, roof occlusion, portrait touch sizes and mobile performance budgets | VIS-01/04/05, MOBILE-01 | Open |
+| OPEN-05 | **Fixed** exploration pitch/bearing values, sprite scale and frame timing, low-poly roof occlusion, portrait touch sizes and mobile budgets | VIS-01/04/05, EXPL-01, MOBILE-01 | Open |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -135,6 +142,6 @@ This section records **requirements evolution** separately from actual implement
 
 ## 7. Next actionable work
 
-The first engineering demonstration should load one real OpenFreeMap neighborhood through MapLibre **on a portrait smartphone**, draw roads without changing source topology, extrude only existing building polygons into **low-poly 2.5D volumes**, attach deterministically selected original window/facade art, allow **touch-first movement**, and verify a second sparse/incomplete region renders **without inventing missing buildings or roads**. Package it as an **installable PWA**, then publish an approved compiled build through the GitHub-only distribution workflow.
+The first engineering demonstration (E0) should load a real OpenFreeMap neighborhood through MapLibre **on a portrait smartphone**, draw only mapped roads and mapped low-poly buildings, show a **four-direction animated male avatar**, and allow walking via **touch controls while a fixed-angle camera follows without rotating**. Test sparse areas without fabricated roads/buildings. Package as an **installable PWA** and publish a deliberate compiled build via GitHub-only distribution. **Do not build the battle system or its camera transition yet**; CAM-01 is specified for M2.
 
 No implementation task is claimed complete by this document.
