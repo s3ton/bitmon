@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.10 (2 November 2026)  
+**Baseline PRD:** v0.11 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Task 002 refinement [#13](https://github.com/s3ton/bitmon/pull/13) is merged into `preview`, implementing a smaller avatar, **10 m/s movement, eight-way sprite facing and floating joystick in middle 60%**, but is not yet on `main`. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
@@ -33,12 +33,12 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Smooth heading-up camera, fixed pitch/zoom | E0 | In review | Phone checks cardinal/diagonal direction, shortest turn at 0°/360°, stop/idle bearing, stable zoom/pitch | [#8](https://github.com/s3ton/bitmon/pull/8) |
+| VIS-01 | Smooth heading-up camera; fixed pitch with 15.5–18.5 user zoom slider | E0 | In review — device check pending | Phone checks camera heading, idle bearing, correct zoom slider control, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Geographic movement at 10 m/s, floating middle-60% touch zone, collision and diagonals | E0 | Blocked — initial phone test failed | Verify central 60% swipe activates, excluded 20% bands do not, 10 m/s maximum, release stops, valid spawn/collision and tile seams | [#10](https://github.com/s3ton/bitmon/pull/10), [#13](https://github.com/s3ton/bitmon/pull/13) |
+| MOVE-01 | 10 m/s geographic movement, corrected vertical touch mapping, floating 60% joystick and diagonals | E0 | Blocked — owner reports inversion | Device verifies swipe up/down against intended direction, slider never triggers joystick, 10 m/s maximum and mapped collision | [#13](https://github.com/s3ton/bitmon/pull/13), control/zoom fix PR |
 | EXPL-01 | Small illustrated avatar; 8 directions × idle + four walking frames | E0 | In review — owner art approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | [#13](https://github.com/s3ton/bitmon/pull/13) |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
@@ -59,8 +59,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | INDEPENDENCE-01 | Alternative client/map endpoint continuity | P1 | Not started | Equivalent OpenFreeMap mirror/self-hosted tiles and independent settlement | — |
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
 | MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| PWA-01 | Install and launch from Android/iOS home screens | E0 | In review | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| DIST-01 | Separately installable Preview/Stable Pages PWAs from one public repo | P0 | In review — rollout pending | Main-context workflow serves both paths; merge into `preview` updates only preview gameplay; stable stays at `main`; verify two install identities and independent cache/offline behavior on phone | [#4](https://github.com/s3ton/bitmon/pull/4), dual-channel infrastructure PR |
+| PWA-01 | Install independently named/iconed Preview and Stable PWA home-screen apps | E0 | In review — duplicate install identity reported | Verify Preview prompts a separate installation with its own name/icon, Stable remains installed, standalone launch and scoped caches work | [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
+| DIST-01 | Separate Preview/Stable Pages builds with explicit unique Preview PWA ID | P0 | In review — owner reports install conflict | Confirm working links, independently installable icons and root stable stays unchanged by `preview` pushes | [#15](https://github.com/s3ton/bitmon/pull/15), [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
 
 ## 3. Map fidelity release gates
 
@@ -119,7 +119,8 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-019 | **Accepted — supersedes DEC-014** | Exploration pitch/zoom remain fixed; camera smooth-turns to actual accepted movement heading via shortest path, retaining bearing when idle; manual rotate/tilt disabled | **v0.7** VIS-01, MOVE-01, EXPL-01, CAM-01, E0/P0 |
 | 2026-11-02 | DEC-020 | **Accepted** | Original illustrated four-direction character atlas with discrete walking poses replaces procedural placeholder SVG; spawn must be collision-safe on OpenFreeMap world | **v0.8** EXPL-01, MOVE-01 |
 | 2026-11-02 | DEC-021 | **Accepted** | Trainer is small and roughly human-scale (1.8 m target with 8 px readability floor); exploration full-speed 10 m/s; animate 8-way including mirrored diagonals; float hidden joystick under finger only for pointer starts within 20–80% viewport height | **v0.9** VIS-01, MOVE-01, EXPL-01, E0/P0 |
-| 2026-11-02 | DEC-022 | **Accepted — supersedes DEC-018 trigger policy** | One Pages site hosts independently installable Preview (`/bitmon/preview/`, automatically updated from reviewed `preview` commits after successful CI) and Stable (`/bitmon/`, updated only from `main` release PRs). Deploy job always runs in protected `main` context and packs both builds; isolate manifest ID, SW scope/cache and eventual local saves | **v0.10** DIST-01, PWA-01 |
+| 2026-11-02 | DEC-022 | **Accepted — supersedes DEC-018 trigger policy** | One Pages site hosts Preview (`/bitmon/preview/`) and Stable (`/bitmon/`) from distinct branches, with protected `main` deployment and scoped caches | **v0.10** DIST-01, PWA-01 |
+| 2026-11-02 | DEC-023 | **Accepted** | Correct origin-root Preview manifest-ID collision via explicit `/bitmon/preview/` ID and purple Preview icon; reverse owner-reported vertical joystick mapping; allow right-side slider zoom 15.5–18.5 while pitch stays fixed and heading-following remains automatic | **v0.11** PWA-01, DIST-01, MOVE-01, VIS-01, CAM-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -129,7 +130,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | DEC-021 fixes prototype 10 m/s speed, eight-way facing, floating middle-60% activation and nominal person-scale sprite. Remaining tuning: readability floor, diagonal art quality, turn rate, gait timing, roof occlusion and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — experimental tuning only |
+| OPEN-05 | DEC-023 adds player-controlled 15.5–18.5 zoom; remaining tuning includes default zoom/range, readable sprite scaling, joystick orientation after camera turns, diagonal art, camera damping and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -191,3 +192,7 @@ Owner requested reducing the building-scale trainer to normal-human proportions,
 ### Dual-channel PWA testing — deployment infrastructure (2 November 2026)
 
 The owner identified that requiring an untested gameplay PR to merge into `main` before phone validation defeats the `preview` release gate. DEC-022 defines **two installable PWAs on one GitHub Pages domain**. Source branch `preview` can be tested in the `/bitmon/preview/` app after successful review/CI; stable `/bitmon/` remains compiled from `main` until separate release approval. Main-only Pages environment protection is retained by using the default-branch `workflow_run` context. Separate PWA manifest identities, service-worker scopes, CacheStorage prefixes and a preview visual label/icon are part of the infrastructure. Manual verification of both installations and updates is outstanding; do **not** claim either channel is live before the main infrastructure PR's deployment succeeds.
+
+### Owner Preview issues and Task 002 follow-up — 2 November 2026
+
+After deployment of dual-channel Pages, the owner reported the Preview installation is recognized as already installed, joystick up/down input appears reversed, and requests a right-side zoom slider. **Identified manifest fault:** using `id: "."` for both installs resolves to the same origin-root ID. Corrective work gives Preview a unique explicit `/bitmon/preview/` manifest ID plus distinctive purple Preview icon/name (without changing Stable's prior ID), reverses touch vertical mapping only, and adds a portrait side range slider (15.5–18.5) that adjusts MapLibre zoom while preserving heading/pitch, updates avatar visual size and never triggers the joystick. Source tiles, PWA domains and stable gameplay remain unchanged. Device acceptance of both installs, orientation and zoom **pending**.
