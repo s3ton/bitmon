@@ -2,6 +2,7 @@ import { AttributionControl, Map, setWorkerUrl, type StyleSpecification } from '
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
+import { startExploration } from './exploration'
 
 setWorkerUrl(workerUrl)
 
@@ -103,22 +104,21 @@ const map = new Map({
   style,
   center: [9.1869, 45.4715], // Brera, Milan: geographic coordinates, not a fictional level.
   zoom: 16.4,
-  minZoom: 14,
-  maxZoom: 18,
+  minZoom: 16.4,
+  maxZoom: 16.4,
   pitch: 45,
   minPitch: 45,
   maxPitch: 45,
   bearing: -20,
-  dragRotate: false,
-  touchPitch: false,
+  interactive: false,
   attributionControl: false,
   pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
   canvasContextAttributes: { antialias: false },
 })
 
-map.touchZoomRotate.disableRotation()
 map.addControl(new AttributionControl({ compact: false }), 'bottom-right')
 map.once('idle', () => { status.hidden = true })
+startExploration(map)
 map.on('error', () => {
   status.hidden = false
   status.textContent = 'Map data unavailable. Reconnect to load this neighborhood.'
