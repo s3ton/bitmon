@@ -1,10 +1,10 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.8 (2 November 2026)  
+**Baseline PRD:** v0.9 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Task 002 [PR #8](https://github.com/s3ton/bitmon/pull/8) merged into `preview` and released to `main` through [PR #9](https://github.com/s3ton/bitmon/pull/9). **Owner smartphone feedback on 2 November 2026: avatar cannot move, apparently spawning within a mapped building, and minimal SVG artwork is below desired quality.** [Corrective PR #10](https://github.com/s3ton/bitmon/pull/10) targets `preview`. E0 acceptance is blocked until another smartphone check; Task 001 installation and perceived map-fidelity feedback remain positive but not a formal geometry audit. **Last evidence review:** 2 November 2026.
+**Current reporting state:** Task 002 [#8](https://github.com/s3ton/bitmon/pull/8) was released via [#9](https://github.com/s3ton/bitmon/pull/9) but failed the owner's first movement/art check. Follow-up [#10](https://github.com/s3ton/bitmon/pull/10) and PWA cache fix [#12](https://github.com/s3ton/bitmon/pull/12) are merged to `preview`; the reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. New Task 002 refinement targets smaller natural-scale avatar, **10 m/s movement, eight-way sprite facing and floating joystick in middle 60%**. E0 owner acceptance remains blocked; no new phone verification has been claimed. **Last evidence review:** 2 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -38,8 +38,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
-| MOVE-01 | Touch movement, valid geographic spawn, collision and diagonal travel | E0 | Blocked — initial phone test failed | Owner retests safe spawn, cardinal/diagonal movement, wall/water collision, tile boundaries | [#8](https://github.com/s3ton/bitmon/pull/8), [fix #10](https://github.com/s3ton/bitmon/pull/10) |
-| EXPL-01 | Illustrated original chibi avatar; four directions × idle + four walking frames | E0 | In review — old art rejected | Owner reviews artwork, confirms walking and idle cycles relative to moving camera | [fix #10](https://github.com/s3ton/bitmon/pull/10) |
+| MOVE-01 | Geographic movement at 10 m/s, floating middle-60% touch zone, collision and diagonals | E0 | Blocked — initial phone test failed | Verify central 60% swipe activates, excluded 20% bands do not, 10 m/s maximum, release stops, valid spawn/collision and tile seams | [#10](https://github.com/s3ton/bitmon/pull/10), Task 002 refinement PR |
+| EXPL-01 | Small illustrated avatar; 8 directions × idle + four walking frames | E0 | In review — owner art approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | Task 002 refinement PR |
 | MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
@@ -84,7 +84,7 @@ These requirements are **fixed decisions**, not open design options. A change re
 | Milestone | Scope | Status | Exit evidence |
 |---|---|---|---|
 | M0 — Map feasibility | OpenFreeMap source inspection, low-poly art, facade inference and portrait phone baseline | In review | One reference neighborhood on a phone, tile evidence and no-enrichment proof |
-| M1 / E0 — Animated avatar exploration | OpenFreeMap geometry, heading-up camera, touch walking, frame atlas and source collision | Blocked — failed first device test | Playable movement, acceptable illustrated walk cycles, collision and PWA on portrait phone, no invented geometry |
+| M1 / E0 — Animated avatar exploration | OpenFreeMap geometry, heading-up camera, 10 m/s floating-zone controls, compact eight-way sprite atlas and source collision | Blocked — previous failed device test | Owner confirms street-scale avatar, smooth diagonal walk/turning, valid 20–80% touch activation and collision/PWA on phone |
 | M2 — First verified encounter and same-world battle | Registration-first onboarding, active identity, same-world camera zoom, local battle and proof/finalization | Not started | Battle retains mapped backdrop and returns camera; valid capture and replay rejection |
 | M3 — Installable smartphone PWA slice | Portrait UI, local saves, collection, install manifest, app shell, GitHub Pages distribution | In progress | P0 acceptance on Android and iPhone, installed from GitHub Pages URL |
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
@@ -118,6 +118,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-018 | **Accepted** | Deploy compiled PWA artifacts to GitHub Pages **only from `main`** following feature PR into `preview` and separate reviewed `preview` → `main` release PR. Keep the website a test prototype | **v0.6** DIST-01 |
 | 2026-11-02 | DEC-019 | **Accepted — supersedes DEC-014** | Exploration pitch/zoom remain fixed; camera smooth-turns to actual accepted movement heading via shortest path, retaining bearing when idle; manual rotate/tilt disabled | **v0.7** VIS-01, MOVE-01, EXPL-01, CAM-01, E0/P0 |
 | 2026-11-02 | DEC-020 | **Accepted** | Original illustrated four-direction character atlas with discrete walking poses replaces procedural placeholder SVG; spawn must be collision-safe on OpenFreeMap world | **v0.8** EXPL-01, MOVE-01 |
+| 2026-11-02 | DEC-021 | **Accepted** | Trainer is small and roughly human-scale (1.8 m target with 8 px readability floor); exploration full-speed 10 m/s; animate 8-way including mirrored diagonals; float hidden joystick under finger only for pointer starts within 20–80% viewport height | **v0.9** VIS-01, MOVE-01, EXPL-01, E0/P0 |
 
 ### Open decisions to resolve before related implementation
 
@@ -127,7 +128,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | Heading-following bearing is decided by DEC-019; tune fixed pitch/zoom values, turn rate, dead zone, sprite frame rate/scale, roof occlusion, safe-area joystick size and mobile budgets | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — experimental tuning |
+| OPEN-05 | DEC-021 fixes prototype 10 m/s speed, eight-way facing, floating middle-60% activation and nominal person-scale sprite. Remaining tuning: readability floor, diagonal art quality, turn rate, gait timing, roof occlusion and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — experimental tuning only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -162,7 +163,7 @@ This section records **requirements evolution** separately from actual implement
 
 **Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
-**Current released build limitations:** PR #9 deployed Task 002, but the owner's first phone test found movement blocked and initial sprite quality unacceptable. Corrective PR #10 remains unverified; no battles, captures, wallets, blockchain or backend exist. M1/E0 is blocked pending device acceptance.
+**Current released build limitations:** PR #9 deployed Task 002 but the first owner phone test found movement blocked and original sprite quality unacceptable. Corrective PRs #10/#12 and this eight-way/scale/control iteration are in `preview` or feature development, not yet on `main`; none has passed owner phone acceptance. No battles, captures, wallets, blockchain or backend exist.
 
 ### Task 002 — Walking trainer, geographic joystick, direction-following camera (2 November 2026)
 
@@ -181,3 +182,7 @@ This section records **requirements evolution** separately from actual implement
 ### Task 002 corrective response — phone report (2 November 2026)
 
 Owner reports an immobile trainer after the PR #9 Pages release and rejects placeholder trainer art. Potential causes: starting inside mapped building and gating movement on globally loaded tile source state. Fix PR #10 adds collision-safe nearby map-derived start, checked-area collision cache while source tiles load, and an illustrated 20-frame sprite atlas with independent idle/walk poses per direction. **The corrective build has not passed owner smartphone acceptance**, and no tests or visuals are falsely marked as device-verified.
+
+### Task 002 visual and floating-control refinement — 2 November 2026
+
+Owner requested reducing the building-scale trainer to normal-human proportions, full input speed **10 m/s**, dedicated diagonal-facing frame cycles (left/right reuse by mirroring), and a virtual joystick that is **hidden until a pointer begins within the middle 60% of portrait height**. The top/bottom 20% do not initiate movement, and the joystick disappears on release. Implementation uses an 8-row/40-frame SVG atlas, background-position facing selection, WGS84 marker with an approximately 1.8 m visual target and 8 px readability floor, and pointer capture on the app surface. No mobile device tests have yet passed; measure apparent scale and art quality on the installed phone before marking VIS-01/MOVE-01/EXPL-01 done.

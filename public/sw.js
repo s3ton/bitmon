@@ -1,4 +1,4 @@
-const CACHE = 'bitmon-shell-v2'
+const CACHE = 'bitmon-shell-v3'
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE)
