@@ -149,7 +149,7 @@ No implementation task is claimed complete by this document.
 
 ## Task 001 — PWA map foundation (2 November 2026)
 
-- **Branch:** `feat/task-001-pwa-world`; **PR:** see the open pull request targeting `preview` (reference added in PR description).
+- **Branch:** `feat/task-001-pwa-world`; **PR:** [#3](https://github.com/s3ton/bitmon/pull/3), draft targeting `preview`.
 - **Delivered for review:** Vite/TypeScript app; OpenFreeMap-only MapLibre rendering of Brera, Milan; original fixed 45° pitch/-20° bearing; mapped-footprint extrusion with `render_height` and deterministic fallback; portrait rotation overlay; PWA manifest and app-shell worker.
 - **Pending evidence:** dependency installation, TypeScript compilation, production build, browser render, Android/iOS home-screen install, attribution inspection, source-footprint audit, and portrait smartphone screenshots. No manual or automated validation is claimed.
 - **Scope deferred:** avatar, walking, collision, facade variations, battles, registration and blockchain; no public repository or deployment created.
