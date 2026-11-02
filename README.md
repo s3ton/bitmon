@@ -18,7 +18,8 @@ The source repository is **public**. The compiled test PWA is live at [https://s
 - [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
 - The **Task 001 map-rendering foundation** is live on `main`: OpenFreeMap geographic tiles, extruded mapped buildings, oblique 45° camera pitch, portrait fallback and installable PWA shell.
 - [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) has been released from `main` via [PR #9](https://github.com/s3ton/bitmon/pull/9), but the owner's first phone test shows **movement is blocked** and the placeholder SVG avatar does not meet the desired illustration quality.
-- [**Corrective PR #10**](https://github.com/s3ton/bitmon/pull/10) targets `preview` with a collision-safe nearby mapped spawn, movement across cached verified local geometry during tile loading and an original 20-frame illustrated chibi-style avatar atlas. It is not yet deployed or phone-accepted.
+- [**Corrective PR #10**](https://github.com/s3ton/bitmon/pull/10) and [PWA cache PR #12](https://github.com/s3ton/bitmon/pull/12) are merged into `preview`; the [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Their phone acceptance is pending.
+- The new Task 002 refinement introduces a **much smaller street-scale trainer**, an **eight-way 40-frame atlas**, **10 m/s full-speed geographic walking**, and an **invisible floating joystick** that appears under the finger only for gestures begun between 20% and 80% of portrait screen height.
 - The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
 - **Still pending:** owner re-test of movement, map collision and sprite quality, cross-platform Android/iOS support, service-worker/offline behavior, tile-edge handling, screenshots and performance.
 
@@ -35,7 +36,7 @@ npm run dev
 
 1. Open [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) and set **Build and deployment → Source** to **GitHub Actions**.
 2. Merge feature work into `preview` through a reviewed PR; promote `preview` to `main` through a separate release PR. [The Pages workflow](https://github.com/s3ton/bitmon/actions/workflows/pages.yml) runs only when `main` changes and uploads only `dist/`.
-3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone, test joystick and camera rotation, building/water collision, attribution, orientation prompt and PWA restart after adding it to the home screen.
+3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone. Swipe anywhere in the middle 60% of screen height to reveal a temporary joystick; verify the top/bottom 20% do not move the trainer, then test 10 m/s cardinal/diagonal walking, small human-scale appearance, camera rotation, collisions, map attribution, portrait fallback and PWA restart.
 
 Map tiles still need network access; only the app shell is cached. The public URL is a preview, not a verified game.
 

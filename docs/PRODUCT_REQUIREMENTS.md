@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.8 — Task 002 fixes: collision-safe spawn, cached movement geometry and illustrated trainer walk-cycle atlas  
+**Version:** 0.9 — Task 002 refinement: person-scale avatar, eight-way animation, 10 m/s walking and floating middle-screen touch input  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -140,7 +140,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Frame all gameplay for a narrow **portrait smartphone viewport**; the character, mapped routes and nearby interactions must remain readable.
 - **During exploration the camera's pitch and zoom are fixed, but bearing is dynamic**. It follows the character's actual geographic position and turns smoothly toward accepted movement heading by the shortest angular path (including wraparound). Forward travel generally points up-screen; bearing holds when idle. Manual rotation and tilt remain disabled.
 - The target feel is a classic handheld top-down creature RPG (the fourth/fifth-generation era is a **visual reference only**, not a license to copy character designs, tiles, interfaces, sounds, or maps).
-- The main player character remains legible against the map; nearby buildings must not permanently hide the player.
+- The main player character remains legible against the map without appearing building-sized: render the trainer at approximately adult-human scale relative to nearby mapped structures (nominal 1.8 m with a small minimum screen-size allowance at fixed prototype zoom); nearby buildings must not permanently hide the player.
 - Perspective, building height exaggeration, and camera pitch are art/UX parameters to test, not claims that geographic features are fully photorealistic.
 - The exploration camera keeps its fixed 2.5D pitch and zoom while following smoothly through turns and tile boundaries, without changing geographic geometry. Later battles must restore prior bearing, pitch, zoom and follow state before heading-up behavior resumes.
 - Labels and major navigation cues must remain readable above or around extruded geometry.
@@ -207,8 +207,8 @@ An optional guest demo can let a player see the map, walk around, and try practi
 
 **As a player**, I control a character rather than dragging a normal web map all the time.
 
-- Use a safe-area-aware portrait virtual joystick with one-thumb continuous cardinal/diagonal movement, a small dead zone, and immediate idle when released. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
-- Store true geographic longitude/latitude and integrate speed in meters/second using elapsed time, independently of device frame rate, source tile loads, or camera presentation. Normalize diagonal speed and avoid background-time jumps.
+- Use an **invisible-by-default floating virtual joystick**: a touch/pointer starting in the middle **60% of the portrait screen** (between 20% and 80% of screen height) anchors the joystick under the finger. It appears during the gesture, responds to dragging in any direction, and disappears immediately on release/cancel. The **top and bottom 20%** cannot initiate movement and remain reserved for interface elements. Maintain a small dead zone and immediate idle on release. Keyboard is optional for debugging; GPS is not required. Verify initial coordinates are outside mapped buildings/water and place the trainer on a nearby mapped route when blocked.
+- Store true geographic longitude/latitude and move at **10 meters per second** at full input deflection; apply analog input magnitude and elapsed time independently of frame rate, source loading and camera presentation. Normalize diagonal speed to the same 10 m/s maximum; avoid background-time jumps.
 - Convert joystick control to a stable geographic movement heading through camera turns without a camera/input feedback loop; use accepted displacement to set the camera target bearing, not noise.
 - Use only OpenFreeMap source building footprints and impassable-water polygons for minimal collision. Movement continues through **previously verified cached local collision geometry** during transient tile loading and pauses at the cache boundary until new geometry is ready. Missing access data does not justify inventing traversable connections.
 - Make orientation comprehensible to the player. A later navigation/access-rights system is required for comprehensive passability and long-distance travel.
@@ -219,10 +219,10 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **As a player**, I can control a recognizable male trainer avatar and see him walk naturally in the direction I move.
 
 - Provide an **original** male explorer/trainer design that reads clearly in a low-poly 2.5D portrait scene. No reused character art from existing franchises.
-- Use an original **illustrated low-poly/chibi trainer sprite atlas** with four directions, a dedicated idle frame for each direction and at least four distinct walking frames for each direction. Cycle artwork only while moving, never redraw minimalist geometry as a substitute for polished poses.
+- Use an original **illustrated low-poly/chibi trainer sprite atlas** with **eight directions** (N, NE, E, SE, S, SW, W, NW), an idle frame per direction and at least four walking frames per direction. Mirroring left/right diagonal artwork is allowed; diagonal travel must not display the wrong cardinal-facing pose. Cycle the frames only while moving.
 - Advance walking frames based on elapsed time or actual movement, not map tile loading or display refresh rate. Direction changes update the facing animation without teleporting or snapping the avatar's world position.
 - Keep sprite/mesh scale, ground contact, facing, foot positioning, and shadow consistent across frames; the walking cycle should not visually slide or jitter.
-- **Touch control** drives geographic movement; derive visible four-direction sprite facing from geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.
+- **Touch control** drives geographic movement; derive visible **eight-way** sprite facing from accepted geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.
 - Allow lightweight prototype sprite frames to be replaced by polished original assets without rewriting movement, animation timing, or camera logic.
 
 ### MOVE-02 — Traveling long distances
@@ -420,8 +420,8 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 1. Run an installable **portrait-only smartphone PWA** that loads OpenFreeMap through MapLibre.
 2. Display a real neighborhood with the original **low-poly 2.5D** rendering, using only actual OpenFreeMap roads and building footprints.
-3. Show an original **male walking avatar** with **up/down/left/right frame cycles** and an idle pose; frames advance only while moving.
-4. Move the avatar through real coordinates with a **portrait-safe touch joystick**, diagonals, frame-rate-independent speed and basic source-footprint building/water collision; pause during missing source tiles.
+3. Show a small, normal-person-proportioned original **male walking avatar** with **eight directional frame cycles** (including diagonals), an idle pose, and frames advancing only while moving.
+4. Move the avatar through real coordinates at **10 m/s maximum** via a **floating joystick that appears only during gestures begun within the middle 60%** of the portrait screen. Support diagonals, frame-rate independence and source-footprint building/water collision; halt at genuinely unknown source geometry.
 5. Use a **fixed-pitch/zoom oblique exploration camera** that follows the avatar and smoothly turns toward walking heading via the shortest angular path, retaining direction when idle and disabling manual camera rotation/tilt.
 6. Retain smooth rendering, camera position and walking animation when crossing map tile boundaries.
 7. Repeat the demo on a sparsely mapped area; no missing roads or buildings may be procedurally invented.
@@ -431,7 +431,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 ### P0 — Must work in the first map/game vertical slice
 
 1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
-2. Show the animated walking avatar and a **smooth heading-following, fixed-pitch/zoom exploration camera** in a low-poly 2.5D portrait smartphone scene, with correct camera-relative sprite facing.
+2. Show the **human-scale, eight-direction animated avatar** and a smooth heading-following, fixed-pitch/zoom exploration camera in a low-poly 2.5D portrait smartphone scene, with correct camera-relative diagonal facing and touch-zone behavior.
 3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
 4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
 5. Keep roads, buildings, player collision, and camera aligned while **moving via touch controls on a portrait smartphone** and crossing tile boundaries.
