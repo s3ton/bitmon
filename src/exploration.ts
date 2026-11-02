@@ -53,8 +53,8 @@ const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downL
 const TRAINER_HEIGHT_METERS = 1.8
 const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
 const AVATAR_RENDER_SCALE = 2
-const JOYSTICK_START_MIN = .2
-const JOYSTICK_START_MAX = .8
+const JOYSTICK_START_MIN = .1
+const JOYSTICK_START_MAX = .9
 const COLLISION_RADIUS_METERS = 28
 const CACHE_REFRESH_METERS = 12
 const METERS_PER_DEGREE = METERS_PER_RADIAN * Math.PI / 180
@@ -316,8 +316,8 @@ export function startExploration(map: MapLibreMap): void {
     requestTick()
   }
 
-  // The finger may start anywhere in the middle 60% of the portrait viewport.
-  // Upper/lower HUD bands and map attribution never initiate movement.
+  // The finger may start anywhere in the middle 80% of the portrait viewport.
+  // Top/bottom 10% and interactive HUD controls never initiate movement.
   app.addEventListener('pointerdown', (event) => {
     if (activePointer !== null || !event.isPrimary ||
       (event.pointerType === 'mouse' && event.button !== 0) ||
