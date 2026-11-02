@@ -245,6 +245,8 @@ Network outages need predefined handling: suspend affected slots, shift deadline
 
 ## 7. Deterministic combat and capture
 
+**World and camera presentation:** Per the [Product Requirements](PRODUCT_REQUIREMENTS.md), the **first prototype is exploration-only**: a male avatar with a directional walk cycle, touch controls, and a fixed-angle portrait camera following OpenFreeMap-based low-poly 2.5D geometry. When battles are implemented later, they will remain in the **same 2.5D world scene**: zoom/reframe toward the encountered bitmon with real-world mapped surroundings visible, then return to the exact fixed-angle exploration camera. Camera motion is **presentation only** and must not change canonical player coordinates, encounter validity, or battle rules.
+
 ### 7.1 Battles
 
 The authoritative rules engine computes damage, defense, abilities, status effects, XP, healing, and consumable usage. The browser runs the same deterministic logic for immediate feedback. Settlement uses the exact, versioned rules engine rather than trusting a client claim of victory.
