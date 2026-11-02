@@ -3,7 +3,7 @@ import { Marker, type Map as MapLibreMap } from 'maplibre-gl'
 type Position = { lon: number; lat: number }
 type Ring = number[][]
 type Polygon = Ring[]
-type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon }
+type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number }
 
 const METERS_PER_RADIAN = 6_371_008.8
 const SPEED_METERS_PER_SECOND = 10
@@ -16,6 +16,11 @@ const CAMERA_PRESETS = {
 type CameraPreset = keyof typeof CAMERA_PRESETS
 const CAMERA_HEADING_DEAD_ZONE = 12
 const CAMERA_BACKWARD_ANGLE = 135
+const CAMERA_EXPLORATION_PITCH = 45
+const CAMERA_PITCH_SAFETY_METERS = 1
+const CAMERA_PITCH_SCAN_SECONDS = .1
+const CAMERA_PITCH_UP_RATE = 120
+const CAMERA_PITCH_DOWN_RATE = 45
 const DEAD_ZONE = 0.16
 const START: Position = { lon: 9.1869, lat: 45.4715 }
 
@@ -74,6 +79,31 @@ function distanceMeters(a: Position, b: Position): number {
   )
 }
 
+// Return the nearest source footprint crossed by a ray from the player toward
+// the camera. This stays in world meters and does not infer a missing building.
+function rayDistanceToBuilding(position: Position, bearing: number, area: CollisionArea): number {
+  const lonScale = METERS_PER_DEGREE * Math.cos(radians(position.lat))
+  const ray = radians(bearing + 180)
+  const east = Math.sin(ray)
+  const north = Math.cos(ray)
+  let nearest = Infinity
+  const ring = area.rings[0]
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const ax = (ring[j][0] - position.lon) * lonScale
+    const ay = (ring[j][1] - position.lat) * METERS_PER_DEGREE
+    const sx = (ring[i][0] - ring[j][0]) * lonScale
+    const sy = (ring[i][1] - ring[j][1]) * METERS_PER_DEGREE
+    const det = east * sy - north * sx
+    if (Math.abs(det) < .000001) continue
+    const rayDistance = (ax * sy - ay * sx) / det
+    const onEdge = (ax * north - ay * east) / det
+    if (rayDistance > 0 && onEdge >= 0 && onEdge <= 1) {
+      nearest = Math.min(nearest, rayDistance)
+    }
+  }
+  return nearest
+}
+
 function closestOnSegment(origin: Position, a: number[], b: number[]): Position {
   const lonScale = METERS_PER_DEGREE * Math.cos(radians(origin.lat))
   const ax = (a[0] - origin.lon) * lonScale
@@ -127,6 +157,8 @@ export function startExploration(map: MapLibreMap): void {
   let cameraPreset: CameraPreset = 'balanced'
   let steadyHeading: number | null = null
   let steadySeconds = 0
+  let occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
+  let desiredPitch = CAMERA_EXPLORATION_PITCH
   cameraPresetSelect.addEventListener('change', () => {
     cameraPreset = cameraPresetSelect.value as CameraPreset
     steadyHeading = null
@@ -170,12 +202,19 @@ export function startExploration(map: MapLibreMap): void {
           }
           if (bounds.maxLon < position.lon - .002 || bounds.minLon > position.lon + .002 ||
               bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
-          areas.push({ ...bounds, rings })
+          // Match the height fallback used by the fill-extrusion layer.
+          const sourceHeight = Number(feature.properties?.render_height)
+          const height = layer === 'building' && feature.properties?.hide_3d !== true
+            ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
+            : undefined
+          areas.push({ ...bounds, rings, height })
         }
       }
     }
     collisionAreas = areas
     collisionOrigin = { ...position }
+    occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
+    requestTick()
 
     // Initial Brera coordinates can fall inside a real mapped building.
     // Spawn at a nearby mapped route, not by disabling building collisions.
@@ -228,6 +267,21 @@ export function startExploration(map: MapLibreMap): void {
         movementStatus.textContent = 'No clear starting spot in loaded map data.'
       }
     }
+  }
+
+  // A building can occlude a DOM marker, which otherwise draws over 3D walls.
+  // Tilt toward overhead only as far as the nearest mapped building requires.
+  function safeCameraPitch(bearing: number): number {
+    let result = CAMERA_EXPLORATION_PITCH
+    for (const area of collisionAreas) {
+      if (area.height === undefined) continue
+      const distance = rayDistanceToBuilding(position, bearing, area)
+      if (!Number.isFinite(distance)) continue
+      const clearDistance = Math.max(0, distance - CAMERA_PITCH_SAFETY_METERS)
+      const clearPitch = degrees(Math.atan2(clearDistance, area.height + CAMERA_PITCH_SAFETY_METERS))
+      result = Math.min(result, clearPitch)
+    }
+    return result
   }
 
   function isBlocked(candidate: Position): boolean {
@@ -326,10 +380,28 @@ export function startExploration(map: MapLibreMap): void {
       steadyHeading = null
       steadySeconds = 0
     }
-    // Never continue a pending camera turn after stopping or hitting a wall.
-    if (walking) map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing })
+    // Adjust camera elevation only when a sourced building would cover the
+    // trainer, rather than drawing the trainer through an opaque wall.
+    occlusionScanSeconds += dt
+    if (occlusionScanSeconds >= CAMERA_PITCH_SCAN_SECONDS) {
+      desiredPitch = safeCameraPitch(nextBearing)
+      occlusionScanSeconds = 0
+    }
+    const pitch = map.getPitch()
+    const pitchDifference = desiredPitch - pitch
+    const pitchRate = pitchDifference < 0 ? CAMERA_PITCH_UP_RATE : CAMERA_PITCH_DOWN_RATE
+    const pitchStep = Math.sign(pitchDifference) * Math.min(
+      Math.abs(pitchDifference) * (1 - Math.exp(-dt / .2)), pitchRate * dt,
+    )
+    const nextPitch = Math.abs(pitchDifference) < .15 ? desiredPitch : pitch + pitchStep
+    // The sprite is a DOM marker above WebGL. Hide it briefly while the
+    // camera moves to a genuinely unobstructed angle, never through walls.
+    avatar.style.visibility = nextPitch > desiredPitch + 1 ? 'hidden' : 'visible'
+    if (walking || Math.abs(pitchDifference) >= .15) {
+      map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
+    }
     renderAvatar(walking)
-    if ((usingStick && length > DEAD_ZONE) || keys.size) requestTick()
+    if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(pitchDifference) >= .15) requestTick()
     else lastFrameTime = 0
   }
 
@@ -341,6 +413,8 @@ export function startExploration(map: MapLibreMap): void {
     movementStatus.hidden = true
     animationTime = 0
     renderAvatar(false)
+    occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
+    requestTick()
   }
 
   function moveStick(clientX: number, clientY: number): void {

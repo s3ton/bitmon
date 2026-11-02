@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.15 (2 November 2026)  
+**Baseline PRD:** v0.16 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** The owner explicitly approved promotion of the reviewed Preview exploration feature set to Stable after moving camera settings into a top-right hamburger menu. Preview includes 10 m/s movement, eight-way sprites, 2× visual avatar scale, 10–90% joystick activation, corrected vertical direction, a 15.5–20 zoom slider and Balanced soft-follow camera presets. Release PR [#11](https://github.com/s3ton/bitmon/pull/11) is the reviewed Preview → Main promotion route. Code/build CI and Pages deployment are separate gates; smartphone E0 visual/collision acceptance has **not** been established. **Last evidence review:** 2 November 2026.
@@ -36,7 +36,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | VIS-01 | Soft-follow camera with preset delay/capped yaw, fixed pitch and 15.5–20 zoom slider | E0 | In review — device check pending | Phone checks hamburger accessibility/preset dismissal, delayed turns, no reverse flip/idle coast, visible zoom, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | Not started | Deterministic generic + residential-like variants using only source tile fields/context | — |
-| VIS-04 | Layers, roofs and player occlusion work together | P0 | Not started | Walk behind buildings and stay visible via agreed cutaway/fade | — |
+| VIS-04 | Layers, roofs and player occlusion work together | P0 | In review — source-based pitch correction | Walk behind mapped buildings: no through-wall overlay, camera pitches toward overhead then restores 45°, collision unchanged | — |
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
 | MOVE-01 | 10 m/s geographic movement, screen-relative vertical touch mapping, floating 80% joystick and diagonals | E0 | Blocked — owner reports inversion | Device verifies swipe up/down against intended direction, slider never triggers joystick, 10 m/s maximum and mapped collision | [#13](https://github.com/s3ton/bitmon/pull/13), control/zoom fix PR |
 | EXPL-01 | Illustrated avatar with 2× visual scale; 8 directions × idle + four walking frames | E0 | In review — owner art/scale approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | [#13](https://github.com/s3ton/bitmon/pull/13) |
@@ -125,6 +125,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-025 | **Accepted — supersedes DEC-021 activation zone only** | Increase floating joystick start zone to viewport fractions 0.1–0.9 (middle 80%); keep top/bottom 10% excluded. Double-size sprite is a rendering/readability adjustment, not a physical growth of the trainer; collision probes remain in geographic meters regardless of zoom. | **v0.13** MOVE-01, EXPL-01, MOBILE-01 |
 | 2026-11-02 | DEC-026 | **Accepted — refines DEC-019 camera responsiveness** | Replace immediate heading chase with delayed soft-follow yaw, capped angular speed, 12° turn dead zone, reverse-input guard and idle freeze. Add Relaxed/Balanced/Responsive presets for mobile tuning; position follows immediately and camera/input geography remains independent. | **v0.14** VIS-01, MOVE-01, EXPL-01, MOBILE-01 |
 | 2026-11-02 | DEC-027 | **Accepted** | Move the camera presets under a compact top-right hamburger menu. Open/close through a native accessible disclosure; selecting a preset dismisses it. Keep the zoom slider visible at the right of the map. Owner explicitly approves promotion of all currently reviewed Preview gameplay to Stable through a separate release PR, subject to CI and deployment verification. | **v0.15** VIS-01, MOVE-01, MOBILE-01, DIST-01 |
+| 2026-11-02 | DEC-028 | **Accepted — refines normal fixed-pitch exploration** | When a real mapped building would block the trainer, automatically tilt the camera toward overhead by the minimum clearance angle instead of depicting the avatar through walls. Restore 45° when clear, preserve geographic movement, zoom and bearing; account for source rendering heights. | **v0.16** VIS-01, VIS-04, MOVE-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -205,6 +206,10 @@ After deployment of dual-channel Pages, the owner reported the Preview installat
 
 The owner requested that only the top and bottom 10% of the portrait viewport reject joystick starts, expanding the interactive region from the original 60% to 80% (`0.1 ≤ y/viewportHeight ≤ 0.9`). The earlier DEC-021 20–80% range is historical and superseded by DEC-025. Existing zoom/UI input exclusions, hidden-until-pointerdown behavior, camera control and 10 m/s movement are unchanged. This change does not increase the trainer's real-world size: the previous 2× increase was visual only and collision stays meter-based. Owner phone verification is pending.
 
+### Toolchain refresh audit — 2 November 2026
+
+The owner requested checking and updating stale tooling. Node 22 CI is replaced by **Node 26 Active LTS**, with a root `.nvmrc` and package engine boundary; TypeScript 5.9.3 is upgraded to 7.0.2; MapLibre GL JS 6.16.0 and Vite 8.3.5 are confirmed current and exact-pinned. GitHub Actions checkout/setup-node are upgraded from v4 to v7, and Pages artifact/setup/deploy actions to v5/v6/v5. Current runner and task build compatibility require CI; a Pages workflow in `preview` is not active until a separate release into `main`. There is no tracked lockfile; dependencies remain installed with npm, so transitive updates are not yet reproducibly pinned. No gameplay or map source changes are caused by this audit.
+
 ### Preview camera soft-follow refinement — 2 November 2026
 
 The owner reported that rotating the camera almost instantly toward every joystick direction felt unnatural, especially for reverse and short sideways input. DEC-026 sets a Balanced soft-follow default (0.4 s stable-travel delay, max 60°/s, 0.8 s damping, 12° dead zone), with Relaxed and Responsive selector presets to compare on a smartphone. Player position updates immediately, but yaw is suppressed on backward gestures (≥135° relative to the control basis), small heading changes and brief sideways taps. Releasing input or being blocked freezes yaw immediately. The camera rotates only presentation; actual geographic movement retains its snapshot input bearing, 10 m/s full speed and existing OpenFreeMap collision. No phone acceptance or quantitative motion-sickness measurements are claimed.
@@ -212,3 +217,7 @@ The owner reported that rotating the camera almost instantly toward every joysti
 ### Hamburger settings and owner-directed Stable release — 2 November 2026
 
 The top-right camera selector is now a hamburger button (44 × 44 CSS px) with a native disclosure panel containing Relaxed/Balanced/Responsive choices. Selecting a preset closes the panel; zoom remains exposed separately on the right side. All settings interaction is excluded from joystick gestures. The owner explicitly requested promoting the full current Preview feature set to Main after this refinement; the release PR remains a separate integration gate with CI and Pages publication evidence tracked independently. This owner-directed release does not imply phone-based E0 gameplay acceptance or that additional systems are finished.
+
+### Building occlusion visibility correction — 2 November 2026
+
+The owner requested not drawing the player visibly through buildings. The camera instead adjusts pitch toward top-down only if a source building intersects the line of sight from trainer to camera; exact source footprint edges and MapLibre extrusion `render_height`/14 m fallback supply a conservative clearance pitch. The camera gradually restores its normal 45° angle after clearing the obstruction. The DOM trainer is hidden while adjusting to avoid a transient through-wall overlay. This is a camera/view rule; it must not change the OpenFreeMap footprint, geographic position, collision tests, heading controls, or zoom. Smartphone acceptance, dense-city performance, and difficult geometry cases remain unverified.

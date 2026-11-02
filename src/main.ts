@@ -109,7 +109,7 @@ const map = new Map({
   minZoom: 15.5,
   maxZoom: 20,
   pitch: 45,
-  minPitch: 45,
+  minPitch: 0,
   maxPitch: 45,
   bearing: -20,
   interactive: false,

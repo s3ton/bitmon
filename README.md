@@ -2,7 +2,7 @@
 
 **bitmon** is a **smartphone-first, portrait-only, installable PWA** creature-collection RPG set on a 1:1 representation of Earth, rendered as an original **low-poly 2.5D** world.
 
-The geographic base uses **OpenFreeMap as the sole geographic data source** and **MapLibre for rendering**. No physical building or road may be generated unless it exists in the OpenFreeMap tiles. Original window, roof, and facade art may be inferred from those tiles but does not claim to reproduce actual architecture. The game adds original facade and roof treatments on mapped buildings, plus characters and creatures. **Immediate development focus:** touch-controlled walking-avatar exploration with a fixed-pitch, zoomable camera that gently recenters only after sustained movement. **Later battles** zoom/reframe in the same low-poly world, then restore and resume heading-following exploration. Progression is local-first and verifiable with permissionless trainer registration, public randomness, restricted creature swaps, and player-led gyms.
+The geographic base uses **OpenFreeMap as the sole geographic data source** and **MapLibre for rendering**. No physical building or road may be generated unless it exists in the OpenFreeMap tiles. Original window, roof, and facade art may be inferred from those tiles but does not claim to reproduce actual architecture. The game adds original facade and roof treatments on mapped buildings, plus characters and creatures. **Immediate development focus:** touch-controlled walking-avatar exploration with a normally 45° zoomable camera that gently recenters after sustained movement and tilts toward overhead only when real mapped buildings obscure the avatar. **Later battles** zoom/reframe in the same low-poly world, then restore and resume heading-following exploration. Progression is local-first and verifiable with permissionless trainer registration, public randomness, restricted creature swaps, and player-led gyms.
 
 ## Documents
 
@@ -24,6 +24,10 @@ The source repository is **public**. The currently deployed build is [bitmon Sta
 - The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
 - **Still pending:** owner re-test of movement, map collision and sprite quality, cross-platform Android/iOS support, service-worker/offline behavior, tile-edge handling, screenshots and performance.
 
+## Toolchain
+
+Use **Node.js 26 LTS** (local `.nvmrc`, and GitHub Actions). Core package versions are pinned: MapLibre GL JS 6.16.0, Vite 8.3.5, TypeScript 7.0.2. An npm lockfile is not yet tracked; dependency installation is still performed with `npm install`, so transitives are not reproducibly pinned. Changes to the published Pages workflow must reach `main` before its main-context deployment action will use the new workflow versions.
+
 ## Local build
 
 ```sh
@@ -37,7 +41,7 @@ npm run dev
 
 1. Keep [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) set to **GitHub Actions** with `github-pages` environment deployments restricted to `main`. The independent Preview/Stable publishing infrastructure has already been bootstrapped on `main`.
 2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. It should have a **purple Preview icon and "bitmon DEV" home-screen label**, distinct from the teal Stable app. It auto-updates after `preview` branch **successful** push CI, without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
-3. On a portrait phone, verify Preview offers a **separate installation**, with its purple icon and distinct name, while Stable remains installed. Then check joystick up/down direction, short sidesteps/backward walks without sudden camera flips, the top-right hamburger menu with camera presets (close it by choosing a preset), 10 m/s diagonals, 15.5–20 right-side zoom slider, scale-adjusting trainer, collision, offline shell and both home-screen launches. Verify changing preview leaves Stable unchanged.
+3. On a portrait phone, verify Preview offers a **separate installation**, with its purple icon and distinct name, while Stable remains installed. Then check joystick up/down direction, short sidesteps/backward walks without sudden camera flips, source-driven automatic overhead tilt instead of through-wall avatar rendering, the top-right hamburger menu with camera presets (close it by choosing a preset), 10 m/s diagonals, 15.5–20 right-side zoom slider, scale-adjusting trainer, collision, offline shell and both home-screen launches. Verify changing preview leaves Stable unchanged.
 4. The owner requested a Stable promotion of this Preview baseline (including the hamburger camera menu). [Release PR #11](https://github.com/s3ton/bitmon/pull/11) is the existing `preview` → `main` integration path. The stable site updates only on a successfully merged release followed by a successful GitHub Pages deploy; Preview continues to evolve independently.
 
 Both PWAs need internet for uncached map tiles. Current source code has no saved game progress; any future localStorage or IndexedDB keys must include the channel name because browser storage is shared by origin.

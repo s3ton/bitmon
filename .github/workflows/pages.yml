@@ -32,20 +32,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout stable main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           path: stable
           persist-credentials: false
       - name: Checkout checked preview source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'preview' }}
           path: preview
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: '26'
       - name: Build stable from main
         working-directory: stable
         run: |
@@ -101,7 +101,7 @@ jobs:
           cp -R stable/dist/. pages/
           cp -R preview/dist/. pages/preview/
           touch pages/.nojekyll
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: pages
 
@@ -115,7 +115,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - name: Deploy both channels to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
