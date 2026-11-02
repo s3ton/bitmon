@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.3 — smartphone-first, portrait-only, installable PWA with low-poly 2.5D  
+**Version:** 0.4 — fixed-angle exploration camera, walking avatar, same-world battle zoom, plus portrait mobile PWA and low-poly 2.5D  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -39,6 +39,9 @@ The game is primarily played locally after the player registers a verifiable tra
 - **Smartphones are the primary target.** Bitmon ships as an **installable PWA**, not initially as a native app-store binary.
 - **Portrait-only gameplay.** No landscape gameplay layout or support is planned.
 - **Low-poly 2.5D** is the required art direction; simple geometric building volumes, faceted or flat-shaded treatments, original art, and low visual complexity.
+- **Exploration camera is fixed-angle**, top-down/oblique like classic handheld creature RPGs; it follows the moving avatar without rotating in normal play.
+- **Battles stay in the same 2.5D real-world scene**: the camera zooms/reframes to focus on the encountered bitmon with the surrounding mapped world still behind it, then smoothly returns to the unchanged exploration view when the battle ends.
+- **The immediate development objective is exploration only:** a male avatar with a loopable four-direction walking animation, touch movement, and a fixed-angle camera on the OpenFreeMap world. Battle mechanics and blockchain progression are not prerequisites for this first prototype.
 - **GitHub-only distribution for now:** keep the source repository private and deploy **compiled PWA output only** to a separate public GitHub repository served by GitHub Pages.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
 - **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
@@ -65,9 +68,9 @@ The game is primarily played locally after the player registers a verifiable tra
 1. **Open or install bitmon on a smartphone.** Visit its public PWA URL, or launch it from the home-screen icon; see a short introduction explaining the real-Earth game world.
 2. **Create a verified trainer.** Connect or create a self-custodial wallet, choose a starter under fixed rules, select an initial permitted region, and register the trainer on-chain. Fees are self-paid or optionally sponsored.
 3. **Enter the world.** Start at a map coordinate and see roads, nearby buildings, parks, paths, and water in the bitmon visual language.
-4. **Explore.** Move through the world, follow recognizable streets, pass 2.5D buildings, and discover places and habitats. The world streams in as the player travels.
-5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; the local game presents them as familiar RPG encounters.
-6. **Battle, capture, and train.** Play turn-based battles locally; legal actions change HP, status, inventory, levels, and the pending collection.
+4. **Explore.** Move a four-direction animated trainer avatar through the world; the fixed-angle top-down/oblique camera follows without rotating. Roads and existing low-poly buildings stream in as the player travels.
+5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; the camera moves closer to the encountered bitmon while the **same mapped low-poly world** remains visible in the background.
+6. **Battle, capture, and train.** Play turn-based battles locally in the zoomed world view; legal actions change HP, status, inventory, levels, and the pending collection. When the encounter ends, the camera smoothly returns to the prior fixed exploration perspective and follows the trainer again.
 7. **Secure progress.** The UI distinguishes progress saved locally from progress verified on-chain. The player can finalize a batch when needed.
 8. **Trade and challenge gyms.** Swap finalized bitmon under fixed rules and challenge a gym with a type-eligible team. Winning replaces the current player leader and earns recognition.
 9. **Keep playing independently.** The user is not dependent on an ad sponsor or the original website to submit valid state changes.
@@ -135,10 +138,11 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Use a **low-poly 2.5D scene**: map-aligned ground geometry, low-triangle-count raised building forms, depth-sorted sprites, controlled shadows and sparse decoration.
 - Favor **clear silhouettes, simple mesh geometry, cohesive flat/faceted shading and low draw-call cost**, not photorealism or pixel-art textures.
 - Frame all gameplay for a narrow **portrait smartphone viewport**; the character, mapped routes and nearby interactions must remain readable.
+- **During exploration the camera's bearing, pitch, and gameplay framing are fixed**. It follows the character's position, with no manual camera rotation, arbitrary tilt, or angle changes while walking. The battle transition described in CAM-01 is the only planned change in camera framing.
 - The target feel is a classic handheld top-down creature RPG (the fourth/fifth-generation era is a **visual reference only**, not a license to copy character designs, tiles, interfaces, sounds, or maps).
 - The main player character remains legible against the map; nearby buildings must not permanently hide the player.
 - Perspective, building height exaggeration, and camera pitch are art/UX parameters to test, not claims that geographic features are fully photorealistic.
-- Zoom and camera motion should preserve a consistent spatial understanding of where the player is.
+- The exploration camera keeps a consistent fixed perspective and follows the avatar smoothly; zoom and tilt are not normal player exploration controls. Battle zooms must restore the same bearing, pitch, and follow state afterward.
 - Labels and major navigation cues must remain readable above or around extruded geometry.
 
 ### VIS-02 — Buildings as stylized volumes
@@ -209,6 +213,17 @@ An optional guest demo can let a player see the map, walk around, and try practi
 - Allow the player to inspect surroundings and understand the map orientation.
 - **Touch is the primary input** for moving, exploring, selecting battle actions, collecting, and navigating menus with one or two thumbs in portrait. Keyboard/mouse are optional development conveniences; gamepad support is deferred.
 
+### EXPL-01 — Animated walking avatar
+
+**As a player**, I can control a recognizable male trainer avatar and see him walk naturally in the direction I move.
+
+- Provide an **original** male explorer/trainer design that reads clearly in a low-poly 2.5D portrait scene. No reused character art from existing franchises.
+- Use a **small directional walking animation** (at minimum up, down, left, and right) made from a coherent sequence of frames. Animate only while the character moves; show an idle/standing frame when stationary.
+- Advance walking frames based on elapsed time or actual movement, not map tile loading or display refresh rate. Direction changes update the facing animation without teleporting or snapping the avatar's world position.
+- Keep sprite/mesh scale, ground contact, facing, foot positioning, and shadow consistent across frames; the walking cycle should not visually slide or jitter.
+- **Touch control** drives movement and animation. The fixed exploration camera follows the avatar; the avatar turns but the camera does not rotate.
+- Allow lightweight prototype sprite frames to be replaced by polished original assets without rewriting movement, animation timing, or camera logic.
+
 ### MOVE-02 — Traveling long distances
 
 A 1:1 Earth cannot be practical to explore exclusively by walking at a human-scale speed. **A travel system is necessary but not yet specified.** Candidate mechanisms include selecting a starting location, roads/transport routes, regional travel, or fast travel to discovered locations.
@@ -269,6 +284,17 @@ The game should not require disclosure of the player's real-world location merel
 - Damage, status, items, move legality, XP, and capture outcomes follow deterministic, published rules that can be independently verified.
 - Capture is deterministic after the encounter exists and required battle/resource conditions are satisfied; the player cannot brute-force an extra hidden catch roll.
 - Difficulty and pacing should be tuned for enjoyable play, not just cryptographic convenience.
+
+### CAM-01 — Battle framing in the existing world
+
+**As a player**, when I encounter a bitmon, the view zooms in to show that bitmon **inside the same real-world 2.5D environment**, then returns to normal exploration after the battle.
+
+- Do **not** load a separate abstract battle arena, unrelated illustration, or replacement background. Keep existing OpenFreeMap roads, terrain, and mapped building volumes visible behind the bitmon, rendered in the same low-poly art style.
+- On encounter start, smoothly **zoom and reframe** the active exploration camera onto the encountered bitmon (and relevant combat participants), retaining the scene's actual geographic setting and mapping revision.
+- Use a combat-suitable close perspective while keeping the same world scene and a readable portrait touch UI.
+- When combat finishes or exits, restore the **precise pre-battle camera bearing, pitch, zoom and avatar-follow framing**, then resume the fixed-angle exploration camera without an abrupt position jump.
+- Preserve valid world/avatar location and encounter state across the transition. Camera animation must not change map geometry, prove movement, or create additional road/building features.
+- **Implementation timing:** define this behavior now, but defer battle framing until the exploration-only prototype meets its acceptance criteria. The first prototype needs no combat implementation.
 
 ### GAME-03 — Saving and restoration
 
@@ -388,10 +414,24 @@ The game should not require disclosure of the player's real-world location merel
 
 The first playable milestone is an **installable portrait-smartphone PWA vertical slice** rather than a finished planet-sized RPG. It demonstrates one real neighborhood with the same generalized pipeline intended for the rest of Earth.
 
+### E0 — First development milestone: exploration-only prototype
+
+**Build this before registration, battles, captures, gyms, trades, ZK proofs, or advertising.** E0 is a focused visual/movement prototype, **not yet the verified game**.
+
+1. Run an installable **portrait-only smartphone PWA** that loads OpenFreeMap through MapLibre.
+2. Display a real neighborhood with the original **low-poly 2.5D** rendering, using only actual OpenFreeMap roads and building footprints.
+3. Show an original **male walking avatar** with **up/down/left/right frame cycles** and an idle pose; frames advance only while moving.
+4. Move the avatar by **touch controls**, with simple collision and correct map-coordinate movement.
+5. Use a **fixed-angle top-down/oblique exploration camera** that follows the avatar but never rotates during ordinary movement.
+6. Retain smooth rendering, camera position and walking animation when crossing map tile boundaries.
+7. Repeat the demo on a sparsely mapped area; no missing roads or buildings may be procedurally invented.
+
+**Explicitly deferred after E0:** battle camera transition (CAM-01), encounter rules, wallet registration, proving/finality, trade, gyms, advertising. Their product requirements remain valid for later work.
+
 ### P0 — Must work in the first map/game vertical slice
 
 1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
-2. Show a controlled player character and a usable, consistent **low-poly 2.5D view on a portrait smartphone**.
+2. Show the animated walking avatar and a **fixed-angle, non-rotating exploration camera** in a low-poly 2.5D portrait smartphone scene.
 3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
 4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
 5. Keep roads, buildings, player collision, and camera aligned while **moving via touch controls on a portrait smartphone** and crossing tile boundaries.
@@ -433,6 +473,8 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
 | Known-beacon location exploit | A player cannot choose a better location **after** seeing encounter randomness and still claim the result as a valid earlier slot. |
 | Unregistered account | No verified bitmon can be claimed without pre-registered eligible trainer identity. |
+| Animated explorer | Directional frame cycles play while moving and stop when idle; changing direction does not rotate the camera. |
+| Same-world battle camera | On battle start the active camera zooms toward the encountered bitmon while the mapped world remains visible; after battle it returns to the exact exploration framing. **Deferred until after E0.** |
 | Fire gym | Fire and Fire/Wind are accepted; Water/Wind is rejected for both attack and defense. |
 | Sponsor outage | A player with their own gas and a valid proof can still finalize progress. |
 | Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
@@ -449,7 +491,7 @@ These questions need product decisions; implementing guesses as if already settl
 4. **Encounter location commitment:** Exactly when and how is a region/habitat fixed relative to the public randomness beacon? This is essential to fair, worldwide encounters.
 5. **Walkable space:** Does play primarily follow mapped paths, or allow free walking through parks, fields, and plazas? What to do with roads lacking foot-access information?
 6. **Facade inference rulebook:** Which existing OpenFreeMap attributes/context influence facade variants, how should uncertain inferences be weighted, and how do source-tile updates affect deterministic art? **No additional geographic data source is allowed.**
-7. **Camera/art direction:** Exact angle, camera rotation policy, sprite resolution, texture treatment, roof presentation, and building-height stylization.
+7. **Camera/art direction:** Exact **fixed** exploration pitch and bearing, avatar frame scale/timing, battle zoom/reframe easing, roof presentation, and building-height stylization. **Non-rotating exploration and same-world battle zoom are already fixed.**
 8. **Interiors:** Are any buildings enterable in the first release? No such feature is assumed here.
 9. **Gym placement:** How are gyms distributed fairly across a worldwide map? How does a player find and reach them?
 10. **Starter and habitat design:** Initial bitmon types, starting conditions, balance of cities/rural areas, and whether region influences **species only** or also rarity.
