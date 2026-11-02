@@ -1,12 +1,8 @@
-name: Deploy bitmon Pages preview
+name: Deploy bitmon Pages
 
 on:
   push:
-    branches:
-      - preview
-      # Temporary review-only test trigger. Remove before merging PR #3.
-      - feat/task-001-pwa-world
-  workflow_dispatch:
+    branches: [main]
 
 permissions:
   contents: read

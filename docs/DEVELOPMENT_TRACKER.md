@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.5 (2 November 2026)  
+**Baseline PRD:** v0.6 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Task 001 implementation proposed in PR from `feat/task-001-pwa-world`; acceptance and on-device checks pending.
@@ -115,7 +115,8 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
 | 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 
-| 2026-11-02 | DEC-017 | **Accepted — supersedes DEC-013 for testing** | The repository is public; GitHub Pages serves compiled PWA output directly from `s3ton/bitmon`, first for the Task 001 feature-branch test and subsequently from `preview` | **v0.5** DIST-01 |
+| 2026-11-02 | DEC-017 | **Superseded by DEC-018** | Public-source-repository Pages testing was initially proposed from feature/`preview` | **v0.5** DIST-01 |
+| 2026-11-02 | DEC-018 | **Accepted** | Deploy compiled PWA artifacts to GitHub Pages **only from `main`** following feature PR into `preview` and separate reviewed `preview` → `main` release PR. Keep the website a test prototype | **v0.6** DIST-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -160,7 +161,7 @@ No implementation task is claimed complete by this document.
 ## Task 001 — GitHub Pages test deployment
 
 - **PR:** [#3](https://github.com/s3ton/bitmon/pull/3), draft; base `preview`, no merge yet.
-- **Workflow:** `.github/workflows/pages.yml`. It publishes only the `dist/` build output using GitHub Actions. The named feature-branch trigger is temporary for pre-merge phone testing and must be removed before merge; the ordinary trigger is `preview`.
+- **Workflow:** `.github/workflows/pages.yml` publishes only `dist/` from `main`, after a separate `preview` → `main` release PR. Neither feature branches nor `preview` directly deploy.
 - **Intended URL:** https://s3ton.github.io/bitmon/ — not yet verified live.
-- **Required repository setting:** Settings → Pages → Build and deployment → Source: **GitHub Actions**. Pages is currently not enabled; the GitHub connector cannot enable it. If the first workflow attempt fails, rerun after enabling Pages.
+- **Required repository setting:** Settings → Pages → Build and deployment → Source: **GitHub Actions**, with the `github-pages` environment allowing `main`. Earlier feature-branch deploy attempts were blocked by environment branch protection, which is now avoided.
 - **Still to verify:** Pages deployment, HTTPS and subpath assets, manifest and service worker, portrait Android/iOS home screen install, mapped geometry, attribution, performance and screenshots.

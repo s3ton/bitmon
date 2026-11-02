@@ -11,7 +11,7 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 - [Development Tracker](docs/DEVELOPMENT_TRACKER.md) — implementation status, acceptance evidence, open decisions, and requirements change history.
 - [Agent Engineering Skill](skill.md) — mandatory test minimization, no-dead-code policy, simplification review, and PR-to-preview workflow.
 
-The source repository is now **public**. The test PWA is deployed to [GitHub Pages](https://s3ton.github.io/bitmon/) directly from this repository once Pages is enabled and the workflow succeeds. No separate distribution repository is needed.
+The source repository is now **public**. GitHub Pages publishes the compiled PWA from the **main** branch at [https://s3ton.github.io/bitmon/](https://s3ton.github.io/bitmon/) after the deployment workflow succeeds. No separate distribution repository is needed.
 
 ## Local build
 
@@ -25,8 +25,8 @@ npm run dev
 ## GitHub Pages smartphone test
 
 1. Open [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) and set **Build and deployment → Source** to **GitHub Actions**.
-2. Check the [Pages deployment workflow](https://github.com/s3ton/bitmon/actions/workflows/pages.yml). It uploads only `dist/`. While Task 001 is in review, the named feature branch can publish for smartphone testing; remove this temporary trigger before merging to `preview`.
-3. Once the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone, test the map and attribution, rotate the device and add the PWA to the home screen.
+2. Merge feature work into `preview` through a reviewed PR; promote `preview` to `main` through a separate release PR. [The Pages workflow](https://github.com/s3ton/bitmon/actions/workflows/pages.yml) runs only when `main` changes and uploads only `dist/`.
+3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone, test the map and attribution, rotate the device and add the PWA to the home screen.
 
 Map tiles still need network access; only the app shell is cached. The public URL is a preview, not a verified game.
 
