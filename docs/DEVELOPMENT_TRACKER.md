@@ -1,7 +1,7 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.4 (2 November 2026)  
+**Baseline PRD:** v0.5 (2 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
 **Current reporting state:** Task 001 implementation proposed in PR from `feat/task-001-pwa-world`; acceptance and on-device checks pending.
@@ -60,7 +60,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
 | MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | — |
 | PWA-01 | Install and launch from Android/iOS home screens | E0 | In review | HTTPS PWA manifest, standalone launch, offline shell and local-save behavior | — |
-| DIST-01 | GitHub-only public compiled PWA, private source | P0 | Not started | GitHub Pages distribution, correct subpath scope, no private sources/secrets/maps | — |
+| DIST-01 | Public repository GitHub Pages prototype | P0 | In review | Live compiled build at /bitmon/, correct asset and worker scope, no sources in Pages artifact | [PR #3](https://github.com/s3ton/bitmon/pull/3) |
 
 ## 3. Map fidelity release gates
 
@@ -115,6 +115,8 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-015 | **Accepted** | **Same-world battles:** camera zooms/reframes to bitmon against existing mapped low-poly world; restores original exploration framing afterward | **v0.4** CAM-01 |
 | 2026-11-02 | DEC-016 | **Accepted** | **Exploration-only E0 now comes first:** touch movement with a male four-direction walking avatar; defer battle, wallet and blockchain | **v0.4** EXPL-01, E0 milestone |
 
+| 2026-11-02 | DEC-017 | **Accepted — supersedes DEC-013 for testing** | The repository is public; GitHub Pages serves compiled PWA output directly from `s3ton/bitmon`, first for the Task 001 feature-branch test and subsequently from `preview` | **v0.5** DIST-01 |
+
 ### Open decisions to resolve before related implementation
 
 | ID | Decision | Blocks / affects | Status |
@@ -128,7 +130,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
 | OPEN-09 | Android/iOS browser/version support, offline-cache and service-worker strategy | PWA-01, MOBILE-01 | Open |
-| OPEN-10 | Public build-only repository name, GitHub Actions credential and controlled release trigger | DIST-01 | Open |
+| OPEN-10 | Longer-term production deployment strategy following direct public-repo Pages prototype | DIST-01 | Open — not blocking test |
 
 ## 6. Rules for updating this tracker
 
@@ -152,5 +154,13 @@ No implementation task is claimed complete by this document.
 - **Branch:** `feat/task-001-pwa-world`; **PR:** [#3](https://github.com/s3ton/bitmon/pull/3), draft targeting `preview`.
 - **Delivered for review:** Vite/TypeScript app; OpenFreeMap-only MapLibre rendering of Brera, Milan; original fixed 45° pitch/-20° bearing; mapped-footprint extrusion with `render_height` and deterministic fallback; portrait rotation overlay; PWA manifest and app-shell worker.
 - **Verification evidence:** GitHub Actions [run 41499501997](https://github.com/s3ton/bitmon/actions/runs/41499501997) passed `npm install`, `npm run check`, and `npm run build` on the initial application commit. **Still pending:** subsequent commit CI, browser render, Android/iOS home-screen install, attribution inspection, source-footprint audit, and portrait smartphone screenshots. No manual smartphone validation is claimed.
-- **Scope deferred:** avatar, walking, collision, facade variations, battles, registration and blockchain; no public repository or deployment created.
+- **Scope deferred:** avatar, walking, collision, facade variations, battles, registration and blockchain; no additional distribution repository created.
 - **Test accounting:** 0 added, 0 removed, net 0. No permanent test is justified for this initial presentation-only slice; PR workflow provides proposed build checks.
+
+## Task 001 — GitHub Pages test deployment
+
+- **PR:** [#3](https://github.com/s3ton/bitmon/pull/3), draft; base `preview`, no merge yet.
+- **Workflow:** `.github/workflows/pages.yml`. It publishes only the `dist/` build output using GitHub Actions. The named feature-branch trigger is temporary for pre-merge phone testing and must be removed before merge; the ordinary trigger is `preview`.
+- **Intended URL:** https://s3ton.github.io/bitmon/ — not yet verified live.
+- **Required repository setting:** Settings → Pages → Build and deployment → Source: **GitHub Actions**. Pages is currently not enabled; the GitHub connector cannot enable it. If the first workflow attempt fails, rerun after enabling Pages.
+- **Still to verify:** Pages deployment, HTTPS and subpath assets, manifest and service worker, portrait Android/iOS home screen install, mapped geometry, attribution, performance and screenshots.

@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.4 — fixed-angle exploration camera, walking avatar, same-world battle zoom, plus portrait mobile PWA and low-poly 2.5D  
+**Version:** 0.5 — public repository GitHub Pages testing; retains v0.4 exploration requirements  
 **Date:** 2 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -42,7 +42,7 @@ The game is primarily played locally after the player registers a verifiable tra
 - **Exploration camera is fixed-angle**, top-down/oblique like classic handheld creature RPGs; it follows the moving avatar without rotating in normal play.
 - **Battles stay in the same 2.5D real-world scene**: the camera zooms/reframes to focus on the encountered bitmon with the surrounding mapped world still behind it, then smoothly returns to the unchanged exploration view when the battle ends.
 - **The immediate development objective is exploration only:** a male avatar with a loopable four-direction walking animation, touch movement, and a fixed-angle camera on the OpenFreeMap world. Battle mechanics and blockchain progression are not prerequisites for this first prototype.
-- **GitHub-only distribution for now:** keep the source repository private and deploy **compiled PWA output only** to a separate public GitHub repository served by GitHub Pages.
+- **GitHub-only preview distribution:** the source repository `s3ton/bitmon` is now public. Build and deploy compiled PWA output directly to its GitHub Pages site at `/bitmon/`; no second distribution repository is needed for testing.
 - The game world covers **Earth at a geographic 1:1 scale**, using real-world map positions.
 - **OpenFreeMap is the sole geographic data source; MapLibre is the map renderer.** No independent OSM API, commercial map provider, enriched building source, or fabricated replacement data is part of the map pipeline.
 - **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
@@ -388,17 +388,16 @@ The game should not require disclosure of the player's real-world location merel
 - Cache a lightweight application shell and preserve unsent local progress where feasible. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
 - A connectivity loss or app update must not silently discard pending progress. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
 
-### DIST-01 — GitHub-only distribution from private source
+### DIST-01 — Test distribution from the public source repository
 
-**As a player**, I can install bitmon from a public GitHub Pages URL while the development repository is still private.
+**As a player**, I can open and install the exploration test at `https://s3ton.github.io/bitmon/`.
 
-- Keep **`s3ton/bitmon` private**. Create a **separate public repository** (proposed name **`bitmon-pwa`**) exclusively for built PWA files when deployment is enabled.
-- Build the game with **GitHub Actions** and publish only deployable artifacts: HTML, CSS, compiled JavaScript, app icons, and public assets. Use **GitHub Pages** on GitHub Free; no other hosting platform is required.
-- Never copy source files, private documentation, Git history, deployment credentials, secrets, unused private assets, or development source maps into the public repository.
-- **Compiled JavaScript can be read and reverse-engineered** by users. Keeping original sources private does not make shipped game logic secret; correctness and anti-cheat rules must not rely on hidden browser code.
-- Make all PWA manifest/start URLs, assets, service worker scope and offline caching work from the **GitHub Pages repository subpath**.
-- Publish builds only through an **explicitly approved deployment path**, not automatically on every feature PR. Use a scoped publishing credential and stay within the GitHub Free plan.
-- The public build-only repository and publishing workflow are **planned**, not created by this documentation change.
+- The repository **`s3ton/bitmon` is public**. For this exploration prototype, GitHub Actions deploys directly to its GitHub Pages site; do not create a separate distribution repository.
+- Publish **only the compiled `dist/` output**—HTML, CSS, JavaScript, manifest, service worker and icons/assets. Never include credentials, development sources, docs or Git history in the deployed artifact. Public repository content is independently visible by design.
+- Set GitHub Pages **Build and deployment → Source → GitHub Actions**. An approved `preview` branch push is the normal deployment trigger; during Task 001 review the explicitly named feature branch may deploy for pre-merge phone testing. Remove that temporary trigger before merging.
+- Manifest scope/start URL, application assets and the service worker must work under the GitHub Pages `/bitmon/` repository subpath.
+- The site is a **public test prototype**, not a completed or verified game. The deployed application can cache the shell but requires connectivity for uncached OpenFreeMap tiles.
+- Production release hosting is a separate future decision. Do not automatically deploy from every pull request.
 
 ### UX-01 — Usability and accessibility
 
