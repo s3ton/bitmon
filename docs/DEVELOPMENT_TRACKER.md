@@ -151,6 +151,6 @@ No implementation task is claimed complete by this document.
 
 - **Branch:** `feat/task-001-pwa-world`; **PR:** [#3](https://github.com/s3ton/bitmon/pull/3), draft targeting `preview`.
 - **Delivered for review:** Vite/TypeScript app; OpenFreeMap-only MapLibre rendering of Brera, Milan; original fixed 45° pitch/-20° bearing; mapped-footprint extrusion with `render_height` and deterministic fallback; portrait rotation overlay; PWA manifest and app-shell worker.
-- **Pending evidence:** dependency installation, TypeScript compilation, production build, browser render, Android/iOS home-screen install, attribution inspection, source-footprint audit, and portrait smartphone screenshots. No manual or automated validation is claimed.
+- **Verification evidence:** GitHub Actions [run 41499501997](https://github.com/s3ton/bitmon/actions/runs/41499501997) passed `npm install`, `npm run check`, and `npm run build` on the initial application commit. **Still pending:** subsequent commit CI, browser render, Android/iOS home-screen install, attribution inspection, source-footprint audit, and portrait smartphone screenshots. No manual smartphone validation is claimed.
 - **Scope deferred:** avatar, walking, collision, facade variations, battles, registration and blockchain; no public repository or deployment created.
 - **Test accounting:** 0 added, 0 removed, net 0. No permanent test is justified for this initial presentation-only slice; PR workflow provides proposed build checks.
