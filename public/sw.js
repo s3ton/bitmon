@@ -16,8 +16,14 @@ self.addEventListener('install', (event) => {
       .filter((url) => url.origin === self.location.origin && /\.(?:js|css)$/.test(url.pathname))
       .map((url) => url.href)
     await cache.addAll([...assets, new URL('manifest.webmanifest', start).href,
-      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href,
-      new URL('trainer-atlas.svg', start).href])
+      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href])
+    // The last released stable PWA still uses an inline trainer SVG.
+    // A missing atlas must not prevent its service worker from installing.
+    try {
+      await cache.add(new URL('trainer-atlas.svg', start).href)
+    } catch {
+      // Optional visual asset: newer builds contain it; older stable does not.
+    }
     await self.skipWaiting()
   })())
 })
