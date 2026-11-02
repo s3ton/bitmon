@@ -9,5 +9,6 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 - [Product Requirements](docs/PRODUCT_REQUIREMENTS.md) — player-facing development requirements.
 - [Technical Design](docs/TECHNICAL_DESIGN.md) — mechanics, verification, anti-farming, trading, gyms, and sponsorship.
 - [Development Tracker](docs/DEVELOPMENT_TRACKER.md) — implementation status, acceptance evidence, open decisions, and requirements change history.
+- [Agent Engineering Skill](skill.md) — mandatory test minimization, no-dead-code policy, simplification review, and PR-to-preview workflow.
 
 These are working design documents, not a completed game or security audit.
