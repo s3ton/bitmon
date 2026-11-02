@@ -52,6 +52,7 @@ const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft
 const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
 const TRAINER_HEIGHT_METERS = 1.8
 const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
+const AVATAR_RENDER_SCALE = 2
 const JOYSTICK_START_MIN = .2
 const JOYSTICK_START_MAX = .8
 const COLLISION_RADIUS_METERS = 28
@@ -85,20 +86,20 @@ export function startExploration(map: MapLibreMap): void {
   avatar.className = 'trainer'
   avatar.setAttribute('role', 'img')
   avatar.setAttribute('aria-label', 'Trainer avatar')
-  // A 1.8 m trainer is tiny at neighborhood zoom. Keep a small readability
-  // floor rather than drawing him at building scale.
+  // Keep geographic player position and collision size unchanged while
+  // enlarging only the displayed sprite for phone readability.
   avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
   const avatarMarker = new Marker({
     element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
   }).setLngLat([START.lon, START.lat]).addTo(map)
 
   let position = { ...START }
-  // The avatar scales with zoom instead of staying at its original CSS size.
-  // A small minimum keeps its walking animation readable on a phone.
+  // Size the sprite from the nominal 1.8 m projection with a readability floor,
+  // then double both dimensions without changing geographic collision.
   function updateAvatarScale(): void {
     const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
       (512 * 2 ** map.getZoom())
-    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel)
+    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel) * AVATAR_RENDER_SCALE
     avatar.style.height = `${heightPx}px`
     avatar.style.width = `${heightPx * .75}px`
   }
@@ -244,9 +245,10 @@ export function startExploration(map: MapLibreMap): void {
       distanceMeters(position, collisionOrigin) < COLLISION_RADIUS_METERS && !isBlocked(position)
     if (!landscape && length > DEAD_ZONE && ready) {
       const magnitude = Math.min(1, (length - DEAD_ZONE) / (1 - DEAD_ZONE))
-      // Touch reports downward-positive screen Y. Invert its north/south
-      // mapping to match thumb intent; keep WASD/arrow debugging unchanged.
-      const desiredHeading = controlBearing + degrees(Math.atan2(x, usingStick ? y : -y))
+      // Both touch and keyboard report screen Y as positive downward.
+      // Up is forward relative to the bearing captured at gesture start;
+      // down must go backward, even while the camera turns to follow travel.
+      const desiredHeading = controlBearing + degrees(Math.atan2(x, -y))
       const distance = SPEED_METERS_PER_SECOND * magnitude * dt
       const east = Math.sin(radians(desiredHeading)) * distance
       const north = Math.cos(radians(desiredHeading)) * distance

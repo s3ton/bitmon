@@ -107,7 +107,7 @@ const map = new Map({
   center: [9.1869, 45.4715], // Brera, Milan: geographic coordinates, not a fictional level.
   zoom: 16.4,
   minZoom: 15.5,
-  maxZoom: 18.5,
+  maxZoom: 20,
   pitch: 45,
   minPitch: 45,
   maxPitch: 45,
