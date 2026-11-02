@@ -1,4 +1,8 @@
-const CACHE = 'bitmon-shell-v3'
+const SCOPE_PATH = new URL(self.registration.scope).pathname
+const IS_PREVIEW = SCOPE_PATH.endsWith('/preview/')
+const CACHE_PREFIX = 'bitmon-shell-' + SCOPE_PATH.replace(/[^a-z0-9]/gi, '_') + '-'
+const CACHE = CACHE_PREFIX + 'v4'
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE)
@@ -12,21 +16,33 @@ self.addEventListener('install', (event) => {
       .filter((url) => url.origin === self.location.origin && /\.(?:js|css)$/.test(url.pathname))
       .map((url) => url.href)
     await cache.addAll([...assets, new URL('manifest.webmanifest', start).href,
-      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href,
-      new URL('trainer-atlas.svg', start).href])
+      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href])
+    // The last released stable PWA still uses an inline trainer SVG.
+    // A missing atlas must not prevent its service worker from installing.
+    try {
+      await cache.add(new URL('trainer-atlas.svg', start).href)
+    } catch {
+      // Optional visual asset: newer builds contain it; older stable does not.
+    }
     await self.skipWaiting()
   })())
 })
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
-    await Promise.all((await caches.keys()).filter((name) => name !== CACHE).map((name) => caches.delete(name)))
+    const keys = await caches.keys()
+    await Promise.all(keys.filter((name) =>
+      name !== CACHE && (name.startsWith(CACHE_PREFIX) ||
+        (!IS_PREVIEW && /^bitmon-shell-v\d+$/.test(name)))
+    ).map((name) => caches.delete(name)))
     await self.clients.claim()
   })())
 })
 self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
-  if (request.method !== 'GET' || url.origin !== self.location.origin) return
+  if (request.method !== 'GET' || url.origin !== self.location.origin ||
+      !url.pathname.startsWith(SCOPE_PATH) ||
+      (!IS_PREVIEW && url.pathname.startsWith(SCOPE_PATH + 'preview/'))) return
   event.respondWith((async () => {
     const cache = await caches.open(CACHE)
     try {

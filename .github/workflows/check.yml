@@ -2,6 +2,8 @@ name: PWA build
 on:
   pull_request:
     branches: [preview, main]
+  push:
+    branches: [preview]
 jobs:
   build:
     runs-on: ubuntu-latest

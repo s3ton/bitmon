@@ -11,7 +11,7 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 - [Development Tracker](docs/DEVELOPMENT_TRACKER.md) — implementation status, acceptance evidence, open decisions, and requirements change history.
 - [Agent Engineering Skill](skill.md) — mandatory test minimization, no-dead-code policy, simplification review, and PR-to-preview workflow.
 
-The source repository is **public**. The compiled test PWA is live at [https://s3ton.github.io/bitmon/](https://s3ton.github.io/bitmon/), deployed from **`main`** by GitHub Actions. [Deployment run 41504378759](https://github.com/s3ton/bitmon/actions/runs/41504378759) succeeded on 2 November 2026, and the repository owner confirmed the site works. No separate distribution repository is needed.
+The source repository is **public**. The currently deployed build is [bitmon Stable](https://s3ton.github.io/bitmon/) from `main`. A new, distinct [bitmon Preview](https://s3ton.github.io/bitmon/preview/) installation is **planned but not live until the reviewed infrastructure-only main release activates dual-channel deployment**. The two PWAs share GitHub Pages hosting but use separate manifest identities and service-worker caches; no second repository is required.
 
 ## Current development status (2 November 2026)
 
@@ -32,12 +32,13 @@ npm run build
 npm run dev
 ```
 
-## GitHub Pages smartphone test
+## Two GitHub Pages PWAs — phone testing and stable releases
 
-1. Open [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) and set **Build and deployment → Source** to **GitHub Actions**.
-2. Merge feature work into `preview` through a reviewed PR; promote `preview` to `main` through a separate release PR. [The Pages workflow](https://github.com/s3ton/bitmon/actions/workflows/pages.yml) runs only when `main` changes and uploads only `dist/`.
-3. When the deployment succeeds, open `https://s3ton.github.io/bitmon/` on a portrait phone. Swipe anywhere in the middle 60% of screen height to reveal a temporary joystick; verify the top/bottom 20% do not move the trainer, then test 10 m/s cardinal/diagonal walking, small human-scale appearance, camera rotation, collisions, map attribution, portrait fallback and PWA restart.
+1. Keep [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) set to **GitHub Actions** with `github-pages` environment deployments restricted to `main`. First, review/merge the small **infrastructure-only main release PR** (not gameplay PR #11), which activates the dual-channel Pages workflow on the default branch.
+2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. It has a distinct "bitmon Test" home-screen label/DEV icon and should auto-update after the `preview` branch's **successful** push CI, without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
+3. On a portrait phone, check preview movement, 10 m/s diagonals, small trainer, heading camera, floating joystick, collision, offline shell, and that both icons launch their respective builds. Verify changing preview leaves Stable unchanged.
+4. **Only after approving the preview**, merge a reviewed `preview` → `main` release PR (currently [#11](https://github.com/s3ton/bitmon/pull/11)) to promote its exact gameplay to Stable. Existing GitHub Pages deploys both compiled outputs together, not two separate Pages sites.
 
-Map tiles still need network access; only the app shell is cached. The public URL is a preview, not a verified game.
+Both PWAs need internet for uncached map tiles. Current source code has no saved game progress; any future localStorage or IndexedDB keys must include the channel name because browser storage is shared by origin.
 
 These are working design documents, not a completed game or security audit.
