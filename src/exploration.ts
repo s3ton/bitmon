@@ -204,7 +204,7 @@ export function startExploration(map: MapLibreMap): void {
               bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
           // Match the height fallback used by the fill-extrusion layer.
           const sourceHeight = Number(feature.properties?.render_height)
-          const height = layer === 'building'
+          const height = layer === 'building' && feature.properties?.hide_3d !== true
             ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
             : undefined
           areas.push({ ...bounds, rings, height })
@@ -413,6 +413,8 @@ export function startExploration(map: MapLibreMap): void {
     movementStatus.hidden = true
     animationTime = 0
     renderAvatar(false)
+    occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
+    requestTick()
   }
 
   function moveStick(clientX: number, clientY: number): void {
