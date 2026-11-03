@@ -318,24 +318,47 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     return result
   }
 
-  // DOM markers are composited above the WebGL canvas, so only hide the
-  // trainer when a real rendered building covers its on-screen body and the
-  // source-geometry ray test also says that building space is between the
-  // player and camera. Sampling three body points avoids false positives from
-  // merely walking close to a wall.
-  function avatarIsRenderedBehindBuilding(): boolean {
-    if (desiredPitch >= CAMERA_EXPLORATION_PITCH - .1) return false
+  // DOM markers are composited above the WebGL canvas. Approximate the
+  // rendered wall silhouette across the trainer and clip only the lower body
+  // that is actually behind it. This lets the head remain visible while legs
+  // are occluded, instead of treating any overlap as all-or-nothing.
+  function avatarOcclusionClipPath(): string {
+    if (desiredPitch >= CAMERA_EXPLORATION_PITCH - .1) return ''
     const foot = map.project([position.lon, position.lat])
     const height = avatar.offsetHeight
-    if (!height) return false
-    let covered = 0
-    for (const fraction of [.25, .5, .75]) {
-      if (map.queryRenderedFeatures(
-        [foot.x, foot.y - height * fraction],
+    const width = avatar.offsetWidth
+    if (!height || !width) return ''
+
+    function coveredAt(x: number, fractionFromFeet: number): boolean {
+      return map.queryRenderedFeatures(
+        [x, foot.y - height * fractionFromFeet],
         { layers: ['buildings'] },
-      ).length) covered++
+      ).length > 0
     }
-    return covered >= 2
+
+    // Building walls produce a contiguous lower-body occlusion. Binary-search
+    // the rendered roof/wall boundary independently at left, center and right
+    // so angled edges can reveal different amounts of the sprite.
+    function coveredFraction(x: number): number {
+      if (!coveredAt(x, .04)) return 0
+      if (coveredAt(x, .96)) return 1
+      let covered = .04
+      let clear = .96
+      for (let i = 0; i < 4; i++) {
+        const middle = (covered + clear) / 2
+        if (coveredAt(x, middle)) covered = middle
+        else clear = middle
+      }
+      return (covered + clear) / 2
+    }
+
+    const left = coveredFraction(foot.x - width * .35)
+    const center = coveredFraction(foot.x)
+    const right = coveredFraction(foot.x + width * .35)
+    if (Math.max(left, center, right) < .04) return ''
+
+    const visibleBottom = (covered: number) => (100 * (1 - covered)).toFixed(1) + '%'
+    return `polygon(0 0, 100% 0, 100% ${visibleBottom(right)}, 50% ${visibleBottom(center)}, 0 ${visibleBottom(left)})`
   }
 
   function tileReady(candidate: Position): boolean {
@@ -456,7 +479,8 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     // Adjust camera elevation only when a sourced building would cover the
     // trainer, rather than drawing the trainer through an opaque wall.
     occlusionScanSeconds += dt
-    if (occlusionScanSeconds >= CAMERA_PITCH_SCAN_SECONDS) {
+    const updateOcclusion = occlusionScanSeconds >= CAMERA_PITCH_SCAN_SECONDS
+    if (updateOcclusion) {
       desiredPitch = safeCameraPitch(nextBearing)
       occlusionScanSeconds = 0
     }
@@ -470,9 +494,9 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
-    // Brief true occlusion is preferable to snapping the camera. The
-    // rendered-building test alone controls visibility while pitch catches up.
-    avatar.style.visibility = avatarIsRenderedBehindBuilding() ? 'hidden' : 'visible'
+    // Brief true occlusion is preferable to snapping the camera. Update the
+    // partial DOM mask at the same lightweight cadence as the source scan.
+    if (updateOcclusion) avatar.style.clipPath = avatarOcclusionClipPath()
     renderAvatar(walking)
     if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(pitchDifference) >= .15) requestTick()
     else lastFrameTime = 0
@@ -563,6 +587,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
       offlineMap.protectLandingPosition(null)
+      avatar.style.clipPath = ''
       avatar.style.visibility = 'visible'
       teleporting = false
       coordinateGo.disabled = false
