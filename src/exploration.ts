@@ -320,9 +320,13 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
 
   function tileReady(candidate: Position): boolean {
     if (!validPosition(candidate)) return false
-    // A PBF can authorize movement only after MapLibre has decoded its geometry.
-    // The active map tile remains usable even if disk storage is unavailable.
-    return decodedTiles.has(tileKeyAt(candidate))
+    const key = tileKeyAt(candidate)
+    if (decodedTiles.has(key)) return true
+    // On some launch/update paths source events do not rebuild the decoded set.
+    // Use the public full-source readiness check only for a PBF that was
+    // actually delivered to MapLibre, never for a failed/unknown source tile.
+    return offlineMap.wasSuppliedAt(candidate) &&
+      map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()
   }
 
   function isBlocked(candidate: Position): boolean {
@@ -535,14 +539,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       hasPlacedSpawn = previousSpawn
       offlineMap.setPlayerPosition(original)
       map.jumpTo({ center: [originalCenter.lng, originalCenter.lat] })
-      map.once('idle', () => {
-    // Some browsers may finish all visible tiles before their per-tile
-    // sourcedata events are observed. Full source readiness is a safe fallback.
-    if (map.areTilesLoaded() && map.isSourceLoaded('openmaptiles')) {
-      decodedTiles.add(tileKeyAt(position))
-    }
-    refreshCollision()
-  })
+      map.once('idle', refreshCollision)
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
       offlineMap.protectLandingPosition(null)
@@ -630,7 +627,13 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       refreshCollision()
     }
   })
-  map.once('idle', refreshCollision)
+  map.on('idle', () => {
+    // Initialize or restore collision geometry once the map settles. Keep
+    // the last verified snapshot while loading other viewport tiles.
+    if (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS) {
+      refreshCollision()
+    }
+  })
   coordinateForm.addEventListener('submit', (event) => {
     event.preventDefault()
     const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/.exec(coordinateInput.value.trim())
