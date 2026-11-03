@@ -194,3 +194,35 @@ body { overflow: hidden; }
   touch-action: none;
 }
 @media (orientation: landscape) { #zoom-control { display: none; } }
+
+/* Installed updates wait for a deliberate reload, never interrupting movement. */
+.pwa-update {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(env(safe-area-inset-bottom) + 54px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 1px solid #9baea3;
+  border-radius: 12px;
+  background: #f8f6e8;
+  box-shadow: 0 3px 14px rgba(35, 61, 57, .18);
+  font-size: 13px;
+}
+.pwa-update button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #2e514d;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+.pwa-update button:disabled { opacity: .7; }

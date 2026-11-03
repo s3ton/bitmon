@@ -3,6 +3,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
 import { startExploration } from './exploration'
+import { registerPwa } from './pwa'
 
 setWorkerUrl(workerUrl)
 
@@ -131,10 +132,4 @@ map.on('error', () => {
   status.textContent = 'Map data unavailable. Reconnect to load this neighborhood.'
 })
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch((error: unknown) => {
-      console.warn('Offline shell unavailable', error)
-    })
-  })
-}
+registerPwa()
