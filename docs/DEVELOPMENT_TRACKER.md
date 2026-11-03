@@ -1,10 +1,10 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.17 (3 November 2026)  
+**Baseline PRD:** v0.18 (3 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** Task 002's camera, controls and occlusion corrections have been merged into `main` via [PR #25](https://github.com/s3ton/bitmon/pull/25); both Stable and Preview have successful Pages deployment evidence dated 2 November. Owner phone acceptance of movement, collision, independent installs and occlusion handling remains pending. The owner approved maintenance items 1, 2, 4 and 5 only: npm lockfile, `npm ci`, PWA cache/update improvements and documentation. They are proposed in [PR #26](https://github.com/s3ton/bitmon/pull/26) targeting `preview`; `main` must not be merged without separate owner confirmation. **Last evidence review:** 3 November 2026.
+**Current reporting state:** Task 002 camera, controls and occlusion corrections are deployed to Stable via PR #25; phone acceptance remains outstanding. Maintenance [PR #26](https://github.com/s3ton/bitmon/pull/26) was merged into preview (not main) on 3 November and provides reproducible builds and opt-in PWA updates. The new coordinate jump/locally persisted position/100 MiB visited-vector-tile cache implementation is on feature branch feat/preview-coordinates-offline-map pending PR review and device acceptance. These experimental changes do not authorize a merge to main. **Last evidence review:** 3 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -40,7 +40,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | VIS-05 | Low-poly streaming and smartphone performance | P0 | Not started | Dense-city seam and low-/mid-range portrait-phone performance demonstration | — |
 | MOVE-01 | 10 m/s geographic movement, screen-relative vertical touch mapping, floating 80% joystick and diagonals | E0 | Blocked — owner reports inversion | Device verifies swipe up/down against intended direction, slider never triggers joystick, 10 m/s maximum and mapped collision | [#13](https://github.com/s3ton/bitmon/pull/13), control/zoom fix PR |
 | EXPL-01 | Illustrated avatar with 2× visual scale; 8 directions × idle + four walking frames | E0 | In review — owner art/scale approval pending | Confirm street/person-relative scale, diagonal direction sprites and gait/idle vs rotating camera | [#13](https://github.com/s3ton/bitmon/pull/13) |
-| MOVE-02 | Practical long-distance world travel | P1 | Not started | Approved travel specification, then demonstrable city-to-city trip | — |
+| MOVE-02 | Practical long-distance world travel | P1 | Not started — E0 coordinate jump is not canonical travel | Define verified travel/anti-seed-shopping rules before treating arbitrary jumps as progress | — |
 | MOVE-03 | Player location privacy | P1 | Not started | Verified exploration flow with no mandatory GPS permission | — |
 | ENC-01 | Registration precedes verified encounter randomness | P0 | Not started | Reject pre-registration/guest encounter on verified settlement | — |
 | ENC-02 | Location-aware encounters without hindsight selection | P1 | Not started | Threat-model test: choose location after randomness reveal → invalid | — |
@@ -68,7 +68,7 @@ These requirements are **fixed decisions**, not open design options. A change re
 
 | Gate | What a passing implementation proves | Status / evidence |
 |---|---|---|
-| MAP-GATE-01 — One geographic source | All rendered world geography comes from OpenFreeMap tiles; no external map/enrichment query or extra geographic database | Source review: one OpenFreeMap TileJSON source configured in `src/main.ts`; independent network/data audit pending |
+| MAP-GATE-01 — One geographic source | All rendered world geography comes from OpenFreeMap tiles; no external map/enrichment query or extra geographic database | Source review: one OpenFreeMap PBF tile source configured in `src/main.ts` using a local IndexedDB-backed MapLibre protocol; independent network/data audit pending |
 | MAP-GATE-02 — No invented buildings | Every building volume corresponds to a source building footprint/part at the selected detail level; missing source polygon means nothing is built | Source review: extrusion layer uses the OpenFreeMap `building` source-layer; rendered-feature/footprint comparison pending |
 | MAP-GATE-03 — No invented roads | Every visual road/path is traceable to the tile transportation geometry; no fake lane/path/link appears in gaps | Source review: road/path styling uses the OpenFreeMap `transportation` source-layer; feature-level audit pending |
 | MAP-GATE-04 — Inferred art only | Window/facade/roof selection uses OpenFreeMap fields/context and deterministic art rules; no inferred building use is presented as an established fact | Not tested |
@@ -126,7 +126,8 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-026 | **Accepted — refines DEC-019 camera responsiveness** | Replace immediate heading chase with delayed soft-follow yaw, capped angular speed, 12° turn dead zone, reverse-input guard and idle freeze. Add Relaxed/Balanced/Responsive presets for mobile tuning; position follows immediately and camera/input geography remains independent. | **v0.14** VIS-01, MOVE-01, EXPL-01, MOBILE-01 |
 | 2026-11-02 | DEC-027 | **Accepted** | Move the camera presets under a compact top-right hamburger menu. Open/close through a native accessible disclosure; selecting a preset dismisses it. Keep the zoom slider visible at the right of the map. Owner explicitly approves promotion of all currently reviewed Preview gameplay to Stable through a separate release PR, subject to CI and deployment verification. | **v0.15** VIS-01, MOVE-01, MOBILE-01, DIST-01 |
 | 2026-11-02 | DEC-028 | **Accepted — refines normal fixed-pitch exploration** | When a real mapped building would block the trainer, automatically tilt the camera toward overhead by the minimum clearance angle instead of depicting the avatar through walls. Restore 45° when clear, preserve geographic movement, zoom and bearing; account for source rendering heights. | **v0.16** VIS-01, VIS-04, MOVE-01 |
-| 2026-11-03 | DEC-029 | **Accepted for implementation on feature branch; merge pending** | Make PWA updates non-disruptive: revision the service worker with compiled assets, keep it waiting, show a Reload prompt on an existing installed app, and change worker only after the player's action. Preserve separate Preview/Stable cache scopes and offline shell; uncached tiles remain online-only. | **v0.17** PWA-01, DIST-01 |
+| 2026-11-03 | DEC-029 | **Merged into preview in PR #26; phone acceptance pending** | Make PWA updates non-disruptive: revision the service worker with compiled assets, keep it waiting, show a Reload prompt on an existing installed app, and change worker only after the player's action. Preserve separate Preview/Stable cache scopes and offline shell; uncached tiles remain online-only. | **v0.17** PWA-01, DIST-01 |
+| 2026-11-03 | DEC-030 | **Accepted for E0 prototype; feature branch review pending** | In settings permit latitude, longitude jump to a source-loaded walkable position, save last avatar coordinate per PWA channel, and keep visited OpenFreeMap z14 PBF tiles offline in a 100 MiB per-channel IndexedDB cache. Evict farthest from the player first; never treat jumps as verified travel or GPS proof. | **v0.18** MOVE-02, PWA-01, WORLD-04 |
 
 ### Open decisions to resolve before related implementation
 
@@ -140,7 +141,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
-| OPEN-09 | Android/iOS browser/version support and phone acceptance of scoped caches, offline shell and new-version reload prompt | PWA-01, MOBILE-01 | Open — implementation proposed in PR #26 |
+| OPEN-09 | Android/iOS browser/version support and phone acceptance of scoped caches, offline shell, reload prompt, local coordinate save and tile eviction | PWA-01, MOBILE-01 | Open — PR #26 integrated in preview; coordinate/offline feature in development |
 | OPEN-10 | Longer-term production deployment strategy following direct public-repo Pages prototype | DIST-01 | Open — not blocking test |
 
 ## 6. Rules for updating this tracker
@@ -228,3 +229,10 @@ The owner requested not drawing the player visibly through buildings. The camera
 The owner approved only **maintenance items 1, 2, 4 and 5**. [PR #26](https://github.com/s3ton/bitmon/pull/26) was created from `preview` and targets `preview`; it does **not** authorize a merge into `main`. Implementation adds a Node 26-generated `package-lock.json` (npm v3 lockfile; 87 entries at generation), switches the `check.yml` and `pages.yml` installers to `npm ci`, and stamps the production service worker from a digest of the emitted application shell. Existing per-channel cache isolation remains in place. A waiting update shows a Reload button; the player chooses when the page activates the new worker. First installs activate automatically. The offline shell is cached; uncached OpenFreeMap tile requests are still not supported offline.
 
 **Verification boundary:** GitHub PR build must pass `npm ci --no-audit --no-fund`, `npm run check`, and `npm run build`. Device testing remains required for installed Preview update notice, reload, offline shell and channel isolation. The revised `pages.yml` runs from `main` and is not active there unless separately released. No permanent automated tests were added or removed (net 0); the existing `tsc` and Vite build are the minimal repository checks. No geographic data, collision, movement or visual world rules were changed. No stable promotion is authorized.
+
+
+### Coordinate jumps and bounded offline exploration — 3 November 2026
+
+The owner requested an E0 settings text field accepting latitude/longitude with a Go action, local position persistence and offline reuse of previously visited OpenFreeMap tiles. DEC-030 clarifies that a free coordinate jump is only for prototype map exploration and is not a verified travel mechanic or location/encounter proof. Feature branch feat/preview-coordinates-offline-map targets preview through a separate PR; main must remain unchanged. The candidate implementation uses channel-specific localStorage for accepted WGS84 coordinates and IndexedDB for cached OpenFreeMap z14 PBF source tiles, with a 100 MiB per-channel tile-byte cap and geographically farthest-first eviction; current player tile protected. No bulk prefetch, new geography or secondary basemap is introduced.
+
+**Pending acceptance:** CI TypeScript/Vite build, online coordinate jump to valid walkable land, invalid/out-of-bounds and unmapped/offline destination rollback, building/water landing rejection, position restored after closing/relaunching, offline walking inside previously viewed terrain with hard boundary at uncached tiles, predictable farthest-tile eviction, Android/iOS persistence and independently isolated Stable/Preview storage. No permanent automated test suite is introduced for this isolated E0 feature (0 added, 0 removed, net 0); device acceptance is the open gate.
