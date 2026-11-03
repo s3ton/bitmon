@@ -102,6 +102,8 @@ class OfflineMapCache {
   private onStatus: StatusListener | null = null
   private writeQueue: Promise<void> = Promise.resolve()
   private inFlight = new Map<string, Promise<ArrayBuffer>>()
+  // PBF successfully supplied to MapLibre in this session (not a second tile cache).
+  private suppliedTiles = new Set<string>()
   private pendingWrites = new Map<string, ArrayBuffer>()
   readonly ready: Promise<void>
 
@@ -136,6 +138,10 @@ class OfflineMapCache {
 
   protectLandingPosition(position: Position | null): void {
     this.landingTile = position ? tileKeyAt(position) : null
+  }
+
+  wasSuppliedAt(position: Position): boolean {
+    return this.suppliedTiles.has(tileKeyAt(position))
   }
 
   private report(): void {
@@ -271,7 +277,16 @@ class OfflineMapCache {
     if (z < 0 || z > TILE_ZOOM || x >= 2 ** z || y >= 2 ** z) {
       throw new Error('Invalid tile coordinates')
     }
-    return this.getTile(z + '/' + x + '/' + y, signal)
+    const key = z + '/' + x + '/' + y
+    try {
+      const data = await this.getTile(key, signal)
+      if (!signal.aborted) this.suppliedTiles.add(key)
+      return data
+    } catch (error) {
+      // A tile that cannot be served must never authorize an offline step.
+      this.suppliedTiles.delete(key)
+      throw error
+    }
   }
 }
 
