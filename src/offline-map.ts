@@ -157,14 +157,16 @@ class OfflineMapCache {
     const currentTile = tileKeyAt(this.player)
     const toDelete: string[] = []
     let remaining = this.usedBytes
-    const farthest = [...this.metadata.values()]
-      .filter((tile) => tile.key !== currentTile)
-      .sort((a, b) => distanceFromPlayer(tileCenter(b.key), this.player) -
-        distanceFromPlayer(tileCenter(a.key), this.player))
-    for (const tile of farthest) {
-      if (remaining + data.byteLength <= LIMIT_BYTES) break
-      toDelete.push(tile.key)
-      remaining -= tile.bytes
+    if (remaining + data.byteLength > LIMIT_BYTES) {
+      const farthest = [...this.metadata.values()]
+        .filter((tile) => tile.key !== currentTile)
+        .sort((a, b) => distanceFromPlayer(b, this.player) -
+          distanceFromPlayer(a, this.player))
+      for (const tile of farthest) {
+        if (remaining + data.byteLength <= LIMIT_BYTES) break
+        toDelete.push(tile.key)
+        remaining -= tile.bytes
+      }
     }
     // Never discard the tile under the trainer just to store a remote tile.
     if (remaining + data.byteLength > LIMIT_BYTES) return
@@ -181,7 +183,10 @@ class OfflineMapCache {
       tiles.put({ key, data } satisfies TileRecord)
       metadata.put(meta)
       await transactionDone(tx)
-      for (const oldKey of toDelete) this.metadata.delete(oldKey)
+      for (const oldKey of toDelete) {
+        this.metadata.delete(oldKey)
+        this.loaded.delete(oldKey)
+      }
       this.metadata.set(key, meta)
       this.usedBytes = remaining + meta.bytes
       this.report()
