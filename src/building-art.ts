@@ -1,5 +1,5 @@
-import type { ExpressionSpecification, FillExtrusionLayerSpecification, Map as MapLibreMap } from 'maplibre-gl'
-import type { JoinedStyle } from './building-tiles.worker'
+import type { ExpressionSpecification, FillExtrusionLayerSpecification } from 'maplibre-gl'
+import type { JoinedStyle } from './building-tiles'
 import { LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
 
 // Facade art for mapped OpenFreeMap buildings. Geometry, footprints and heights
@@ -83,7 +83,7 @@ function patternName(part: Part): ExpressionSpecification {
   const name = (zoom: number): ExpressionSpecification =>
     ['concat', 'bt-', part, '-', ['var', 's'], '-', ['to-string', ['get', 'bitmon_variant']], '-', String(zoom)]
   return ['let', 's', facadeStyle,
-    ['step', ['zoom'], name(15), 16, name(16), 17, name(17), 18, name(18), 19, name(19), 20, name(20)]]
+    ['step', ['zoom'], name(15), 16, name(16), 17, name(17), 18, name(18)]]
 }
 
 // Ground floor, upper floors and a thin roof cap stacked within each source
@@ -382,46 +382,9 @@ function shade(hex: string, amount: number): string {
   return `rgb(${channel(16)},${channel(8)},${channel(0)})`
 }
 
-const worker = new Worker(new URL('./building-tiles.worker.ts', import.meta.url), { type: 'module' })
-const requests = new Map<number, { resolve: (data: ArrayBuffer) => void; reject: (error: Error) => void }>()
-let nextRequest = 0
-worker.onmessage = ({ data }: MessageEvent<{ id: number; data?: ArrayBuffer; error?: string }>) => {
-  const request = requests.get(data.id)!
-  requests.delete(data.id)
-  if (data.data) request.resolve(data.data)
-  else request.reject(new Error(data.error))
-}
-
-// MapLibre requests the same z14 tile again for every overscaled zoom level;
-// keep the few most recent results instead of re-running the worker.
-const ENRICHED_TILE_CACHE = 24
-const enriched = new Map<string, Promise<ArrayBuffer>>()
-
-// Splits and tags a raw z14 building layer off the main thread.
-export function enrichTile(data: ArrayBuffer, x: number, y: number): Promise<ArrayBuffer> {
-  const key = x + '/' + y
-  let result = enriched.get(key)
-  if (result) enriched.delete(key)
-  else {
-    const id = nextRequest++
-    result = new Promise<ArrayBuffer>((resolve, reject) => {
-      requests.set(id, { resolve, reject })
-      worker.postMessage({ id, data, x, y }, [data])
-    })
-    result.catch(() => { if (enriched.get(key) === result) enriched.delete(key) })
-  }
-  enriched.set(key, result)
-  if (enriched.size > ENRICHED_TILE_CACHE) enriched.delete(enriched.keys().next().value!)
-  // MapLibre transfers the buffer it receives, so each caller gets a copy.
-  return result.then((bytes) => bytes.slice(0))
-}
-
-export function startBuildingArt(map: MapLibreMap): void {
-  const pixelRatio = map.getPixelRatio()
-  map.setMissingStyleImageResolver((id) => {
-    const match = /^bt-(ground|upper|roof)-(\w+)-(\d)-(\d+)$/.exec(id)
-    if (!match || !(match[2] in STYLES)) return
-    const image = drawImage(match[1] as Part, STYLES[match[2] as keyof typeof STYLES], Number(match[3]), Number(match[4]), pixelRatio)
-    map.addImage(id, image, { pixelRatio })
-  })
+// Draws a facade image the first time a tile needs it.
+export function buildingImage(id: string, pixelRatio: number): ImageData | undefined {
+  const match = /^bt-(ground|upper|roof)-(\w+)-(\d)-(\d+)$/.exec(id)
+  if (!match || !(match[2] in STYLES)) return undefined
+  return drawImage(match[1] as Part, STYLES[match[2] as keyof typeof STYLES], Number(match[3]), Number(match[4]), pixelRatio)
 }

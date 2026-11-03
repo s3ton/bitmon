@@ -1,13 +1,14 @@
-import { classifyRings, VectorTile } from '@mapbox/vector-tile'
-import { PbfReader, PbfWriter } from 'pbf'
+import { classifyRings, type VectorTile } from '@mapbox/vector-tile'
 import { DEFAULT_TINT, LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
+import { bounded, contains, Grid, metresPerUnit, pointBox, signedArea, withinOutline, type Area, type Feature, type Point, type Polygon, type Value } from './tile-geometry'
 
-// Rewrites only the `building` layer of an OpenFreeMap tile. OpenFreeMap merges
+// Rebuilds the `building` layer of an OpenFreeMap tile. OpenFreeMap merges
 // every building sharing height/colour into one multipolygon feature, so this
 // splits it back into one feature per footprint and tags each with an art
 // style inferred from POIs and landuse in the same tile. Famous landmarks and
 // all their stacked parts get a landmark style instead. Geometry and source
-// attributes are copied unchanged; every other layer keeps its original bytes.
+// attributes are copied unchanged.
+
 
 // Ordered by precedence when several mapped POIs fall inside one footprint.
 const JOINED_STYLES = [
@@ -46,72 +47,8 @@ const WORSHIP_STYLES: Record<string, LandmarkStyle> = {
 // only about 1% of all POIs reach 20.
 const FAMOUS_TRANSLATIONS = 20
 
-type Point = { x: number; y: number }
-type Polygon = Point[][]
-type Value = string | number | boolean
-type Area = { rings: Polygon; minX: number; maxX: number; minY: number; maxY: number }
 type Footprint = Area & { tags: Record<string, Value>; size: number; center: Point; group?: LandmarkGroup }
 type LandmarkGroup = { style: LandmarkStyle | null; members: Footprint[]; core: Footprint[]; onWater: boolean }
-
-function bounded(rings: Polygon): Area {
-  const area = { rings, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
-  for (const { x, y } of rings[0]) {
-    area.minX = Math.min(area.minX, x)
-    area.maxX = Math.max(area.maxX, x)
-    area.minY = Math.min(area.minY, y)
-    area.maxY = Math.max(area.maxY, y)
-  }
-  return area
-}
-
-function inRing(point: Point, ring: Point[]): boolean {
-  let inside = false
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const a = ring[i], b = ring[j]
-    if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside
-  }
-  return inside
-}
-
-function withinOutline(area: Area, point: Point): boolean {
-  return point.x >= area.minX && point.x <= area.maxX && point.y >= area.minY && point.y <= area.maxY &&
-    inRing(point, area.rings[0])
-}
-
-function contains(area: Area, point: Point): boolean {
-  return withinOutline(area, point) && !area.rings.slice(1).some((hole) => inRing(point, hole))
-}
-
-// Uniform cell index over tile coordinates. Dense tiles hold ~10k footprints
-// and thousands of POIs, so pairwise scans would cost about a second per tile.
-class Grid<T> {
-  private cells = new Map<number, T[]>()
-  private static readonly SIZE = 256
-  private static key(cx: number, cy: number): number { return (cx + 64) * 4096 + cy + 64 }
-
-  add(item: T, box: { minX: number; minY: number; maxX: number; maxY: number }): void {
-    for (let cx = Math.floor(box.minX / Grid.SIZE); cx <= Math.floor(box.maxX / Grid.SIZE); cx++) {
-      for (let cy = Math.floor(box.minY / Grid.SIZE); cy <= Math.floor(box.maxY / Grid.SIZE); cy++) {
-        const key = Grid.key(cx, cy)
-        const cell = this.cells.get(key)
-        if (cell) cell.push(item)
-        else this.cells.set(key, [item])
-      }
-    }
-  }
-
-  near(box: { minX: number; minY: number; maxX: number; maxY: number }): Set<T> {
-    const found = new Set<T>()
-    for (let cx = Math.floor(box.minX / Grid.SIZE); cx <= Math.floor(box.maxX / Grid.SIZE); cx++) {
-      for (let cy = Math.floor(box.minY / Grid.SIZE); cy <= Math.floor(box.maxY / Grid.SIZE); cy++) {
-        for (const item of this.cells.get(Grid.key(cx, cy)) ?? []) found.add(item)
-      }
-    }
-    return found
-  }
-}
-
-const pointBox = ({ x, y }: Point) => ({ minX: x, minY: y, maxX: x, maxY: y })
 
 function styleFor(area: Area, pois: Grid<{ point: Point; style: JoinedStyle }>, landuse: Grid<Area & { style: JoinedStyle }>): JoinedStyle | undefined {
   let best: JoinedStyle | undefined
@@ -218,94 +155,11 @@ function stacked(a: Footprint, b: Footprint): boolean {
   return a.minX - margin <= b.maxX && b.minX - margin <= a.maxX && a.minY - margin <= b.maxY && b.minY - margin <= a.maxY
 }
 
-function signedArea(ring: Point[]): number {
-  let sum = 0
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) sum += (ring[j].x - ring[i].x) * (ring[j].y + ring[i].y)
-  return sum / 2
-}
-
-const zigzag = (n: number) => (n << 1) ^ (n >> 31)
-
-function writeBuildingLayer(layer: { name: string; extent: number; features: { tags: Record<string, Value>; rings: Polygon }[] }, pbf: PbfWriter): void {
-  const keys: string[] = [], values: Value[] = []
-  const keyIndex = new Map<string, number>(), valueIndex = new Map<string, number>()
-  pbf.writeVarintField(15, 2)
-  pbf.writeStringField(1, layer.name)
-  for (const feature of layer.features) {
-    pbf.writeMessage(2, (_, out) => {
-      const tags: number[] = []
-      for (const [key, value] of Object.entries(feature.tags)) {
-        if (!keyIndex.has(key)) keyIndex.set(key, keys.push(key) - 1)
-        const valueKey = typeof value + ':' + value
-        if (!valueIndex.has(valueKey)) valueIndex.set(valueKey, values.push(value) - 1)
-        tags.push(keyIndex.get(key)!, valueIndex.get(valueKey)!)
-      }
-      out.writePackedVarint(2, tags)
-      out.writeVarintField(3, 3)
-      const geometry: number[] = []
-      let cx = 0, cy = 0
-      for (const ring of feature.rings) {
-        // loadGeometry repeats the first vertex; ClosePath encodes it instead.
-        const last = ring.length - 1
-        const points = ring[0].x === ring[last].x && ring[0].y === ring[last].y ? ring.slice(0, last) : ring
-        points.forEach((point, i) => {
-          if (i === 0) geometry.push(9)
-          else if (i === 1) geometry.push(2 | ((points.length - 1) << 3))
-          geometry.push(zigzag(point.x - cx), zigzag(point.y - cy))
-          cx = point.x
-          cy = point.y
-        })
-        geometry.push(15)
-      }
-      out.writePackedVarint(4, geometry)
-    }, null)
-  }
-  for (const key of keys) pbf.writeStringField(3, key)
-  for (const value of values) {
-    pbf.writeMessage(4, (_, out) => {
-      if (typeof value === 'string') out.writeStringField(1, value)
-      else if (typeof value === 'boolean') out.writeBooleanField(7, value)
-      else if (Number.isInteger(value)) out.writeSVarintField(6, value)
-      else out.writeDoubleField(3, value)
-    }, null)
-  }
-  pbf.writeVarintField(5, layer.extent)
-}
-
-function layerName(bytes: Uint8Array): string {
-  const reader = new PbfReader(bytes)
-  while (reader.pos < reader.length) {
-    const tag = reader.readVarint()
-    if (tag >> 3 === 1) return reader.readString()
-    reader.skip(tag & 7)
-  }
-  return ''
-}
-
-function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
-  const bytes = new Uint8Array(data)
-  const tile = new VectorTile(new PbfReader(bytes))
+export function buildingFeatures(tile: VectorTile, x: number, y: number): Feature[] {
   const buildings = tile.layers.building
-  const out = new PbfWriter()
-  // Copy each top-level layer message (field 3) verbatim except `building`.
-  const reader = new PbfReader(bytes)
-  while (reader.pos < reader.length) {
-    const tag = reader.readVarint()
-    if (tag >> 3 !== 3 || (tag & 7) !== 2) {
-      reader.skip(tag & 7)
-      continue
-    }
-    const end = reader.readVarint() + reader.pos
-    const layerBytes = bytes.subarray(reader.pos, end)
-    reader.pos = end
-    if (!buildings || layerName(layerBytes) !== 'building') out.writeBytesField(3, layerBytes)
-  }
-  if (!buildings) return out.finish()
-
+  if (!buildings) return []
   const extent = buildings.extent
-  // Every enriched tile is z14; Web Mercator shrinks metres by cos(latitude).
-  const latitude = Math.atan(Math.sinh(Math.PI * (1 - (2 * y + 1) / 2 ** 14)))
-  const metresPerUnit = 40_075_016.7 * Math.cos(latitude) / 2 ** 14 / extent
+  const unit = metresPerUnit(y, extent)
   const pois = new Grid<{ point: Point; style: JoinedStyle }>()
   const seeds: { point: Point; style: LandmarkStyle | null; fame: number }[] = []
   const poiLayer = tile.layers.poi
@@ -391,21 +245,9 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
     }
   }
   for (const group of groups) {
-    const style = group.style ?? shapeStyle(group, metresPerUnit)
+    const style = group.style ?? shapeStyle(group, unit)
     const tint = group.members.map((member) => tintFor(member.tags.colour)).find((index) => index !== undefined) ?? DEFAULT_TINT[style]
     for (const { tags } of group.members) Object.assign(tags, { bitmon_style: style, bitmon_variant: tint, bitmon_landmark: true })
   }
-  const features = footprints.map(({ tags, rings }) => ({ tags, rings }))
-  out.writeMessage(3, writeBuildingLayer, { name: 'building', extent, features })
-  return out.finish()
-}
-
-self.onmessage = ({ data }: MessageEvent<{ id: number; data: ArrayBuffer; x: number; y: number }>) => {
-  try {
-    const result = enrich(data.data, data.x, data.y)
-    const buffer = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer
-    self.postMessage({ id: data.id, data: buffer }, { transfer: [buffer] })
-  } catch (error) {
-    self.postMessage({ id: data.id, error: String(error) })
-  }
+  return footprints.map(({ tags, rings }) => ({ type: 3, tags, geometry: rings }))
 }
