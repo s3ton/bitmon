@@ -49,14 +49,12 @@ jobs:
       - name: Build stable from main
         working-directory: stable
         run: |
-          npm install --no-audit --no-fund
-          npm run check
+          npm ci --no-audit --no-fund
           npm run build
       - name: Build preview from preview
         working-directory: preview
         run: |
-          npm install --no-audit --no-fund
-          npm run check
+          npm ci --no-audit --no-fund
           npm run build
       - name: Give preview a distinct install identity
         run: |

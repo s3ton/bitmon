@@ -1,32 +1,31 @@
 const SCOPE_PATH = new URL(self.registration.scope).pathname
 const IS_PREVIEW = SCOPE_PATH.endsWith('/preview/')
 const CACHE_PREFIX = 'bitmon-shell-' + SCOPE_PATH.replace(/[^a-z0-9]/gi, '_') + '-'
-const CACHE = CACHE_PREFIX + 'v4'
+const CACHE = CACHE_PREFIX + 'v5-__BUILD_REVISION__'
+const SHELL_URL = self.registration.scope
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
-    const cache = await caches.open(CACHE)
-    const start = self.registration.scope
-    const response = await fetch(start)
+    const response = await fetch(SHELL_URL, { cache: 'no-store' })
     if (!response.ok) throw new Error('App shell unavailable')
-    await cache.put(start, response.clone())
+    const cache = await caches.open(CACHE)
+    await cache.put(SHELL_URL, response.clone())
     const html = await response.text()
     const assets = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
-      .map((match) => new URL(match[1], start))
+      .map((match) => new URL(match[1], SHELL_URL))
       .filter((url) => url.origin === self.location.origin && /\.(?:js|css)$/.test(url.pathname))
       .map((url) => url.href)
-    await cache.addAll([...assets, new URL('manifest.webmanifest', start).href,
-      new URL('icon-192.svg', start).href, new URL('icon-512.svg', start).href])
-    // The last released stable PWA still uses an inline trainer SVG.
-    // A missing atlas must not prevent its service worker from installing.
-    try {
-      await cache.add(new URL('trainer-atlas.svg', start).href)
-    } catch {
-      // Optional visual asset: newer builds contain it; older stable does not.
-    }
-    await self.skipWaiting()
+    await cache.addAll([...assets, ...[
+      'manifest.webmanifest', 'icon-192.svg', 'icon-512.svg', 'trainer-atlas.webp',
+    ].map((path) => new URL(path, SHELL_URL).href)])
   })())
 })
+
+// Let the player finish a session before activating a downloaded update.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys()
@@ -37,6 +36,7 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim()
   })())
 })
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
@@ -45,14 +45,23 @@ self.addEventListener('fetch', (event) => {
       (!IS_PREVIEW && url.pathname.startsWith(SCOPE_PATH + 'preview/'))) return
   event.respondWith((async () => {
     const cache = await caches.open(CACHE)
+    // Hashed bundles, worker scripts, icons and the manifest belong to this
+    // build's scoped cache. Avoid re-fetching them on each launch.
+    if (request.mode !== 'navigate') {
+      const stored = await cache.match(request)
+      if (stored) return stored
+    }
     try {
       const response = await fetch(request)
-      if (response.ok && (request.mode === 'navigate' || /\.(?:js|css)$/.test(url.pathname))) {
+      if (response.ok && request.mode === 'navigate') {
+        // Store one offline entry, not an entry for every navigation query.
+        await cache.put(SHELL_URL, response.clone())
+      } else if (response.ok && /\.(?:js|css)$/.test(url.pathname)) {
         await cache.put(request, response.clone())
       }
       return response
     } catch (error) {
-      const offline = await cache.match(request.mode === 'navigate' ? self.registration.scope : request)
+      const offline = await cache.match(request.mode === 'navigate' ? SHELL_URL : request)
       if (offline) return offline
       throw error
     }

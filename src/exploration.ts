@@ -1,6 +1,7 @@
-import { Marker, type Map as MapLibreMap } from 'maplibre-gl'
+import type { Map as MapLibreMap } from 'maplibre-gl'
+import { offlineMap, savePosition, tileKeyAt, validPosition, type Position } from './offline-map'
+import { createTrainerLayer } from './trainer-layer'
 
-type Position = { lon: number; lat: number }
 type Ring = number[][]
 type Polygon = Ring[]
 type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number }
@@ -19,10 +20,9 @@ const CAMERA_BACKWARD_ANGLE = 135
 const CAMERA_EXPLORATION_PITCH = 45
 const CAMERA_PITCH_SAFETY_METERS = 1
 const CAMERA_PITCH_SCAN_SECONDS = .1
-const CAMERA_PITCH_UP_RATE = 120
-const CAMERA_PITCH_DOWN_RATE = 45
+const CAMERA_PITCH_RATE = 45
+const CAMERA_PITCH_DAMPING_SECONDS = .65
 const DEAD_ZONE = 0.16
-const START: Position = { lon: 9.1869, lat: 45.4715 }
 
 // Geographic heading: 0° north, 90° east. MapLibre's bearing uses the same convention.
 const radians = (degrees: number) => degrees * Math.PI / 180
@@ -61,11 +61,21 @@ function contains(area: CollisionArea, point: Position): boolean {
 }
 
 
-const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft: 5, left: 6, downLeft: 7 } as const
+const SPRITE_APPEARANCE = {
+  up: { row: 0, mirrored: false },
+  upRight: { row: 1, mirrored: false },
+  right: { row: 2, mirrored: false },
+  downRight: { row: 3, mirrored: false },
+  down: { row: 4, mirrored: false },
+  downLeft: { row: 3, mirrored: true },
+  left: { row: 2, mirrored: true },
+  upLeft: { row: 1, mirrored: true },
+} as const
 const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
-const TRAINER_HEIGHT_METERS = 1.8
-const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
-const AVATAR_RENDER_SCALE = 2
+const WALK_FRAME_COUNT = 8
+const WALK_FRAME_SECONDS = .09
+// Prefer grounded poses over freezing a raised foot when movement stops.
+const IDLE_FRAME_BY_ROW = [0, 7, 7, 7, 0] as const
 const JOYSTICK_START_MIN = .1
 const JOYSTICK_START_MAX = .9
 const COLLISION_RADIUS_METERS = 28
@@ -115,46 +125,53 @@ function closestOnSegment(origin: Position, a: number[], b: number[]): Position 
   return { lon: a[0] + (b[0] - a[0]) * t, lat: a[1] + (b[1] - a[1]) * t }
 }
 
-export function startExploration(map: MapLibreMap): void {
+export function startExploration(map: MapLibreMap, initialPosition: Position): void {
   const app = document.querySelector<HTMLElement>('#app')!
   const joystick = document.querySelector<HTMLElement>('#joystick')!
   const knob = document.querySelector<HTMLElement>('#joystick-knob')!
   const movementStatus = document.querySelector<HTMLElement>('#movement-status')!
   const cameraMenu = document.querySelector<HTMLDetailsElement>('#camera-control')!
   const cameraPresetSelect = document.querySelector<HTMLSelectElement>('#camera-preset')!
-  const avatar = document.createElement('div')
-  avatar.className = 'trainer'
-  avatar.setAttribute('role', 'img')
-  avatar.setAttribute('aria-label', 'Trainer avatar')
-  // Keep geographic player position and collision size unchanged while
-  // enlarging only the displayed sprite for phone readability.
-  avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
-  const avatarMarker = new Marker({
-    element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
-  }).setLngLat([START.lon, START.lat]).addTo(map)
-
-  let position = { ...START }
-  // Size the sprite from the nominal 1.8 m projection with a readability floor,
-  // then double both dimensions without changing geographic collision.
-  function updateAvatarScale(): void {
-    const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
-      (512 * 2 ** map.getZoom())
-    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel) * AVATAR_RENDER_SCALE
-    avatar.style.height = `${heightPx}px`
-    avatar.style.width = `${heightPx * .75}px`
+  const coordinateForm = document.querySelector<HTMLFormElement>('#coordinate-form')!
+  const coordinateInput = document.querySelector<HTMLInputElement>('#coordinate-input')!
+  const coordinateGo = document.querySelector<HTMLButtonElement>('#coordinate-go')!
+  const coordinateStatus = document.querySelector<HTMLElement>('#coordinate-status')!
+  const coordinateDisplay = document.querySelector<HTMLElement>('#world-coordinates')!
+  // Render the trainer inside MapLibre's 3D scene so buildings and the sprite
+  // share one depth buffer. The GPU then resolves partial wall occlusion per
+  // pixel instead of querying rendered features and clipping a DOM marker.
+  const trainer = createTrainerLayer(
+    map,
+    initialPosition,
+    import.meta.env.BASE_URL + 'trainer-atlas.webp',
+  )
+  const addTrainerLayer = () => {
+    if (!map.getLayer(trainer.layer.id)) map.addLayer(trainer.layer)
   }
-  map.on('zoom', updateAvatarScale)
-  updateAvatarScale()
+  if (map.isStyleLoaded()) addTrainerLayer()
+  else map.once('style.load', addTrainerLayer)
 
+  let position = { ...initialPosition }
+  let lastPositionSave = 0
+  function persistProgress(force = false): void {
+    const now = performance.now()
+    if (!force && now - lastPositionSave < 1500) return
+    lastPositionSave = now
+    savePosition(position)
+    coordinateDisplay.textContent = position.lat.toFixed(5) + ', ' + position.lon.toFixed(5)
+  }
+  coordinateDisplay.textContent = position.lat.toFixed(5) + ', ' + position.lon.toFixed(5)
   let heading = map.getBearing()
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
+  const decodedTiles = new Set<string>()
   let hasPlacedSpawn = false
+  let teleporting = false
   let stick = { x: 0, y: 0 }
   let activePointer: number | null = null
   let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
-  let cameraPreset: CameraPreset = 'balanced'
+  let cameraPreset: CameraPreset = cameraPresetSelect.value as CameraPreset
   let steadyHeading: number | null = null
   let steadySeconds = 0
   let occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
@@ -166,7 +183,6 @@ export function startExploration(map: MapLibreMap): void {
     cameraMenu.open = false
   })
   let animationTime = 0
-  let lastAppearance = ''
   const keys = new Set<string>()
   let frame: number | null = null
   let lastFrameTime = 0
@@ -175,17 +191,29 @@ export function startExploration(map: MapLibreMap): void {
     const relativeHeading = angleDelta(heading, map.getBearing())
     const octant = (Math.round(relativeHeading / 45) + 8) % 8
     const direction = SCREEN_DIRECTIONS[octant]
-    const step = moving ? 1 + Math.floor(animationTime / .12) % 4 : 0
-    const appearance = direction + ':' + step
-    if (appearance === lastAppearance) return
-    avatar.style.backgroundPosition = `${step * 25}% ${SPRITE_ROWS[direction] * (100 / 7)}%`
-    lastAppearance = appearance
+    const sprite = SPRITE_APPEARANCE[direction]
+    const step = moving
+      ? Math.floor(animationTime / WALK_FRAME_SECONDS) % WALK_FRAME_COUNT
+      : IDLE_FRAME_BY_ROW[sprite.row]
+    trainer.setFrame(sprite.row, step, sprite.mirrored)
+  }
+
+  // A 1 m ring covers the player's foot probes and the next 0.5 m step.
+  // Missing distant viewport tiles must not invalidate this local geometry.
+  function neighborhoodReady(point: Position): boolean {
+    for (const east of [-1, 0, 1]) {
+      for (const north of [-1, 0, 1]) {
+        if (!tileReady(displace(point, east, north))) return false
+      }
+    }
+    return true
   }
 
   // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
-    if (!map.isSourceLoaded('openmaptiles')) return
+    if (!neighborhoodReady(position)) return
     const areas: CollisionArea[] = []
+    const seen = new Set<string>()
     for (const layer of ['building', 'water']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
         const geometry = feature.geometry
@@ -207,6 +235,11 @@ export function startExploration(map: MapLibreMap): void {
           const height = layer === 'building' && feature.properties?.hide_3d !== true
             ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
             : undefined
+          // Exact duplicates have the same geometry and appearance. Keep any
+          // overlapping footprints with different heights for safe occlusion.
+          const signature = layer + ':' + height + ':' + JSON.stringify(rings)
+          if (seen.has(signature)) continue
+          seen.add(signature)
           areas.push({ ...bounds, rings, height })
         }
       }
@@ -216,11 +249,11 @@ export function startExploration(map: MapLibreMap): void {
     occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
     requestTick()
 
-    // Initial Brera coordinates can fall inside a real mapped building.
+    // The default or restored spawn point can fall inside a mapped building.
     // Spawn at a nearby mapped route, not by disabling building collisions.
-    if (!hasPlacedSpawn) {
+    if (!hasPlacedSpawn && !teleporting) {
       const search = (candidate: Position) => !isBlocked(candidate) &&
-        distanceMeters(START, candidate) <= 70
+        distanceMeters(initialPosition, candidate) <= 70
       let best: Position | null = null
       let bestDistance = Infinity
       if (isBlocked(position)) {
@@ -232,8 +265,8 @@ export function startExploration(map: MapLibreMap): void {
             ? [geometry.coordinates] : geometry.coordinates
           for (const line of lines) {
             for (let i = 1; i < line.length; i++) {
-              const candidate = closestOnSegment(START, line[i - 1], line[i])
-              const distance = distanceMeters(START, candidate)
+              const candidate = closestOnSegment(initialPosition, line[i - 1], line[i])
+              const distance = distanceMeters(initialPosition, candidate)
               if (distance < bestDistance && search(candidate)) {
                 best = candidate
                 bestDistance = distance
@@ -246,7 +279,7 @@ export function startExploration(map: MapLibreMap): void {
         if (!best) {
           for (let radius = 2; radius <= 60 && !best; radius += 2) {
             for (let bearing = 0; bearing < 360; bearing += 20) {
-              const candidate = displace(START,
+              const candidate = displace(initialPosition,
                 Math.sin(radians(bearing)) * radius, Math.cos(radians(bearing)) * radius)
               if (search(candidate)) { best = candidate; break }
             }
@@ -254,14 +287,16 @@ export function startExploration(map: MapLibreMap): void {
         }
         if (best) {
           position = best
-          avatarMarker.setLngLat([position.lon, position.lat])
+          trainer.setPosition(position)
           map.jumpTo({ center: [position.lon, position.lat] })
           collisionOrigin = { ...position }
+          offlineMap.setPlayerPosition(position)
         }
       }
       if (!isBlocked(position)) {
         hasPlacedSpawn = true
         movementStatus.hidden = true
+        persistProgress(true)
       } else {
         movementStatus.hidden = false
         movementStatus.textContent = 'No clear starting spot in loaded map data.'
@@ -269,8 +304,8 @@ export function startExploration(map: MapLibreMap): void {
     }
   }
 
-  // A building can occlude a DOM marker, which otherwise draws over 3D walls.
-  // Tilt toward overhead only as far as the nearest mapped building requires.
+  // Gradually pitch clear of nearby sourced buildings while GPU depth testing
+  // independently occludes only the pixels temporarily hidden by their walls.
   function safeCameraPitch(bearing: number): number {
     let result = CAMERA_EXPLORATION_PITCH
     for (const area of collisionAreas) {
@@ -284,11 +319,23 @@ export function startExploration(map: MapLibreMap): void {
     return result
   }
 
+  function tileReady(candidate: Position): boolean {
+    if (!validPosition(candidate)) return false
+    const key = tileKeyAt(candidate)
+    if (decodedTiles.has(key)) return true
+    // On some launch/update paths source events do not rebuild the decoded set.
+    // Use the public full-source readiness check only for a PBF that was
+    // actually delivered to MapLibre, never for a failed/unknown source tile.
+    return offlineMap.wasSuppliedAt(candidate) &&
+      map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()
+  }
+
   function isBlocked(candidate: Position): boolean {
-    // All feet contact points must remain outside mapped building/water polygons.
+    // Both the feet and their small collision margin must be on decoded tiles.
+    // At a tile edge, no unloaded building geometry can be treated as empty.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
-      .some((point) => collisionAreas.some((area) => contains(area, point)))
+      .some((point) => !tileReady(point) || collisionAreas.some((area) => contains(area, point)))
   }
 
   function requestTick(): void {
@@ -299,6 +346,7 @@ export function startExploration(map: MapLibreMap): void {
 
   function tick(now: number): void {
     frame = null
+    if (teleporting) { lastFrameTime = 0; return }
     const dt = Math.min(Math.max((now - lastFrameTime) / 1000, 0), .05)
     lastFrameTime = now
     const landscape = window.matchMedia('(orientation: landscape)').matches
@@ -310,6 +358,7 @@ export function startExploration(map: MapLibreMap): void {
     const length = Math.hypot(x, y)
     let walking = false
     let blocked = false
+    let missingMapTile = false
     // A transient tile-loading state must not freeze walking while the
     // player's already-verified local collision neighborhood is still valid.
     if (collisionOrigin && distanceMeters(position, collisionOrigin) > CACHE_REFRESH_METERS) refreshCollision()
@@ -328,6 +377,7 @@ export function startExploration(map: MapLibreMap): void {
       let actualNorth = north
       let candidate = displace(position, east, north)
       if (isBlocked(candidate)) {
+        missingMapTile = !tileReady(candidate)
         const eastOnly = displace(position, east, 0)
         const northOnly = displace(position, 0, north)
         if (Math.abs(east) > .00001 && !isBlocked(eastOnly)) {
@@ -346,15 +396,19 @@ export function startExploration(map: MapLibreMap): void {
         position = candidate
         walking = true
         heading = degrees(Math.atan2(actualEast, actualNorth))
-        animationTime += dt
-        avatarMarker.setLngLat([position.lon, position.lat])
+        animationTime += Math.hypot(actualEast, actualNorth) / SPEED_METERS_PER_SECOND
+        trainer.setPosition(position)
+        offlineMap.setPlayerPosition(position)
+        persistProgress()
       }
     }
     if (!walking) animationTime = 0
     movementStatus.hidden = landscape || length <= DEAD_ZONE || (ready && !blocked)
     if (!movementStatus.hidden) {
       movementStatus.textContent = !ready
-        ? 'Checking nearby OpenFreeMap terrain…' : 'A mapped building or water blocks this way.'
+        ? 'Map data is not loaded here.' : missingMapTile
+          ? 'This map area is not cached. Reconnect to explore it.'
+          : 'A mapped building or water blocks this way.'
     }
     // A camera turn should be earned by sustained movement, not each twitch.
     // Walking backward keeps the camera where it is, so pulling down never
@@ -389,14 +443,11 @@ export function startExploration(map: MapLibreMap): void {
     }
     const pitch = map.getPitch()
     const pitchDifference = desiredPitch - pitch
-    const pitchRate = pitchDifference < 0 ? CAMERA_PITCH_UP_RATE : CAMERA_PITCH_DOWN_RATE
     const pitchStep = Math.sign(pitchDifference) * Math.min(
-      Math.abs(pitchDifference) * (1 - Math.exp(-dt / .2)), pitchRate * dt,
+      Math.abs(pitchDifference) * (1 - Math.exp(-dt / CAMERA_PITCH_DAMPING_SECONDS)),
+      CAMERA_PITCH_RATE * dt,
     )
     const nextPitch = Math.abs(pitchDifference) < .15 ? desiredPitch : pitch + pitchStep
-    // The sprite is a DOM marker above WebGL. Hide it briefly while the
-    // camera moves to a genuinely unobstructed angle, never through walls.
-    avatar.style.visibility = nextPitch > desiredPitch + 1 ? 'hidden' : 'visible'
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
@@ -427,10 +478,79 @@ export function startExploration(map: MapLibreMap): void {
     requestTick()
   }
 
+  async function teleport(target: Position): Promise<void> {
+    if (teleporting) return
+    resetStick()
+    keys.clear()
+    teleporting = true
+    coordinateGo.disabled = true
+    coordinateStatus.textContent = 'Checking destination map…'
+    const original = { ...position }
+    const originalCenter = map.getCenter()
+    const previousAreas = collisionAreas
+    const previousOrigin = collisionOrigin
+    const previousSpawn = hasPlacedSpawn
+    const previousDecodedTiles = new Set(decodedTiles)
+    offlineMap.protectLandingPosition(target)
+    try {
+      if (!(await offlineMap.ensureTileAt(target))) {
+        throw new Error('Destination map is unavailable. Connect or visit it while online first.')
+      }
+      trainer.setVisible(false)
+      if (tileKeyAt(target) !== tileKeyAt(original)) decodedTiles.clear()
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => finish(false), 12000)
+        const onData = () => { if (neighborhoodReady(target)) finish(true) }
+        function finish(ready: boolean): void {
+          clearTimeout(timer)
+          map.off('sourcedata', onData)
+          map.off('idle', onData)
+          if (ready) resolve()
+          else reject(new Error('Could not load destination map tiles.'))
+        }
+        map.on('sourcedata', onData)
+        map.on('idle', onData)
+        map.jumpTo({ center: [target.lon, target.lat] })
+      })
+      position = { ...target }
+      refreshCollision()
+      if (!collisionOrigin || isBlocked(position)) {
+        throw new Error('That coordinate lies inside mapped building/water or unavailable terrain.')
+      }
+      trainer.setPosition(position)
+      hasPlacedSpawn = true
+      heading = map.getBearing()
+      steadyHeading = null
+      steadySeconds = 0
+      offlineMap.setPlayerPosition(position)
+      persistProgress(true)
+      cameraMenu.open = false
+      coordinateGo.blur()
+      coordinateStatus.textContent = ''
+    } catch (error) {
+      position = original
+      decodedTiles.clear()
+      for (const tile of previousDecodedTiles) decodedTiles.add(tile)
+      collisionAreas = previousAreas
+      collisionOrigin = previousOrigin
+      hasPlacedSpawn = previousSpawn
+      offlineMap.setPlayerPosition(original)
+      map.jumpTo({ center: [originalCenter.lng, originalCenter.lat] })
+      map.once('idle', refreshCollision)
+      coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
+    } finally {
+      offlineMap.protectLandingPosition(null)
+      trainer.setVisible(true)
+      teleporting = false
+      coordinateGo.disabled = false
+      requestTick()
+    }
+  }
+
   // The finger may start anywhere in the middle 80% of the portrait viewport.
   // Top/bottom 10% and interactive HUD controls never initiate movement.
   app.addEventListener('pointerdown', (event) => {
-    if (activePointer !== null || !event.isPrimary ||
+    if (teleporting || activePointer !== null || !event.isPrimary ||
       (event.pointerType === 'mouse' && event.button !== 0) ||
       window.matchMedia('(orientation: landscape)').matches) return
     if (event.target instanceof Element &&
@@ -460,7 +580,9 @@ export function startExploration(map: MapLibreMap): void {
   const directionKeys = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd'])
   window.addEventListener('keydown', (event) => {
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
-    if (!directionKeys.has(key)) return
+    if (!directionKeys.has(key) || teleporting ||
+      (event.target instanceof Element &&
+        event.target.closest('input, textarea, select, button'))) return
     event.preventDefault()
     if (keys.size === 0 && activePointer === null) controlBearing = map.getBearing()
     keys.add(key)
@@ -472,18 +594,52 @@ export function startExploration(map: MapLibreMap): void {
   })
   window.addEventListener('blur', () => { resetStick(); keys.clear() })
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { resetStick(); keys.clear() }
+    if (document.hidden) { resetStick(); keys.clear(); if (hasPlacedSpawn) persistProgress(true) }
   })
   window.matchMedia('(orientation: landscape)').addEventListener('change', () => {
     resetStick()
     keys.clear()
   })
+  window.addEventListener('pagehide', () => { if (hasPlacedSpawn) persistProgress(true) })
+  map.on('sourcedataloading', (event) => {
+    if (event.sourceId === 'openmaptiles' && event.coord) {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
+    }
+  })
   map.on('sourcedata', (event) => {
-    if (event.sourceId === 'openmaptiles' && event.isSourceLoaded &&
-      (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
+    if (event.sourceId !== 'openmaptiles') return
+    let newlyDecoded = false
+    if (event.coord && event.tile?.state === 'loaded') {
+      const { z, x, y } = event.coord.canonical
+      const key = z + '/' + x + '/' + y
+      newlyDecoded = !decodedTiles.has(key)
+      decodedTiles.add(key)
+    } else if (event.coord && event.tile?.state === 'errored') {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
+    }
+    if (!teleporting && (newlyDecoded || !collisionOrigin ||
+        distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
       refreshCollision()
     }
   })
-  map.once('idle', refreshCollision)
+  map.on('idle', () => {
+    // Initialize or restore collision geometry once the map settles. Keep
+    // the last verified snapshot while loading other viewport tiles.
+    if (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS) {
+      refreshCollision()
+    }
+  })
+  coordinateForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*,\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/.exec(coordinateInput.value.trim())
+    const target = match ? { lat: Number(match[1]), lon: Number(match[2]) } : null
+    if (!validPosition(target)) {
+      coordinateStatus.textContent = 'Use latitude, longitude (latitude −85 to 85; longitude −180 to 180).'
+      return
+    }
+    void teleport(target)
+  })
   renderAvatar(false)
 }
