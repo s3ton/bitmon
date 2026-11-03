@@ -29,9 +29,9 @@
 
 ### What changed from version 2.1
 
-- **Registration occurs before the verified adventure begins**, not later when the player first wants to trade or challenge a gym.
+- **Registration occurs before an opted-in verified multiplayer adventure begins**, not when a player first wants to trade or challenge a gym. It is never required for local-only single-player.
 - The opted-in trainer's immutable ID and initial region are recorded before future beacon rounds that may generate verified encounters. Earlier local-only Rare/Legendary captures cannot be retroactively minted or imported as canonical assets.
-- **Local-first means local execution, not an unregistered canonical save.** After registration, exploration, ordinary battles, and proof preparation still run locally; blockchain settlements occur only at the defined boundaries.
+- **Local-only single-player is a full unverified game, while local-first verified play requires prior registration.** After opt-in registration, exploration, ordinary battles, and proof preparation still run locally; settlements occur only at defined boundaries.
 - The complete local single-player mode works without a wallet or transaction, and its persistent non-verifiable save remains usable after opting into a separate verified multiplayer lineage.
 - Replace the proposed 24-hour wait with **activation at the first future eligible randomness epoch after registration is finalized and the protocol's safety margin has passed**. Exact finality buffer/epoch duration remain to be benchmarked; the waiting period is a parameter, not a fixed security requirement.
 
