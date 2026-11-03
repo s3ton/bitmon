@@ -197,12 +197,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     lastAppearance = appearance
   }
 
-  // Check only the tiles covering the collision neighborhood. Missing distant
-  // viewport tiles need not freeze walking, but incomplete nearby tiles must
-  // never replace verified building/water geometry with an empty result.
+  // A 1 m ring covers the player's foot probes and the next 0.5 m step.
+  // Missing distant viewport tiles must not invalidate this local geometry.
   function neighborhoodReady(point: Position): boolean {
-    for (const east of [-COLLISION_RADIUS_METERS, 0, COLLISION_RADIUS_METERS]) {
-      for (const north of [-COLLISION_RADIUS_METERS, 0, COLLISION_RADIUS_METERS]) {
+    for (const east of [-1, 0, 1]) {
+      for (const north of [-1, 0, 1]) {
         if (!tileReady(displace(point, east, north))) return false
       }
     }
@@ -488,12 +487,14 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const previousAreas = collisionAreas
     const previousOrigin = collisionOrigin
     const previousSpawn = hasPlacedSpawn
+    const previousDecodedTiles = new Set(decodedTiles)
     offlineMap.protectLandingPosition(target)
     try {
       if (!(await offlineMap.ensureTileAt(target))) {
         throw new Error('Destination map is unavailable. Connect or visit it while online first.')
       }
       avatar.style.visibility = 'hidden'
+      if (tileKeyAt(target) !== tileKeyAt(original)) decodedTiles.clear()
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => finish(false), 12000)
         const onData = () => { if (neighborhoodReady(target)) finish(true) }
@@ -507,7 +508,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
         map.on('sourcedata', onData)
         map.on('idle', onData)
         map.jumpTo({ center: [target.lon, target.lat] })
-        onData()
       })
       position = { ...target }
       refreshCollision()
@@ -527,6 +527,8 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       coordinateStatus.textContent = ''
     } catch (error) {
       position = original
+      decodedTiles.clear()
+      for (const tile of previousDecodedTiles) decodedTiles.add(tile)
       collisionAreas = previousAreas
       collisionOrigin = previousOrigin
       hasPlacedSpawn = previousSpawn
@@ -605,6 +607,9 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       const key = z + '/' + x + '/' + y
       newlyDecoded = !decodedTiles.has(key)
       decodedTiles.add(key)
+    } else if (event.coord && event.tile?.state === 'errored') {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
     }
     if (!teleporting && (newlyDecoded || !collisionOrigin ||
         distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
