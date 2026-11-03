@@ -230,7 +230,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
     requestTick()
 
-    // Initial Brera coordinates can fall inside a real mapped building.
+    // The default or restored spawn point can fall inside a mapped building.
     // Spawn at a nearby mapped route, not by disabling building collisions.
     if (!hasPlacedSpawn && !teleporting) {
       const search = (candidate: Position) => !isBlocked(candidate) &&
@@ -471,7 +471,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const previousAreas = collisionAreas
     const previousOrigin = collisionOrigin
     const previousSpawn = hasPlacedSpawn
-    offlineMap.setPlayerPosition(target)
     try {
       if (!(await offlineMap.ensureTileAt(target))) {
         throw new Error('Destination map is unavailable. Connect or visit it while online first.')
