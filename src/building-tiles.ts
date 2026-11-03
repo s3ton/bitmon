@@ -249,5 +249,8 @@ export function buildingFeatures(tile: VectorTile, x: number, y: number): Featur
     const tint = group.members.map((member) => tintFor(member.tags.colour)).find((index) => index !== undefined) ?? DEFAULT_TINT[style]
     for (const { tags } of group.members) Object.assign(tags, { bitmon_style: style, bitmon_variant: tint, bitmon_landmark: true })
   }
-  return footprints.map(({ tags, rings }) => ({ type: 3, tags, geometry: rings }))
+  // World-unique part ids (tile, then footprint index) let the style pick out
+  // the parts covering the trainer.
+  const tileId = (x * 2 ** 14 + y) * 2 ** 20
+  return footprints.map(({ tags, rings }, i) => ({ id: tileId + i, type: 3, tags, geometry: rings }))
 }
