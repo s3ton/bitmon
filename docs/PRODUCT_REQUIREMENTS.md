@@ -303,14 +303,15 @@ The game should not require disclosure of the player's real-world location merel
 - Each gym occupies a fixed mapped location and has exactly one permanent bitmon type; teams qualify when creatures contain that type, including dual-type creatures. Do not invent new world geometry for gyms.
 - Gym defender roster and battle policy can be updated only under the published leader update/lock rules. Current state and challenge session are owned by that gym's **SQLite-backed Cloudflare Durable Object**.
 
-### GYM-02 — Digital Gold official challenge
+### GYM-02 — Free reservation queue, one active gym battle
 
-- Only authenticated players can issue official challenges. Spend **Digital Gold before an attempt**; the balance is a Cloudflare-managed off-chain game ledger, not a blockchain transaction, gas-sponsorship service or cryptocurrency.
-- The Worker verifies identity; the gym Durable Object accepts the player's **WebSocket**, reserves Digital Gold once, freezes the current leader/defense version, runs and persists each battle turn, and handles reconnect/timeout over the socket. Multiple simultaneous snapshot challenges may coexist.
-- **Only a hibernatable WebSocket connects a player to gym gameplay.** No HTTP turn endpoint, polling, or HTTP fallback. The initial connection uses HTTP Upgrade (a transport handshake, not a turn API); DOs wake per message and SQLite persists game state across hibernation/redeployment.
-- **Concurrency:** many players may battle the same frozen defense version; the **first serialized valid win** against the currently active version becomes champion. Other sessions made stale by that change cannot take the gym and receive an idempotent **Digital Gold refund**. Valid losses charged before a leadership change remain normal losses. D1 projects the resulting leader read model.
-- A valid victory also queues one asynchronous **Bitmon-funded** public-chain Hall-of-Fame record. The result is visible in-game before chain confirmation; players need no wallet, NFT or cryptocurrency.
-- The blockchain **certifies Bitmon's published result**, not independently enforced battle fairness; server-authoritative gym rules determine winners.
+- A signed-in trainer may hold **one free, FIFO queue position per gym**. Joining, waiting, leaving and missing an invitation cost no Digital Gold. Players can continue normal exploration while queued. Queue entries and order are durable inside that gym's SQLite-backed Durable Object.
+- **Exactly one official battle runs per gym at a time.** The next queued trainer receives a WebSocket invitation with a short acceptance window. Absent/declining users are skipped without charge; only on accepted invitation does the gym select the **then-current defender**, validate the server-approved team and begin a battle.
+- Digital Gold is debited **exactly once as an accepted battle begins**, never upon queue entry or mere turn offer. D1 ledger and DO session start require idempotency and safe repair/compensation if backend failure occurs; an unsuccessful debit never begins a battle.
+- **Only WebSocket transport:** queue actions, offers, battle turns and resume flow all use the same hibernatable gym Durable Object WebSocket. **No HTTP turn, queue or polling fallback.** The initial HTTP Upgrade handshake sets up the socket and is not a turn endpoint.
+- The active session persists its rules, moves, deadline and authoritative battle state in DO SQLite. Disconnects have a bounded reconnection grace; a missed active-battle deadline causes published forfeiture, advances the queue and does not allow an indefinite gym lock. DO hibernation does not lose the queue or active state.
+- A valid victory becomes the next leader, projects to the centralized leaderboard and queues a **Bitmon-funded** asynchronous Hall-of-Fame chain publication. The next queued player fights that newly current leader. There are **no parallel paid fights invalidated by other players' wins**.
+- Tune queue cap, offered-turn deadline, active-battle time limit, fairness and reconnect grace through playtesting; no guaranteed instant access or fabricated wait estimates.
 
 ### GYM-03 — Fame and history, not money
 
@@ -410,14 +411,14 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 1. Preserve E0 OpenFreeMap-only real geometry, collision and smartphone controls, without fabricated missing roads/buildings.
 2. Add a complete account-free local Common/Uncommon encounter/capture loop using browser device randomness, deterministic combat animation and IndexedDB save/reload; offline on cached map data.
 3. Provide a distinct login affordance only when requesting online Rare/Legendary access, official gyms or saved verified progression. Supabase is not needed for opening the game.
-4. Demonstrate one authenticated Cloudflare-issued online Rare/Legendary opportunity: one server roll, no refresh reroll, authoritative battle/capture and D1 collection, with no wallet or NFT.
+4. Demonstrate a cacheable authenticated public beacon and a trainer ID eligible before its release. A winning hash is claimed once via Cloudflare; other players make no rarity API requests. The rare battle/capture is server-validated and stored in D1.
 5. Run same-world camera battle framing and restore geographic exploration controls afterward.
 6. Continue to support portrait-only installed Android/iOS PWA, the GitHub Pages Preview/Stable identities and map-source integrity gates.
 
 ### P1 — Required for a usable release
 
 - Cloudflare Worker API, D1 authoritative inventory/currency, Supabase Auth-only integration, abuse controls and account/guest save boundaries.
-- One type-fixed gym with server-owned, SQLite-backed Durable Object challenge state, persistent battles, Digital Gold debits, leadership/defense updates and centralized leaderboard.
+- One type-fixed gym with a durable **free FIFO queue**, a **single active WebSocket-only battle**, Digital Gold debited on accepted start, leader/defense updates and centralized leaderboard.
 - Optional rewarded-ad integration only after publisher/privacy review, with appropriate non-ad availability for the rest of the game.
 - WebRTC direct casual/unranked PvP with lightweight signaling and tested TURN fallback; no invented claim of cheat-proof ranked results.
 - A Bitmon-financed, asynchronous, idempotent Hall-of-Fame publication for verified gym wins; failure of chain publication cannot block the result.
@@ -443,7 +444,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Dense city on smartphone | Low-poly gameplay remains responsive on an agreed low-/mid-range portrait device, with predictable level-of-detail fallback. |
 | Sparse rural area | The scene degrades gracefully when buildings or roads are missing in the tiles; the renderer never fills them in by invention. |
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
-| Online rare farming | Refreshing, reconnecting, changing tabs or teleporting cannot grant extra independent Rare/Legendary rolls beyond the account's server-issued opportunity quota. |
+| Public rare lottery | A fixed eligible trainer ID and period have at most one winning result and one claim; no late account, refresh, nonce change or arbitrary historical round yields an extra ticket. |
 | Guest training | Common/Uncommon training works offline without account; attempts to request an authoritative Rare/Legendary encounter require a valid Supabase session. |
 | Animated explorer | Geographic joystick movement uses camera-relative eight-direction poses; vertical thumb input matches the intended direction, the camera turns smoothly toward heading, and idle retains the bearing. |
 | Same-world battle camera | On battle start the active camera zooms toward the encountered bitmon while the mapped world remains visible; after battle it returns to the exact exploration framing. **Deferred until after E0.** |
@@ -457,10 +458,10 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 These questions need explicit product decisions; do not mistake unmeasured parameters for confirmed requirements.
 
-1. **Encounter cadence/lottery:** keep the agreed online rarity probabilities every eligible encounter; tune few-meter local trigger distribution and a minimal account-clock lottery throttle, ticket expiry and retries. No client-distance anti-cheat.
+1. **Public beacon:** choose a reliable authenticated beacon, epoch duration, Rare/Legendary per-period thresholds, claim window and outage policy. Tune ordinary few-meter encounters independently; no per-encounter rare lottery or walking anti-cheat.
 2. **Habitat balance:** validate any species/region modifier from OpenFreeMap-only data; until safe, use location-independent rare odds.
 3. **Gym roster templates:** decide exact allowed levels, species, stats, moves and items for local Common/Uncommon in official gyms; do not import untrusted local stats. No separate guest-to-online migration blocker.
-4. **Gym concurrence:** parallel frozen-defense fights and first serialized current-version winner are decided; tune session capacity, stale refund idempotency, expiration and disconnect policy.
+4. **Gym queue:** one active fight per gym and a free FIFO reservation queue are decided. Tune queue cap, offer acceptance, battle timeout, idempotent charge/compensation and reconnect grace.
 5. **PvP connectivity:** acceptable STUN/TURN coverage, QR invites/signaling, mobile network fallbacks and whether ranked reward-bearing matches justify a server arbiter.
 6. **Advertising and subscriptions:** Digital Gold pricing, age/consent eligibility, no forced ads for offline game, reward policy approval, subscription terms and fees.
 7. **Hall of Fame:** on-chain network, one transaction per win versus batch threshold, publisher retry costs, privacy treatment of public pseudonyms, on-chain record schema.
