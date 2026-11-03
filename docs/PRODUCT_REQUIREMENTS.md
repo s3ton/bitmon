@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.35 — offline-first hybrid backend, verified online rarity, Cloudflare gyms and unique NFTs
+**Version:** 0.36 — distance-based local encounters, online rarity lottery, WebSocket-only concurrent gyms
 **Date:** 3 November 2026
 **Status:** Draft; architecture accepted, detailed parameters remain open
 **Product name / creature name:** **bitmon** (singular and plural)
@@ -13,11 +13,11 @@
 
 **bitmon is a smartphone-first, installable PWA monster RPG played on the real Earth map**, rendered from OpenFreeMap-only geometry by MapLibre with original low-poly 2.5D art. No road/building missing from the actual source may be invented.
 
-**Guest-first game:** Explore and train without an account, advertising or connectivity in already cached map regions. Browser device randomness drives ordinary Common/Uncommon wild encounters and persistent local saves; **Rare/Legendary spawn chances are online-only** after login. Cloudflare controls and records the rare roll, validates the online battle and stores canonical results. Normal monsters of every rarity are ordinary game records—not NFTs.
+**Guest-first game:** Explore and train without an account, advertising or connectivity in cached map regions. Common/Uncommon encounters occur at randomized intervals of a few meters of virtual travel, using device randomness. **Online signed-in encounters use the full published Common/Uncommon/Rare/Legendary lottery**; Rare/Legendary chances are not available to guests or offline players. Cloudflare controls and records the rare roll, validates the online battle and stores canonical results. Normal monsters of every rarity are ordinary game records—not NFTs.
 
 **Supabase is authentication only.** Cloudflare Workers provide authenticated APIs and rare spawn handling; D1 is the game/inventory, Digital Gold, event entitlement and leaderboard database; a SQLite-backed Durable Object per gym runs authoritative battles and hibernates between events. Casual/unranked friend PvP runs through WebRTC peer connections after lightweight signaling, without an always-on match server.
 
-**Gym challenges cost Digital Gold**, a normal non-transferable virtual currency proposed to be earned through optional rewarded ads. Only the server decides the result. The leaderboard is centralized; Bitmon pays to publish each legitimate new champion's fame to a public blockchain asynchronously. Players need no wallet or crypto to compete.
+**Gym challenges cost Digital Gold**, a normal non-transferable virtual currency proposed to be earned through optional rewarded ads. The gym Durable Object receives every turn exclusively over a hibernatable WebSocket; there is **no HTTP battle-turn endpoint or fallback**. Multiple challengers can fight a frozen defense version concurrently, but only the first valid current-version victory changes leadership; others superseded by that win receive Digital Gold refunds. Bitmon pays to publish each new champion's fame to a blockchain asynchronously. Players need no wallet or crypto to compete.
 
 **Genuinely one-of-one event monsters** are the exception. Winning a separately administered unique event creates an entitlement in D1; the winner may later connect/create a recoverable wallet and claim the unique freely transferable NFT with **Bitmon paying mint gas**. When traded or sold, the current NFT holder—not the original game winner—controls that particular creature in-game. Ad-earned Digital Gold does not mint, buy or redeem transferable NFTs.
 
@@ -26,9 +26,9 @@
 1. OpenFreeMap is the only geography source, with no fabricated road/building geometry.
 2. Smartphone portrait gameplay feels like an original low-poly 2.5D RPG, with a same-world battle camera.
 3. Account-free offline exploration, training and Common/Uncommon encounters are real gameplay, not a time-limited demo.
-4. Online Rare/Legendary chances are controlled by server-issued, non-rerollable encounter opportunities; no client-selected rare outcomes.
+4. Every eligible **online** encounter has the same published full-rarity lottery odds; the Cloudflare server issues one non-rerollable random result while offline encounters contain only Common/Uncommon.
 5. Ordinary online ownership, trading, PvP and gyms do not require blockchain or NFT ownership.
-6. Official gyms create **centralized** leadership; Bitmon publishes wins for on-chain bragging rights at its own expense.
+6. Official gyms use **WebSocket-only Durable Object battles**, allow parallel snapshot challenges with one serialized winner, and publish company-funded Hall-of-Fame achievements.
 7. Exceptional one-of-one NFT holders enjoy genuine, freely transferable blockchain ownership with synchronized in-game control.
 8. Casual PvP uses peer-to-peer messaging where possible, with honest connectivity and anti-cheat limitations.
 9. Optional ads/subscriptions support the business, subject to network and legal approval.
@@ -38,10 +38,10 @@
 ### Confirmed
 
 - Keep all existing OpenFreeMap/MapLibre, geographic/collision, low-poly, original avatar, joystick, camera, PWA cache, Preview/Stable deployment and portrait-only E0 decisions.
-- **Unregistered offline play:** Local-only Common/Uncommon encounters, training and practice battles; no guest profile or wallet required. Persist locally in IndexedDB; never treat local save values as proof of competitive stats.
-- **Online rares:** A logged-in player earns encounter opportunities from validated virtual exploration/time/account quotas. Cloudflare binds the location/encounter ID before one server-owned secure random draw and persists the result, with idempotency and expiry; successful captures must be server-authoritative.
+- **Unregistered offline play:** Common/Uncommon encounters randomly every few meters of virtual exploration, with local device RNG, no account or wallet. We tolerate local/Common/Uncommon cheating. In official gyms all combat-relevant levels/moves/items/stats follow fixed server-approved legal templates, never client-edited stats.
+- **Online rarity lottery:** Every server-eligible, logged-in online encounter uses the same published Common/Uncommon/Rare/Legendary probability table, with one secure server RNG draw, immutable D1 outcome and ticket for any Rare/Legendary result. A modest server-clock rate cap prevents script-driven extra lottery requests; we do **not** attempt to prove walking distance or stop Common/Uncommon cheating.
 - **Backend:** Supabase Auth only; Cloudflare Worker API + D1 for canonical inventories, rare encounters, ordinary trades, currency, event claims and leaderboard projection; per-gym SQLite-backed Durable Object for challenge concurrency, state and results.
-- **Gyms:** One immutable type each, dual-type members eligible when either matches; Digital Gold spent for an official **attempt**, not to sponsor a blockchain transaction. Cloudflare verifies the battle; Bitmon queues an on-chain win record only after victory. Free local practice has no shared effect.
+- **Gyms:** One immutable type each, server-normalized legal loadouts, Digital Gold per official attempt. All turns use that gym's **Durable Object WebSocket**, no HTTP turn fallback. Parallel matches bind a fixed defender version; the first completed valid win becomes champion and superseded sessions are refunded. Bitmon queues the Hall-of-Fame chain record after a win; practice fights remain free.
 - **Friend PvP:** Browser-to-browser WebRTC DataChannels for casual unranked matches, with small signaling infrastructure, STUN and TURN fallback; no authoritative rewards from untrusted peer transcripts. Ranked PvP would need server arbitration later.
 - **Normal creatures:** Common/Uncommon/Rare/Legendary are conventional game data; Rare/Legendary do **not** require minting to join gyms, trade or PvP after verified capture. Authenticated normal swaps retain same-tier one-for-one, once per 24h per trainer, and lower-level reset rules.
 - **Exceptional NFTs:** Occasional genuinely unique, one-of-one event monsters only. Unminted winner entitlement can wait without wallet. Free, optional mint direct to a player-controlled recoverable wallet; unrestricted external transfer/sale; blockchain owner controls its in-game use.
@@ -49,12 +49,12 @@
 
 ### Working assumptions / still open
 
-- Virtual joystick movement, not mandatory physical GPS. Coordinate jumps do not prove presence; global encounter limits prevent teleport farming.
-- Client Web Crypto device seeds and reproducible counters improve offline continuity, not tamper resistance.
-- Rare roll cadence/region modifiers, rejoin expiry, online battle action validation and account abuse controls need balancing and benchmarks.
-- Exact conversion of guest Common/Uncommon into verified starters is undecided; no arbitrary local levels, stats or Rare/Legendary imports.
+- Virtual joystick movement, not mandatory physical GPS. Coordinate jumps and edited offline movement are accepted; basic server-clock lottery throttling avoids unlimited rare rolls without trying to certify meters traveled.
+- Browser Web Crypto seeds schedule encounters after randomized distances of a few meters and make local combat reproducible on reload. These improve offline continuity, not tamper resistance.
+- Exact randomized encounter-distance interval, server lottery cooldown, rarity odds, region modifiers, rejoin expiry and online rare battle action validation need balancing; the per-eligible-encounter probability rule is fixed.
+- No guest-to-online inventory migration is required for gym eligibility: permitted Common/Uncommon species use fixed authoritative gym templates. Exact cosmetic roster appearance and rare/unique ownership rules still apply.
 - Digital Gold credit rate, free allocation if needed, ad-network approval, optional subscription terms and consumer/privacy compliance are open.
-- Matchmaking, TURN fallback costs, PvP cheating tolerance, gym challenge race semantics and chain privacy need implementation validation.
+- Matchmaking, WebRTC TURN relay costs, PvP cheating tolerance, gym simultaneous-session limits, refund deadlines and chain privacy need implementation validation. TURN has nothing to do with HTTP gym turns.
 - Legal status of unique NFTs requires case-specific review; "one-of-one" is not an automatic MiCA exemption.
 
 ## 3. Who the player is and what they do
@@ -228,38 +228,36 @@ The game should not require disclosure of the player's real-world location merel
 
 ## 7. Encounters, regions, and fair randomness
 
-### ENC-01 — Local versus online encounters
+### ENC-01 — Every few meters, an encounter
 
-- **Unauthenticated, offline gameplay generates Common and Uncommon wild encounters only** using device `crypto.getRandomValues()` and a reproducible versioned battle random stream; keep local seeds/counters in IndexedDB. No cached Rare/Legendary lottery tickets exist offline.
-- **Rare/Legendary availability requires a live online session authenticated through Supabase Auth.** An online Cloudflare Worker issues one immutable, expiring encounter opportunity under account/global cooldown and approved virtual travel/time eligibility; it binds location/region before a secret secure random draw.
-- The server stores `encounter_id`, trainer ID, opportunity counter, location key, rules version, server random result and expiry in Cloudflare D1. Repeated/parallel/reconnected requests return the same result; losing a battle doesn't allow a free reroll.
-- The browser may animate the fight locally, but **only server-validated actions and chance rolls** can produce a verified Rare/Legendary creature. Client-supplied rarity, save file, arbitrary win transcript or spoofed time does not count.
-- Supabase isn't queried for normal offline training and stores no game inventory.
+- Using local device randomness, schedule Common/Uncommon wild encounters after a randomized **few meters** of accepted virtual avatar exploration, not a fixed meter interval. Preserve the distance accumulator, next threshold and battle seed on reload.
+- **Offline or not signed in:** Only Common or Uncommon appears. Use their relative weights in the local selection. A Rare or Legendary cannot be obtained from a local-only encounter.
+- **Online and signed in:** Each **server-eligible** encounter runs one server-owned lottery across **Common, Uncommon, Rare and Legendary**, using the same versioned rarity probabilities for every eligible online encounter. No separate elite-only lottery or hidden purchase. A local encounter triggering before the account's server lottery cooldown is complete remains Common/Uncommon-only.
+- No account is needed to walk, train, capture locally or practice gyms.
 
-### ENC-02 — World-aware rare encounters without teleport farming
+### ENC-02 — Fair online lottery without movement policing
 
-- World habitats may influence species based on **OpenFreeMap-only** data and stable game rules. A player-controlled coordinate or inferred client-supplied habitat classification is not trusted for a valuable random roll.
-- **Virtual movement is not GPS proof.** Server-side quotas/cooldowns/accepted position history must prevent unlimited rolls through map teleporting. No physical-location verification is promised.
-- In the MVP, if trustworthy region classification is complex, **keep high-rarity odds independent of region** and bind only a location snapshot before rolling. Do not add another map dataset to solve this.
-- Roll and record once per eligible server-issued opportunity. Publish drop rules; any server-seed audits do not turn centralized rarity into trustless randomness.
+- Cloudflare authenticates the request, applies a minimal account-wide server-clock spacing limit to prevent automated unlimited **rare rolls**, and binds one immutable encounter ID/region before drawing using secure randomness. The result is persisted in D1; refreshes, reconnects, parallel tabs and failed capture attempts never reroll the same opportunity.
+- A region or habitat may affect **species**, using OpenFreeMap-only attributes. It must not let changing coordinates instantly multiply independent rarity rolls. If source geography cannot be reliably evaluated server-side, keep rarity odds region-independent initially.
+- We explicitly accept editable local Common/Uncommon saves and spoofed avatar movement. There is no GPS requirement or movement proof-of-presence protocol. Do not equate these relaxed rules with permission to fabricate the authoritative Rare/Legendary results.
 
-### ENC-03 — Familiar local and verified battles
+### ENC-03 — Online Rare/Legendary capture
 
-- Player encounters a bitmon in the same 2.5D map scene, sees turn-based battle, uses moves/items, and may attempt capture.
-- Local Common/Uncommon captures remain usable without login. An offline copy can be edited and is not automatically admitted as authenticated competitive progression.
-- Online authenticated Rare/Legendary captures persist in a canonical inventory only after the backend validates legal actions, outcomes and encounter limits. No per-capture blockchain, ZK proof, beacon, gas or NFT is needed.
+- Once the server lottery yields Rare or Legendary, issue one authenticated, expiring encounter ticket. The server validates legal battle moves, capture RNG and ownership before awarding a normal Rare/Legendary monster in D1.
+- Common/Uncommon encounters are ordinary local PvE. Online Rare/Legendary encounters must be online for ticket creation and authoritative capture; a disconnected pending ticket can only resume under its explicit expiry rules.
+- Normal Rare/Legendary creatures need no blockchain mint, ZK proof, gas, wallet or NFT.
 
-### ENC-04 — Rarity, fairness and game balance
+### ENC-04 — Encounter rules and odds
 
-- Common/Uncommon odds and local encounter schedule must work consistently without network access, on source-loaded tiles only.
-- Rare/Legendary drop probabilities, daily opportunities and anti-abuse caps are server-controlled, published/versions, enforced across devices and not extendable by refresh/reconnect/teleport.
-- Record actual probabilities and permit non-monetary gameplay audits; users are never promised physical rarity or independently cryptographic proof of operator fairness.
+- Keep a **single published probability table for eligible online encounters**; do not change the agreed rarity weights merely because this uses a server lottery. The offline table is explicitly restricted to Common/Uncommon.
+- Draw local encounter distances from a bounded few-meter distribution and version the schedule. The exact meter distribution, probabilities and server lottery cooldown are tuning parameters, not yet numerical requirements.
+- Basic rate limits protect the authoritative server lottery, not the authenticity of walking. We tolerate cheating in noncompetitive local exploration.
 
 ## 8. Collection, progression and combat
 
 ### GAME-01 — Local and canonical inventories
 
-- Display local-only and verified-online ownership clearly. Guest saves survive login and app restarts, but are **not** proof of authenticity. Exact initial authenticated starter roster is an open decision; do not import arbitrary guest XP/levels.
+- Display local-only and verified-online ownership clearly. Guest saves survive login/restarts. **Official gym Common/Uncommon selection uses permitted species and server-owned standardized levels, stats, moves and items**; no guest save import or proof of historical local training is required. Rare/Legendary eligibility still uses online D1 records and unique event monsters use current NFT owner.
 - Normal Common, Uncommon, Rare and Legendary creatures are **database game assets**. None needs an NFT to fight, progress, trade or qualify for gym and ordinary PvP once verified online.
 - The online authoritative inventory, XP, trade locks, species, abilities, ownership and gameplay history are written only by Cloudflare server logic to D1.
 - Truly unique event monsters are marked as unminted entitlements or minted linked NFTs. After minting, current contract `ownerOf`, checked with wallet signature, decides who may use that creature in-game.
@@ -267,7 +265,7 @@ The game should not require disclosure of the player's real-world location merel
 ### GAME-02 — Combat and capture
 
 - Keep a **single versioned deterministic battle engine** shared between client presentation and server validation. Randomness is explicit seed/stream input; no client result is blindly trusted as a verified award.
-- Local battles can use private device randomness. Verified Rare/Legendary and official gyms must be server-controlled to prevent fabricated monster captures or champion results.
+- Local encounters and battles can use private device randomness and tolerate local cheating. Online Rare/Legendary captures and official gyms remain server-authoritative; all official gym stats/items/moves are normalized from a published template.
 - Maintain the same-world camera zoom to the battle and restore pre-battle map framing afterward (CAM-01).
 
 ### CAM-01 — Battle framing in the existing world
@@ -306,9 +304,9 @@ The game should not require disclosure of the player's real-world location merel
 ### GYM-02 — Digital Gold official challenge
 
 - Only authenticated players can issue official challenges. Spend **Digital Gold before an attempt**; the balance is a Cloudflare-managed off-chain game ledger, not a blockchain transaction, gas-sponsorship service or cryptocurrency.
-- The Worker verifies identity and Digital Gold availability; the gym Durable Object serializes admission, freezes the defense snapshot, runs a server-authoritative battle, persists each step and handles timeouts/reconnects.
-- A battle may use WebSocket messages and Cloudflare's **Hibernation API**, or simple HTTP turns if adequate. DOs only run when needed; SQLite persists important state across hibernation/redeployment.
-- Defeat/practice has no leadership effect. On a legitimate victory, the DO commits the new leader and a unique win ID, and D1 projects the conventional visible leaderboard.
+- The Worker verifies identity; the gym Durable Object accepts the player's **WebSocket**, reserves Digital Gold once, freezes the current leader/defense version, runs and persists each battle turn, and handles reconnect/timeout over the socket. Multiple simultaneous snapshot challenges may coexist.
+- **Only a hibernatable WebSocket connects a player to gym gameplay.** No HTTP turn endpoint, polling, or HTTP fallback. The initial connection uses HTTP Upgrade (a transport handshake, not a turn API); DOs wake per message and SQLite persists game state across hibernation/redeployment.
+- **Concurrency:** many players may battle the same frozen defense version; the **first serialized valid win** against the currently active version becomes champion. Other sessions made stale by that change cannot take the gym and receive an idempotent **Digital Gold refund**. Valid losses charged before a leadership change remain normal losses. D1 projects the resulting leader read model.
 - A valid victory also queues one asynchronous **Bitmon-funded** public-chain Hall-of-Fame record. The result is visible in-game before chain confirmation; players need no wallet, NFT or cryptocurrency.
 - The blockchain **certifies Bitmon's published result**, not independently enforced battle fairness; server-authoritative gym rules determine winners.
 
@@ -457,10 +455,10 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 These questions need explicit product decisions; do not mistake unmeasured parameters for confirmed requirements.
 
-1. **Online rare cadence:** accepted virtual movement/time, per-account opportunities, rarity rates, ticket expiry and retries. Prevent teleport/refresh farming without inventing a physical GPS guarantee.
+1. **Encounter cadence/lottery:** keep the agreed online rarity probabilities every eligible encounter; tune few-meter local trigger distribution and a minimal account-clock lottery throttle, ticket expiry and retries. No client-distance anti-cheat.
 2. **Habitat balance:** validate any species/region modifier from OpenFreeMap-only data; until safe, use location-independent rare odds.
-3. **Guest progression:** preserve local save, but decide a fixed verified starter roster and whether any Common/Uncommon can enter canonical inventory without importing forged XP/levels.
-4. **Gym concurrence:** multiple simultaneous challengers, defense snapshot expiry, timeouts, rollback/refund rules, Digital Gold debit retry and disconnected mobile sessions.
+3. **Gym roster templates:** decide exact allowed levels, species, stats, moves and items for local Common/Uncommon in official gyms; do not import untrusted local stats. No separate guest-to-online migration blocker.
+4. **Gym concurrence:** parallel frozen-defense fights and first serialized current-version winner are decided; tune session capacity, stale refund idempotency, expiration and disconnect policy.
 5. **PvP connectivity:** acceptable STUN/TURN coverage, QR invites/signaling, mobile network fallbacks and whether ranked reward-bearing matches justify a server arbiter.
 6. **Advertising and subscriptions:** Digital Gold pricing, age/consent eligibility, no forced ads for offline game, reward policy approval, subscription terms and fees.
 7. **Hall of Fame:** on-chain network, one transaction per win versus batch threshold, publisher retry costs, privacy treatment of public pseudonyms, on-chain record schema.
