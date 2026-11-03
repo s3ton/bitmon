@@ -16,8 +16,9 @@ type StatusListener = (usedBytes: number, persistent: boolean) => void
 export function validPosition(value: unknown): value is Position {
   if (!value || typeof value !== 'object') return false
   const point = value as Partial<Position>
-  return Number.isFinite(point.lon) && Number.isFinite(point.lat) &&
-    point.lon! >= -180 && point.lon! <= 180 && point.lat! >= -85 && point.lat! <= 85
+  return typeof point.lon === 'number' && typeof point.lat === 'number' &&
+    Number.isFinite(point.lon) && Number.isFinite(point.lat) &&
+    point.lon >= -180 && point.lon <= 180 && point.lat >= -85 && point.lat <= 85
 }
 
 export function savedPosition(): Position {
