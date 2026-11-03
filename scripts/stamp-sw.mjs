@@ -6,7 +6,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises'
 const assets = (await readdir('dist/assets')).map((name) => 'assets/' + name)
 const files = [
   'index.html', 'manifest.webmanifest', 'icon-192.svg',
-  'icon-512.svg', 'trainer-atlas.svg', ...assets,
+  'icon-512.svg', 'trainer-atlas.webp', ...assets,
 ]
 const hash = createHash('sha256')
 for (const file of files.sort()) {
