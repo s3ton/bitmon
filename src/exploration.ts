@@ -19,7 +19,8 @@ const CAMERA_BACKWARD_ANGLE = 135
 const CAMERA_EXPLORATION_PITCH = 45
 const CAMERA_PITCH_SAFETY_METERS = 1
 const CAMERA_PITCH_SCAN_SECONDS = .1
-const CAMERA_PITCH_RETURN_RATE = 45
+const CAMERA_PITCH_UP_RATE = 120
+const CAMERA_PITCH_DOWN_RATE = 45
 const DEAD_ZONE = 0.16
 
 // Geographic heading: 0° north, 90° east. MapLibre's bearing uses the same convention.
@@ -317,6 +318,26 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     return result
   }
 
+  // DOM markers are composited above the WebGL canvas, so only hide the
+  // trainer when a real rendered building covers its on-screen body and the
+  // source-geometry ray test also says that building space is between the
+  // player and camera. Sampling three body points avoids false positives from
+  // merely walking close to a wall.
+  function avatarIsRenderedBehindBuilding(): boolean {
+    if (desiredPitch >= CAMERA_EXPLORATION_PITCH - .1) return false
+    const foot = map.project([position.lon, position.lat])
+    const height = avatar.offsetHeight
+    if (!height) return false
+    let covered = 0
+    for (const fraction of [.25, .5, .75]) {
+      if (map.queryRenderedFeatures(
+        [foot.x, foot.y - height * fraction],
+        { layers: ['buildings'] },
+      ).length) covered++
+    }
+    return covered >= 2
+  }
+
   function tileReady(candidate: Position): boolean {
     if (!validPosition(candidate)) return false
     const key = tileKeyAt(candidate)
@@ -441,21 +462,15 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     }
     const pitch = map.getPitch()
     const pitchDifference = desiredPitch - pitch
-    // Building clearance takes priority over camera smoothing. Snap toward
-    // overhead as soon as the sampled source geometry requires it, then ease
-    // only the return to 45°. The trainer therefore never needs to disappear
-    // beside a wall while the camera catches up.
-    let nextPitch = desiredPitch
-    if (pitchDifference > .15) {
-      const pitchStep = Math.min(
-        pitchDifference * (1 - Math.exp(-dt / .2)),
-        CAMERA_PITCH_RETURN_RATE * dt,
-      )
-      nextPitch = pitch + pitchStep
-    }
+    const pitchRate = pitchDifference < 0 ? CAMERA_PITCH_UP_RATE : CAMERA_PITCH_DOWN_RATE
+    const pitchStep = Math.sign(pitchDifference) * Math.min(
+      Math.abs(pitchDifference) * (1 - Math.exp(-dt / .2)), pitchRate * dt,
+    )
+    const nextPitch = Math.abs(pitchDifference) < .15 ? desiredPitch : pitch + pitchStep
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
+    avatar.style.visibility = avatarIsRenderedBehindBuilding() ? 'hidden' : 'visible'
     renderAvatar(walking)
     if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(pitchDifference) >= .15) requestTick()
     else lastFrameTime = 0
