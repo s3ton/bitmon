@@ -21,7 +21,7 @@
 
 Each requirement should eventually record an **owner**, GitHub issue/PR, test/demo evidence, remaining blocker, and last verified date. The statuses below describe **documented evidence**, not assumptions about work outside this repository.
 
-**Current overview:** 34 tracked requirements: **0 fully accepted Done, 9 In review, 1 Blocked, 24 Not started**. A publicly accessible map/PWA shell is deployed and has received a positive owner smoke-test report, but the recorded evidence does not yet establish the full player-facing acceptance criteria (especially avatar/movement, Android/iOS installation and map fidelity audits).
+**Current overview:** 34 tracked requirements: **0 fully accepted Done, 10 In review, 1 Blocked, 23 Not started**. A publicly accessible map/PWA shell is deployed and has received a positive owner smoke-test report, but the recorded evidence does not yet establish the full player-facing acceptance criteria (especially avatar/movement, Android/iOS installation and map fidelity audits).
 
 ## 2. Requirements implementation matrix
 
