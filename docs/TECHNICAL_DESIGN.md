@@ -94,7 +94,7 @@ For simple operations, start with one Worker API, one D1 database, one gym Durab
 
 ### 4.1 Distance-triggered local encounters
 
-- Every few **locally traveled** meters, the client may trigger a wild encounter. Draw the next encounter distance from a published random distance interval/distribution using device \`crypto.getRandomValues()\`. Persist the threshold and movement accumulator so reloading does not accidentally restart the cadence. No precise distance interval or rarity percentages are changed by this decision; tune later through playtesting.
+- Every few **locally traveled** meters, the client may trigger a wild encounter. Draw the next encounter distance from a published random distance interval/distribution using device `crypto.getRandomValues()`. Persist the threshold and movement accumulator so reloading does not accidentally restart the cadence. No precise distance interval or rarity percentages are changed by this decision; tune later through playtesting.
 - **Offline or unsigned guest:** only Common/Uncommon can appear, drawn according to their **relative weights**; there is no offline Rare/Legendary possibility. Device seeds plus deterministic counters make local battle outcomes reproducible, not fraud-resistant.
 - **Online signed-in:** when an encounter triggers, request the **same complete rarity lottery on every eligible online encounter** (Common, Uncommon, Rare, Legendary, with one published probability table, not a second lottery just for rares). The Worker generates the rarity/species; the browser never chooses or overrides the outcome. If a user isn't online or does not log in, they remain in the Common/Uncommon pool.
 - Do not claim that an offline encounter has identical absolute rarity probabilities to an online encounter; its Rare/Legendary probability is intentionally zero.
@@ -151,8 +151,8 @@ One **SQLite-backed Durable Object per gym ID** is authoritative for the gym's p
 
 **Multiple users may fight the same frozen defender snapshot concurrently.** Do not queue every player behind a single active match: a popular gym could otherwise block players for hours. The gym DO may impose a bounded active-session count and at most one active official challenge per trainer, determined by real device/load testing.
 
-- Each session stores \`leader_version\` and the defense snapshot captured at entry.
-- The DO serializes victory settlement: **the first valid completed victory whose \`leader_version\` still equals the gym's current version** becomes leader. Atomically increment the leader version and append exactly one unique win ID in the DO's SQLite state.
+- Each session stores `leader_version` and the defense snapshot captured at entry.
+- The DO serializes victory settlement: **the first valid completed victory whose `leader_version` still equals the gym's current version** becomes leader. Atomically increment the leader version and append exactly one unique win ID in the DO's SQLite state.
 - Other challenges targeting the replaced version **cannot overwrite** the winner. Mark those overlapping sessions **superseded**, notify clients over their WebSockets, and **refund their Digital Gold** once through the idempotent ledger. A superseded session grants no loss and may be replayed as a new attempt against the new leader. A genuine defeat completed against the then-current version still consumes the normal attempt cost.
 - If multiple results arrive nearly simultaneously, the DO's serialized durable order is authoritative; never use browser clocks, winner claims or last-write-wins in D1 to choose a champion.
 - On disconnected/abandoned matches, publish a modest timeout, release stale sessions and apply the normal forfeiture policy; **refund only server-error/cancelled/superseded charges**, not deliberate disconnects to avoid a loss.
@@ -160,8 +160,8 @@ One **SQLite-backed Durable Object per gym ID** is authoritative for the gym's p
 
 ### 7.3 Hibernation and protocol
 
-- Use \`ctx.acceptWebSocket()\`, WebSocket message/close handlers, serialized socket attachments, and durable SQLite for leader, session, turns, random seed/counters, currency/outbox and winner history. Restore all required state when a hibernating DO wakes.
-- Do **not** use \`ws.accept()\`, per-turn HTTP endpoints, synchronous polling, or timers that keep the DO continuously active. Use Durable Object alarms for session timeout and retry scheduling.
+- Use `ctx.acceptWebSocket()`, WebSocket message/close handlers, serialized socket attachments, and durable SQLite for leader, session, turns, random seed/counters, currency/outbox and winner history. Restore all required state when a hibernating DO wakes.
+- Do **not** use `ws.accept()`, per-turn HTTP endpoints, synchronous polling, or timers that keep the DO continuously active. Use Durable Object alarms for session timeout and retry scheduling.
 - A disconnected client reconnects the WebSocket to the same DO with a signed authenticated resume token/session ID. If no WebSocket can be established, the official challenge waits or expires according to the rules; **there is no fallback transport**.
 - Cloudflare request handling still carries the **initial HTTP Upgrade** required to create a WebSocket. The no-HTTP rule refers specifically to the transport for gameplay turn messages.
 - Publish the leader-version race, refund/expiry policy and disconnection behavior before launch so players understand contested gyms.
