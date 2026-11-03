@@ -244,7 +244,7 @@ export function createTrainerLayer(
       position = { ...next }
       map.triggerRepaint()
     },
-    setFrame(nextRow: number, nextColumn: number, nextMirrored = false) {
+    setFrame(nextRow: number, nextColumn: number, nextMirrored: boolean) {
       if (row === nextRow && column === nextColumn && mirrored === nextMirrored) return
       row = nextRow
       column = nextColumn

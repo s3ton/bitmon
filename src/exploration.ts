@@ -183,7 +183,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     cameraMenu.open = false
   })
   let animationTime = 0
-  let lastAppearance = ''
   const keys = new Set<string>()
   let frame: number | null = null
   let lastFrameTime = 0
@@ -196,10 +195,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const step = moving
       ? Math.floor(animationTime / WALK_FRAME_SECONDS) % WALK_FRAME_COUNT
       : IDLE_FRAME_BY_ROW[sprite.row]
-    const appearance = direction + ':' + step
-    if (appearance === lastAppearance) return
     trainer.setFrame(sprite.row, step, sprite.mirrored)
-    lastAppearance = appearance
   }
 
   // A 1 m ring covers the player's foot probes and the next 0.5 m step.
