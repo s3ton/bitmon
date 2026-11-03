@@ -48,7 +48,29 @@ export function signedArea(ring: Point[]): number {
   return sum / 2
 }
 
-export const pointBox = ({ x, y }: Point): Box => ({ minX: x, minY: y, maxX: x, maxY: y })
+// Clips a closed ring to the tile square [0, extent]. Cut points are rounded
+// to whole units, so the two tiles sharing an edge cut a footprint at exactly
+// the same vertices. Returns a closed ring, or undefined when nothing is left.
+export function clipRing(ring: Point[], extent: number): Point[] | undefined {
+  let points = ring.slice(0, -1)
+  for (const [axis, limit, side] of [['x', 0, 1], ['x', extent, -1], ['y', 0, 1], ['y', extent, -1]] as const) {
+    const other = axis === 'x' ? 'y' : 'x'
+    const kept: Point[] = []
+    points.forEach((a, i) => {
+      const b = points[(i + 1) % points.length]
+      const aInside = (a[axis] - limit) * side >= 0
+      if (aInside) kept.push(a)
+      if (aInside !== ((b[axis] - limit) * side >= 0)) {
+        const t = (limit - a[axis]) / (b[axis] - a[axis])
+        kept.push({ [axis]: limit, [other]: Math.round(a[other] + t * (b[other] - a[other])) } as Point)
+      }
+    })
+    points = kept
+  }
+  return points.length >= 3 && signedArea(points) ? [...points, points[0]] : undefined
+}
+
+export const pointBox =({ x, y }: Point): Box => ({ minX: x, minY: y, maxX: x, maxY: y })
 
 // Every enriched tile is z14; Web Mercator shrinks metres by cos(latitude).
 export function metresPerUnit(y: number, extent: number): number {
