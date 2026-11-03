@@ -11,7 +11,9 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "maplibre-gl": "6.16.0"
+    "@mapbox/vector-tile": "3.0.0",
+    "maplibre-gl": "6.16.0",
+    "pbf": "5.1.2"
   },
   "devDependencies": {
     "typescript": "7.0.2",
