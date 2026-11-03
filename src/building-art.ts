@@ -1,10 +1,13 @@
 import type { ExpressionSpecification, FillExtrusionLayerSpecification, Map as MapLibreMap } from 'maplibre-gl'
 import type { JoinedStyle } from './building-tiles.worker'
+import { LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
 
 // Facade art for mapped OpenFreeMap buildings. Geometry, footprints and heights
 // stay exactly as sourced; only surface patterns are inferred and invented.
 // The tile worker tags each footprint with `bitmon_style` (from POIs/landuse in
 // the same tile) and `bitmon_variant`; untagged footprints are styled by height.
+// Famous landmarks (`bitmon_landmark`) use their own archetypes, a tint taken
+// from the mapped colour, and a gold cornice just below the roof cap.
 //
 // MapLibre sizes extrusion patterns per integer tile zoom: walls advance
 // 2^(z-16) CSS px per metre and roofs follow tile pixels. Each zoom therefore
@@ -14,18 +17,20 @@ import type { JoinedStyle } from './building-tiles.worker'
 const SOURCE = 'openmaptiles'
 const FLOOR_METERS = 4
 const ROOF_CAP_METERS = .5
+const TRIM_METERS = 1
+const GOLD = '#d9a93a'
 const PART_LAYERS = ['ground', 'upper', 'roof'] as const
 type Part = typeof PART_LAYERS[number]
 
-type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic'
-type UpperKind = 'window' | 'strip' | 'arched' | 'ribbed' | 'balcony' | 'band'
+type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic' | 'portal' | 'arcade' | 'lattice' | 'colonnade'
+type UpperKind = 'window' | 'strip' | 'arched' | 'ribbed' | 'balcony' | 'band' | 'lancet' | 'arcade' | 'lattice' | 'slit' | 'pilaster'
 type RoofKind = 'tiles' | 'flat' | 'ribbed'
 type FacadeStyle = {
   walls: string[]; accents: string[]; roofs: string[]
-  ground: GroundKind; upper: UpperKind; roof: RoofKind; glass?: string
+  ground: GroundKind; upper: UpperKind; roof: RoofKind; glass?: string; masonry?: boolean
 }
 
-const STYLES: Record<JoinedStyle | 'house' | 'block' | 'tower', FacadeStyle> = {
+const STYLES: Record<JoinedStyle | LandmarkStyle | 'house' | 'block' | 'tower', FacadeStyle> = {
   station: { walls: ['#d7dde2', '#e2ddd2'], accents: ['#3e7cc0', '#2f9a8e'], roofs: ['#5d7590', '#6f8295'], ground: 'entrance', upper: 'band', roof: 'ribbed' },
   medical: { walls: ['#f3f5f4', '#eef2ef'], accents: ['#2f9a8e', '#3e8fb0'], roofs: ['#b9c3c6', '#a9b6b8'], ground: 'clinic', upper: 'band', roof: 'flat' },
   worship: { walls: ['#e8e1d1', '#ddd6c6'], accents: ['#7a5cc4', '#3e7cc0'], roofs: ['#5b6573', '#6b5f73'], ground: 'arch', upper: 'arched', roof: 'tiles' },
@@ -41,6 +46,13 @@ const STYLES: Record<JoinedStyle | 'house' | 'block' | 'tower', FacadeStyle> = {
   house: { walls: ['#f1e3c6', '#e9d2bf', '#dfe6d3'], accents: ['#3f8f8a', '#b0624f', '#3e7cc0'], roofs: ['#d9574a', '#3f7fbf', '#3f9a74'], ground: 'door', upper: 'window', roof: 'tiles' },
   block: { walls: ['#d8e0e6', '#e6dccb', '#d4d9cf'], accents: ['#3e7cc0', '#3f8f8a', '#b0624f'], roofs: ['#b6a58f', '#8fa39b', '#a9a2b4'], ground: 'entrance', upper: 'window', roof: 'flat' },
   tower: { walls: ['#b9c4cf', '#c9c3b8', '#aab8c2'], accents: ['#3e7cc0', '#5d7590', '#7a5cc4'], roofs: ['#8f99a3', '#9a9488', '#7f8c99'], ground: 'entrance', upper: 'strip', roof: 'flat', glass: '#4f6f8f' },
+  // Landmarks: the variant is a LANDMARK_TINTS index chosen by the tile worker.
+  cathedral: { walls: LANDMARK_TINTS, accents: ['#7a5cc4', '#3e7cc0', '#c4553f'], roofs: ['#5b6573', '#4f8a7c'], ground: 'portal', upper: 'lancet', roof: 'tiles', glass: '#6f7fc4', masonry: true },
+  shrine: { walls: LANDMARK_TINTS, accents: ['#3f8f8a', '#c99a3a'], roofs: ['#4f8a7c', '#c9a24a'], ground: 'arch', upper: 'arched', roof: 'flat', masonry: true },
+  fortress: { walls: LANDMARK_TINTS, accents: ['#6b4a3a', '#5b6573'], roofs: ['#9a958a', '#8a8579'], ground: 'arch', upper: 'slit', roof: 'flat', masonry: true },
+  arena: { walls: LANDMARK_TINTS, accents: ['#8a7458'], roofs: ['#cdbb94', '#c2b08a'], ground: 'arcade', upper: 'arcade', roof: 'flat', masonry: true },
+  ironwork: { walls: LANDMARK_TINTS, accents: ['#c99a3a'], roofs: ['#6f6250', '#5c5a55'], ground: 'lattice', upper: 'lattice', roof: 'ribbed' },
+  palace: { walls: LANDMARK_TINTS, accents: ['#3e5f99', '#4f8a7c', '#9a6a3a'], roofs: ['#8a8f98', '#4f8a7c'], ground: 'colonnade', upper: 'pilaster', roof: 'flat', masonry: true },
 }
 
 const INK = '#2f3550'
@@ -52,6 +64,9 @@ const height: ExpressionSpecification = ['case',
   ['>', ['to-number', ['get', 'render_height'], 0], 0], ['to-number', ['get', 'render_height']], 14]
 const minHeight: ExpressionSpecification = ['to-number', ['get', 'render_min_height'], 0]
 const wallTop: ExpressionSpecification = ['-', height, ROOF_CAP_METERS]
+const landmark: ExpressionSpecification = ['==', ['get', 'bitmon_landmark'], true]
+// Landmark walls stop lower to make room for the gold cornice.
+const facadeTop: ExpressionSpecification = ['case', landmark, ['-', wallTop, TRIM_METERS], wallTop]
 const upperBase: ExpressionSpecification = ['case', ['>', minHeight, 0], minHeight, FLOOR_METERS]
 // Without a joined POI/landuse hint, only the sourced height picks the style.
 const facadeStyle: ExpressionSpecification = ['coalesce', ['get', 'bitmon_style'],
@@ -77,9 +92,16 @@ export function buildingLayers(): FillExtrusionLayerSpecification[] {
   })
   return [
     { ...common, id: 'buildings-ground', filter: ['all', visible, ['==', minHeight, 0]],
-      paint: paint('ground', 0, ['min', wallTop, FLOOR_METERS]) },
-    { ...common, id: 'buildings-upper', filter: ['all', visible, ['>', wallTop, upperBase]],
-      paint: paint('upper', upperBase, wallTop) },
+      paint: paint('ground', 0, ['min', facadeTop, FLOOR_METERS]) },
+    { ...common, id: 'buildings-upper', filter: ['all', visible, ['>', facadeTop, upperBase]],
+      paint: paint('upper', upperBase, facadeTop) },
+    { ...common, id: 'buildings-trim', filter: ['all', visible, landmark, ['<', minHeight, wallTop]],
+      paint: {
+        'fill-extrusion-color': GOLD,
+        'fill-extrusion-base': ['max', minHeight, facadeTop],
+        'fill-extrusion-height': wallTop,
+        'fill-extrusion-vertical-gradient': false,
+      } },
     { ...common, id: 'buildings-roof', filter: visible,
       paint: paint('roof', ['max', minHeight, wallTop], height) },
   ]
@@ -91,7 +113,9 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
   const unit = 2 ** (zoom - 16)
   // Pitched-looking tiles span ~10-20 m so a typical house shows one ridge.
   const roofSize = (style.roof === 'tiles' ? 16 : 8) * unit
-  const cssWidth = part === 'roof' ? roofSize : part === 'upper' ? 4 * unit : 8 * unit
+  // Lattice bays are wide so the girders stay legible at a distance.
+  const bay = part === 'upper' && style.upper !== 'lattice' ? 4 : 8
+  const cssWidth = part === 'roof' ? roofSize : bay * unit
   const cssHeight = part === 'roof' ? roofSize : FLOOR_METERS * unit
   const width = Math.max(1, Math.round(cssWidth * pixelRatio))
   const heightPx = Math.max(1, Math.round(cssHeight * pixelRatio))
@@ -117,6 +141,23 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
     }
     rect(x + 2 * px, y + 2 * py, px, py, SHINE)
   }
+  // Outlined opening with a stepped round or pointed head.
+  const opening = (x: number, y: number, w: number, h: number, fill: string, pointed = false) => {
+    const head = h * (pointed ? .35 : .25)
+    for (const [inset, color] of [[0, INK], [1, fill]] as const) {
+      const ix = inset * px, iy = inset * py
+      for (let step = 0; step < 3; step++) {
+        const narrow = w * (3 - step) / (pointed ? 8 : 12)
+        rect(x + narrow + ix, y + head * step / 3 + iy, w - 2 * narrow - 2 * ix, head / 3 + py, color)
+      }
+      rect(x + ix, y + head + iy, w - 2 * ix, h - head - iy, color)
+    }
+  }
+  const column = (x: number, y: number, w: number, h: number) => {
+    rect(x, y, w, h, shade(wall, .25))
+    rect(x + w - px, y, px, h, shade(wall, -.25))
+    rect(x - w * .2, y, w * 1.4, py * 2, shade(wall, -.1))
+  }
 
   if (part === 'roof') {
     const roof = pick(style.roofs)
@@ -138,6 +179,26 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
   }
 
   rect(0, 0, 1, 1, wall)
+  if (style.masonry) {
+    // Stone courses with staggered joints.
+    for (let row = 0; row < 4; row++) {
+      rect(0, row / 4, 1, py, shade(wall, -.1))
+      for (const x of row % 2 ? [.25, .75] : [0, .5]) rect(x, row / 4, px, .25, shade(wall, -.1))
+    }
+  }
+  if (style.ground === 'lattice' || style.upper === 'lattice') {
+    // Open ironwork: sky-pale gaps behind X-braced girders.
+    rect(0, 0, 1, 1, shade(wall, .55))
+    ctx.strokeStyle = wall
+    ctx.lineWidth = Math.max(1, width / 8)
+    ctx.beginPath()
+    ctx.moveTo(0, 0); ctx.lineTo(width, heightPx)
+    ctx.moveTo(width, 0); ctx.lineTo(0, heightPx)
+    ctx.stroke()
+    rect(0, 0, .1, 1, shade(wall, -.15))
+    rect(.9, 0, .1, 1, shade(wall, -.15))
+    rect(0, 0, 1, .06, shade(wall, -.15))
+  }
   if (part === 'ground') {
     // The image's bottom row meets the ground.
     rect(0, .9, 1, .1, shade(wall, -.3))
@@ -182,6 +243,23 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
           rect(x + .06, .28 - 2 * py, .22, 2 * py, INK)
         }
         break
+      case 'portal':
+        opening(.36, .2, .28, .7, shade(accent, -.35), true)
+        opening(.08, .3, .14, .45, glass, true)
+        opening(.78, .3, .14, .45, glass, true)
+        break
+      case 'arcade':
+        for (const x of [.04, .54]) opening(x, .12, .42, .78, shade(wall, -.55))
+        break
+      case 'colonnade':
+        rect(0, .08, 1, .08, shade(wall, -.12))
+        for (let i = 0; i < 4; i++) {
+          rect(i / 4 + .07, .16, .12, .74, shade(wall, -.45))
+          column(i / 4 + .02, .16, .05, .74)
+        }
+        break
+      case 'lattice':
+        break
     }
     return ctx.getImageData(0, 0, width, heightPx)
   }
@@ -218,6 +296,24 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
     case 'ribbed':
       for (let col = 0; col < 4; col++) rect(col / 4, 0, px, .92, shade(wall, -.15))
       pane(.3, .12, .4, .16, false)
+      break
+    case 'lancet':
+      opening(.32, .1, .36, .74, glass, true)
+      rect(.49, .3, px, .54, INK)
+      break
+    case 'arcade':
+      opening(.1, .1, .8, .78, shade(wall, -.55))
+      break
+    case 'slit':
+      rect(.46, .25, .08, .4, INK)
+      rect(.4, .4, .2, .08, INK)
+      break
+    case 'pilaster':
+      column(.04, 0, .1, .92)
+      pane(.3, .22, .4, .5)
+      rect(.26, .14, .48, .06, shade(wall, -.15))
+      break
+    case 'lattice':
       break
   }
   return ctx.getImageData(0, 0, width, heightPx)

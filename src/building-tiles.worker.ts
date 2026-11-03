@@ -1,10 +1,12 @@
 import { classifyRings, VectorTile } from '@mapbox/vector-tile'
 import { PbfReader, PbfWriter } from 'pbf'
+import { DEFAULT_TINT, LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
 
 // Rewrites only the `building` layer of an OpenFreeMap tile. OpenFreeMap merges
 // every building sharing height/colour into one multipolygon feature, so this
 // splits it back into one feature per footprint and tags each with an art
-// style inferred from POIs and landuse in the same tile. Geometry and source
+// style inferred from POIs and landuse in the same tile. Famous landmarks and
+// all their stacked parts get a landmark style instead. Geometry and source
 // attributes are copied unchanged; every other layer keeps its original bytes.
 
 // Ordered by precedence when several mapped POIs fall inside one footprint.
@@ -32,10 +34,20 @@ const POI_STYLES: Record<string, JoinedStyle> = {
 }
 const LANDUSE_STYLES: Record<string, JoinedStyle> = { commercial: 'commercial', retail: 'commercial', industrial: 'industrial' }
 
+const LANDMARK_CLASSES = new Set([
+  'place_of_worship', 'attraction', 'monument', 'castle', 'museum', 'theatre', 'town_hall', 'library', 'art_gallery',
+])
+// A name translated into many languages marks a world-famous place: every
+// landmark sampled (Colosseum, Eiffel Tower, Taj Mahal...) has 55+, while
+// only about 1% of all POIs reach 20.
+const FAMOUS_TRANSLATIONS = 20
+
 type Point = { x: number; y: number }
 type Polygon = Point[][]
 type Value = string | number | boolean
 type Area = { rings: Polygon; minX: number; maxX: number; minY: number; maxY: number }
+type Footprint = Area & { tags: Record<string, Value>; size: number; center: Point; group?: LandmarkGroup }
+type LandmarkGroup = { style: LandmarkStyle | null; members: Footprint[] }
 
 function bounded(rings: Polygon): Area {
   const area = { rings, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
@@ -57,18 +69,56 @@ function inRing(point: Point, ring: Point[]): boolean {
   return inside
 }
 
-function contains(area: Area, point: Point): boolean {
+function withinOutline(area: Area, point: Point): boolean {
   return point.x >= area.minX && point.x <= area.maxX && point.y >= area.minY && point.y <= area.maxY &&
-    inRing(point, area.rings[0]) && !area.rings.slice(1).some((hole) => inRing(point, hole))
+    inRing(point, area.rings[0])
 }
 
-function styleFor(area: Area, pois: { point: Point; style: JoinedStyle }[], landuse: (Area & { style: JoinedStyle })[]): JoinedStyle | undefined {
+function contains(area: Area, point: Point): boolean {
+  return withinOutline(area, point) && !area.rings.slice(1).some((hole) => inRing(point, hole))
+}
+
+// Uniform cell index over tile coordinates. Dense tiles hold ~10k footprints
+// and thousands of POIs, so pairwise scans would cost about a second per tile.
+class Grid<T> {
+  private cells = new Map<number, T[]>()
+  private static readonly SIZE = 256
+  private static key(cx: number, cy: number): number { return (cx + 64) * 4096 + cy + 64 }
+
+  add(item: T, box: { minX: number; minY: number; maxX: number; maxY: number }): void {
+    for (let cx = Math.floor(box.minX / Grid.SIZE); cx <= Math.floor(box.maxX / Grid.SIZE); cx++) {
+      for (let cy = Math.floor(box.minY / Grid.SIZE); cy <= Math.floor(box.maxY / Grid.SIZE); cy++) {
+        const key = Grid.key(cx, cy)
+        const cell = this.cells.get(key)
+        if (cell) cell.push(item)
+        else this.cells.set(key, [item])
+      }
+    }
+  }
+
+  near(box: { minX: number; minY: number; maxX: number; maxY: number }): Set<T> {
+    const found = new Set<T>()
+    for (let cx = Math.floor(box.minX / Grid.SIZE); cx <= Math.floor(box.maxX / Grid.SIZE); cx++) {
+      for (let cy = Math.floor(box.minY / Grid.SIZE); cy <= Math.floor(box.maxY / Grid.SIZE); cy++) {
+        for (const item of this.cells.get(Grid.key(cx, cy)) ?? []) found.add(item)
+      }
+    }
+    return found
+  }
+}
+
+const pointBox = ({ x, y }: Point) => ({ minX: x, minY: y, maxX: x, maxY: y })
+
+function styleFor(area: Area, pois: Grid<{ point: Point; style: JoinedStyle }>, landuse: Grid<Area & { style: JoinedStyle }>): JoinedStyle | undefined {
   let best: JoinedStyle | undefined
-  for (const poi of pois) {
+  for (const poi of pois.near(area)) {
     if (contains(area, poi.point) && (!best || JOINED_STYLES.indexOf(poi.style) < JOINED_STYLES.indexOf(best))) best = poi.style
   }
+  if (best) return best
   // A footprint corner inside commercial/industrial land is enough context.
-  return best ?? landuse.find((candidate) => contains(candidate, area.rings[0][0]))?.style
+  const corner = area.rings[0][0]
+  for (const candidate of landuse.near(pointBox(corner))) if (contains(candidate, corner)) return candidate.style
+  return undefined
 }
 
 // Deterministic 0..2 palette pick from the footprint's west-most in-tile
@@ -83,6 +133,67 @@ function variantFor(rings: Polygon, extent: number, x: number, y: number): numbe
   let hash = Math.imul((x * extent + anchor.x) | 0, 73856093) ^ Math.imul((y * extent + anchor.y) | 0, 19349663)
   hash = Math.imul(hash ^ (hash >>> 15), 2246822507)
   return ((hash ^ (hash >>> 13)) >>> 0) % 3
+}
+
+// Classes with an obvious archetype decide it; other famous places are judged
+// by shape once all their parts are grouped.
+function landmarkSeed(properties: Record<string, Value>): { style: LandmarkStyle | null; fame: number } | undefined {
+  const poiClass = String(properties.class)
+  if (!LANDMARK_CLASSES.has(poiClass) || properties.subclass === 'artwork') return undefined
+  let fame = 0
+  for (const key in properties) if (key.startsWith('name:') && key !== 'name:latin' && key !== 'name:nonlatin') fame++
+  if (fame < FAMOUS_TRANSLATIONS) return undefined
+  if (poiClass === 'place_of_worship') {
+    return { style: !properties.subclass || properties.subclass === 'christian' ? 'cathedral' : 'shrine', fame }
+  }
+  return { style: poiClass === 'castle' ? 'fortress' : null, fame }
+}
+
+function shapeStyle(members: Footprint[]): LandmarkStyle {
+  // Raised open rings (Eiffel-like towers) read as ironwork.
+  if (members.some((member) => Number(member.tags.render_min_height) > 0 && member.rings.length > 1)) return 'ironwork'
+  // A courtyard inside a near-elliptical outline reads as an arena.
+  const arena = members.some((member) => {
+    const width = member.maxX - member.minX, depth = member.maxY - member.minY
+    const fill = member.size / (width * depth)
+    return member.rings.length > 1 && fill > .7 && fill < .85 && Math.min(width, depth) / Math.max(width, depth) > .6
+  })
+  return arena ? 'arena' : 'palace'
+}
+
+let colourContext: OffscreenCanvasRenderingContext2D | undefined
+// Snap a mapped CSS colour (`white`, `#706550`...) to the landmark palette.
+function tintFor(colour: Value | undefined): number | undefined {
+  if (typeof colour !== 'string') return undefined
+  colourContext ??= new OffscreenCanvas(1, 1).getContext('2d')!
+  colourContext.fillStyle = '#010203'
+  colourContext.fillStyle = colour
+  const hex = String(colourContext.fillStyle)
+  if (hex === '#010203' || !hex.startsWith('#')) return undefined
+  const rgb = (value: string) => [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16))
+  const [r, g, b] = rgb(hex)
+  let best = 0, bestDistance = Infinity
+  LANDMARK_TINTS.forEach((tint, index) => {
+    const [tr, tg, tb] = rgb(tint)
+    const distance = (r - tr) ** 2 + (g - tg) ** 2 + (b - tb) ** 2
+    if (distance < bestDistance) [best, bestDistance] = [index, distance]
+  })
+  return best
+}
+
+// Parts that overlap in plan and meet in height, one of them raised off the
+// ground: legs carrying a platform, a drum carrying a dome.
+function stacked(a: Footprint, b: Footprint): boolean {
+  const [aBase, aTop] = [Number(a.tags.render_min_height) || 0, Number(a.tags.render_height) || 0]
+  const [bBase, bTop] = [Number(b.tags.render_min_height) || 0, Number(b.tags.render_height) || 0]
+  if ((aBase <= 0 && bBase <= 0) || aTop < bBase || bTop < aBase) return false
+  return a.rings[0].some((point) => withinOutline(b, point)) || b.rings[0].some((point) => withinOutline(a, point))
+}
+
+function signedArea(ring: Point[]): number {
+  let sum = 0
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) sum += (ring[j].x - ring[i].x) * (ring[j].y + ring[i].y)
+  return sum / 2
 }
 
 const zigzag = (n: number) => (n << 1) ^ (n >> 31)
@@ -164,33 +275,86 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
   if (!buildings) return out.finish()
 
   const extent = buildings.extent
-  const pois: { point: Point; style: JoinedStyle }[] = []
+  const pois = new Grid<{ point: Point; style: JoinedStyle }>()
+  const seeds: { point: Point; style: LandmarkStyle | null; fame: number }[] = []
   const poiLayer = tile.layers.poi
   for (let i = 0; poiLayer && i < poiLayer.length; i++) {
     const feature = poiLayer.feature(i)
+    if (feature.type !== 1) continue
     const style = POI_STYLES[feature.properties.class as string]
-    if (style && feature.type === 1) for (const [point] of feature.loadGeometry()) pois.push({ point, style })
+    const landmark = landmarkSeed(feature.properties)
+    for (const [point] of feature.loadGeometry()) {
+      if (style) pois.add({ point, style }, pointBox(point))
+      if (landmark) seeds.push({ point, ...landmark })
+    }
   }
-  const landuse: (Area & { style: JoinedStyle })[] = []
+  const landuse = new Grid<Area & { style: JoinedStyle }>()
   const landuseLayer = tile.layers.landuse
   for (let i = 0; landuseLayer && i < landuseLayer.length; i++) {
     const feature = landuseLayer.feature(i)
     const style = LANDUSE_STYLES[feature.properties.class as string]
-    if (style && feature.type === 3) for (const rings of classifyRings(feature.loadGeometry())) landuse.push({ ...bounded(rings), style })
+    if (style && feature.type === 3) for (const rings of classifyRings(feature.loadGeometry())) {
+      const area = { ...bounded(rings), style }
+      landuse.add(area, area)
+    }
   }
 
-  const features: { tags: Record<string, Value>; rings: Polygon }[] = []
+  const footprints: Footprint[] = []
+  const footprintGrid = new Grid<Footprint>()
   for (let i = 0; i < buildings.length; i++) {
     const feature = buildings.feature(i)
     if (feature.type !== 3) continue
     for (const rings of classifyRings(feature.loadGeometry())) {
       if (!rings.length || rings[0].length < 4) continue
+      const area = bounded(rings)
       const tags: Record<string, Value> = { ...feature.properties, bitmon_variant: variantFor(rings, extent, x, y) }
-      const style = styleFor(bounded(rings), pois, landuse)
+      const style = styleFor(area, pois, landuse)
       if (style) tags.bitmon_style = style
-      features.push({ tags, rings })
+      const outer = rings[0]
+      const center = { x: outer.reduce((sum, p) => sum + p.x, 0) / outer.length, y: outer.reduce((sum, p) => sum + p.y, 0) / outer.length }
+      const footprint = { ...area, tags, size: Math.abs(signedArea(outer)), center }
+      footprints.push(footprint)
+      footprintGrid.add(footprint, footprint)
     }
   }
+
+  // A landmark is mapped as many stacked parts (spires, tiers, domes) and its
+  // POI sits in only one of them. Grow each group up to two steps: to parts
+  // centred within a member's outline (courtyards and the gaps between tower
+  // legs included), to a modest base that surrounds one, or to a part stacked
+  // on or under one.
+  const groups: LandmarkGroup[] = []
+  // The most famous place claims its parts first, so lesser famous POIs
+  // inside it (a pavilion, an office) cannot split the landmark.
+  for (const seed of seeds.sort((a, b) => b.fame - a.fame)) {
+    const members = [...footprintGrid.near(pointBox(seed.point))]
+      .filter((footprint) => !footprint.group && contains(footprint, seed.point))
+    if (!members.length) continue
+    const group = { style: seed.style, members }
+    for (const member of members) member.group = group
+    groups.push(group)
+    let frontier = members
+    for (let step = 0; step < 2; step++) {
+      const next: Footprint[] = []
+      for (const member of frontier) {
+        for (const footprint of footprintGrid.near(member)) {
+          if (footprint.group || !(withinOutline(member, footprint.center) ||
+              (footprint.size <= 25 * member.size && contains(footprint, member.center)) ||
+              stacked(member, footprint))) continue
+          footprint.group = group
+          next.push(footprint)
+        }
+      }
+      members.push(...next)
+      frontier = next
+    }
+  }
+  for (const group of groups) {
+    const style = group.style ?? shapeStyle(group.members)
+    const tint = group.members.map((member) => tintFor(member.tags.colour)).find((index) => index !== undefined) ?? DEFAULT_TINT[style]
+    for (const { tags } of group.members) Object.assign(tags, { bitmon_style: style, bitmon_variant: tint, bitmon_landmark: true })
+  }
+  const features = footprints.map(({ tags, rings }) => ({ tags, rings }))
   out.writeMessage(3, writeBuildingLayer, { name: 'building', extent, features })
   return out.finish()
 }
