@@ -6,7 +6,7 @@
 
 **Status:** Concept / architecture proposal, not a security-audited specification
 **Version:** 3.10 (E0 spatially indexed exploration geometry; protocol unchanged)
-**Date:** 2 November 2026
+**Date:** 3 November 2026
 **Project name:** **bitmon** (game and creature name; original characters and artwork required)
 
 > **The vision in one sentence:** Build a browser-first, single-player creature-collection RPG whose progression and creatures are cryptographically verifiable, whose rare encounters are fairly and independently determined, whose trading rules make farming pointless, and whose network features (trading, player-led gyms) remain accessible without trusting or paying the original game developer.
