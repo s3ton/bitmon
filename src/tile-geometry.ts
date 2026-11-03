@@ -11,7 +11,7 @@ type Box = { minX: number; minY: number; maxX: number; maxY: number }
 // Line (2) or polygon (3) features, with geometry as loadGeometry returns it:
 // one point array per line or ring. The OpenMapTiles layers rewritten here
 // (building, transportation) contain no point features.
-export type Feature = { type: number; tags: Record<string, Value>; geometry: Point[][] }
+export type Feature = { id?: number; type: number; tags: Record<string, Value>; geometry: Point[][] }
 
 export function bounded(rings: Polygon): Area {
   const area = { rings, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
@@ -95,6 +95,7 @@ export function writeLayer(layer: { name: string; extent: number; features: Feat
   pbf.writeStringField(1, layer.name)
   for (const feature of layer.features) {
     pbf.writeMessage(2, (_, out) => {
+      if (feature.id !== undefined) out.writeVarintField(1, feature.id)
       const tags: number[] = []
       for (const [key, value] of Object.entries(feature.tags)) {
         if (!keyIndex.has(key)) keyIndex.set(key, keys.push(key) - 1)

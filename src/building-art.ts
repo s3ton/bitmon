@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, FillExtrusionLayerSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification, FillExtrusionLayerSpecification, FilterSpecification, Map as MapLibreMap } from 'maplibre-gl'
 import type { JoinedStyle } from './building-tiles'
 import { LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
 
@@ -112,6 +112,26 @@ export function buildingLayers(): FillExtrusionLayerSpecification[] {
     { ...common, id: 'buildings-roof', filter: visible,
       paint: paint('roof', ['max', minHeight, wallTop], height) },
   ]
+}
+
+const SEE_THROUGH_OPACITY = .4
+const SEE_THROUGH = '-see-through'
+const partIn = (ids: number[]): ExpressionSpecification => ['in', ['id'], ['literal', ids]]
+
+// Translucent copies of the building layers, added above the trainer. They
+// draw only the parts covering the trainer, which the opaque layers then skip.
+export function seeThroughLayers(): FillExtrusionLayerSpecification[] {
+  return buildingLayers().map((layer) => ({
+    ...layer, id: layer.id + SEE_THROUGH, filter: ['all', layer.filter, partIn([])] as FilterSpecification,
+    paint: { ...layer.paint, 'fill-extrusion-opacity': SEE_THROUGH_OPACITY },
+  }))
+}
+
+export function showThrough(map: MapLibreMap, ids: number[]): void {
+  for (const layer of buildingLayers()) {
+    map.setFilter(layer.id, ids.length ? ['all', layer.filter, ['!', partIn(ids)]] as FilterSpecification : layer.filter)
+    map.setFilter(layer.id + SEE_THROUGH, ['all', layer.filter, partIn(ids)] as FilterSpecification)
+  }
 }
 
 function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number, pixelRatio: number): ImageData {

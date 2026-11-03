@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
+import { seeThroughLayers, showThrough } from './building-art'
 import { offlineMap, savePosition, tileKeyAt, validPosition, type Position } from './offline-map'
 import { deckMetres } from './road-tiles'
 import { createTrainerLayer } from './trainer-layer'
@@ -11,6 +12,8 @@ type Polygon = Ring[]
 type CollisionRole = 'wall' | 'overhead' | 'deck'
 type CollisionArea = {
   minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number; role: CollisionRole
+  // Ids of the rendered building parts with this exact footprint.
+  ids: number[]
 }
 type MeterBounds = { minX: number; maxX: number; minY: number; maxY: number }
 type CollisionIndex = {
@@ -160,12 +163,16 @@ function indexArea(index: CollisionIndex, area: CollisionArea): void {
   }
 }
 
-function collisionAt(index: CollisionIndex, point: Position): boolean {
+function areasAt(index: CollisionIndex, point: Position): CollisionArea[][] {
   const local = localMeters(index, point)
   const key = Math.floor(local.x / COLLISION_CELL_METERS) + ':' +
     Math.floor(local.y / COLLISION_CELL_METERS)
+  return [index.cells.get(key) ?? [], index.overflow]
+}
+
+function collisionAt(index: CollisionIndex, point: Position): boolean {
   let wall = false
-  for (const areas of [index.cells.get(key) ?? [], index.overflow]) {
+  for (const areas of areasAt(index, point)) {
     for (const area of areas) {
       if (area.role === 'overhead' || !contains(area, point)) continue
       if (area.role === 'deck') return false
@@ -173,6 +180,17 @@ function collisionAt(index: CollisionIndex, point: Position): boolean {
     }
   }
   return wall
+}
+
+// Rendered building parts over the point. The trainer is only ever inside a
+// footprint when walking under a raised part or along a bridge deck, where
+// those parts hide it.
+function coveringParts(index: CollisionIndex, point: Position): number[] {
+  const ids: number[] = []
+  for (const areas of areasAt(index, point)) {
+    for (const area of areas) if (area.height !== undefined && contains(area, point)) ids.push(...area.ids)
+  }
+  return ids.sort((a, b) => a - b)
 }
 
 // A bridge's walkable deck: one rectangle per centreline segment, as wide as
@@ -278,12 +296,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     import.meta.env.BASE_URL + 'trainer-atlas.webp',
   )
   const addTrainerLayer = () => {
-    if (!map.getLayer(trainer.layer.id)) map.addLayer(trainer.layer)
+    if (map.getLayer(trainer.layer.id)) return
+    map.addLayer(trainer.layer)
+    // Above the trainer, so it shows through the parts that cover it.
+    for (const layer of seeThroughLayers()) map.addLayer(layer)
   }
   if (map.isStyleLoaded()) addTrainerLayer()
   else map.once('style.load', addTrainerLayer)
 
   let position = { ...initialPosition }
+  let covering = ''
   let lastPositionSave = 0
   function persistProgress(force = false): void {
     const now = performance.now()
@@ -351,7 +373,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       overflow: [],
       maxIndexedBuildingDistance: 0,
     }
-    const seen = new Set<string>()
+    const seen = new Map<string, CollisionArea>()
     for (const layer of ['building', 'water', 'transportation']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
         const properties = feature.properties ?? {}
@@ -393,9 +415,15 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           // Exact duplicates have the same geometry and appearance. Keep any
           // overlapping footprints with different heights for safe occlusion.
           const signature = role + ':' + height + ':' + JSON.stringify(rings)
-          if (seen.has(signature)) continue
-          seen.add(signature)
-          indexArea(index, { ...bounds, rings, height, role })
+          const ids = typeof feature.id === 'number' ? [feature.id] : []
+          const duplicate = seen.get(signature)
+          if (duplicate) {
+            duplicate.ids.push(...ids)
+            continue
+          }
+          const area = { ...bounds, rings, height, role, ids }
+          seen.set(signature, area)
+          indexArea(index, area)
         }
       }
     }
@@ -565,6 +593,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       }
     }
     if (!walking) animationTime = 0
+    const ids = collisionIndex ? coveringParts(collisionIndex, position) : []
+    if (ids.join() !== covering) {
+      covering = ids.join()
+      showThrough(map, ids)
+    }
     movementStatus.hidden = landscape || length <= DEAD_ZONE || (ready && !blocked)
     if (!movementStatus.hidden) {
       movementStatus.textContent = !ready
