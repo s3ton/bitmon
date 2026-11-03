@@ -19,8 +19,7 @@ const CAMERA_BACKWARD_ANGLE = 135
 const CAMERA_EXPLORATION_PITCH = 45
 const CAMERA_PITCH_SAFETY_METERS = 1
 const CAMERA_PITCH_SCAN_SECONDS = .1
-const CAMERA_PITCH_UP_RATE = 120
-const CAMERA_PITCH_DOWN_RATE = 45
+const CAMERA_PITCH_RETURN_RATE = 45
 const DEAD_ZONE = 0.16
 
 // Geographic heading: 0° north, 90° east. MapLibre's bearing uses the same convention.
@@ -442,14 +441,18 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     }
     const pitch = map.getPitch()
     const pitchDifference = desiredPitch - pitch
-    const pitchRate = pitchDifference < 0 ? CAMERA_PITCH_UP_RATE : CAMERA_PITCH_DOWN_RATE
-    const pitchStep = Math.sign(pitchDifference) * Math.min(
-      Math.abs(pitchDifference) * (1 - Math.exp(-dt / .2)), pitchRate * dt,
-    )
-    const nextPitch = Math.abs(pitchDifference) < .15 ? desiredPitch : pitch + pitchStep
-    // The sprite is a DOM marker above WebGL. Hide it briefly while the
-    // camera moves to a genuinely unobstructed angle, never through walls.
-    avatar.style.visibility = nextPitch > desiredPitch + 1 ? 'hidden' : 'visible'
+    // Building clearance takes priority over camera smoothing. Snap toward
+    // overhead as soon as the sampled source geometry requires it, then ease
+    // only the return to 45°. The trainer therefore never needs to disappear
+    // beside a wall while the camera catches up.
+    let nextPitch = desiredPitch
+    if (pitchDifference > .15) {
+      const pitchStep = Math.min(
+        pitchDifference * (1 - Math.exp(-dt / .2)),
+        CAMERA_PITCH_RETURN_RATE * dt,
+      )
+      nextPitch = pitch + pitchStep
+    }
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
