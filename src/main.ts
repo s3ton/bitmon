@@ -138,11 +138,14 @@ zoomSlider.addEventListener('input', () => {
   map.setZoom(zoom)
 })
 map.addControl(new AttributionControl({ compact: false }), 'bottom-right')
-map.once('idle', () => { status.hidden = true })
+map.on('idle', () => {
+  if (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()) status.hidden = true
+})
 startExploration(map, startingPosition)
 map.on('error', () => {
+  status.classList.add('map-warning')
   status.hidden = false
-  status.textContent = 'Map data unavailable. Reconnect to load this neighborhood.'
+  status.textContent = 'Some map tiles are unavailable. Reconnect to explore farther.'
 })
 
 registerPwa()
