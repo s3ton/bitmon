@@ -16,7 +16,7 @@ self.addEventListener('install', (event) => {
       .filter((url) => url.origin === self.location.origin && /\.(?:js|css)$/.test(url.pathname))
       .map((url) => url.href)
     await cache.addAll([...assets, ...[
-      'manifest.webmanifest', 'icon-192.svg', 'icon-512.svg', 'trainer-atlas.svg',
+      'manifest.webmanifest', 'icon-192.svg', 'icon-512.svg', 'trainer-atlas.webp',
     ].map((path) => new URL(path, SHELL_URL).href)])
   })())
 })

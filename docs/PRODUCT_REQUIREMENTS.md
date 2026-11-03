@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.25 — GPU depth-tested trainer billboard  
+**Version:** 0.26 — compact mirrored WebP trainer atlas  
 **Date:** 3 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -219,7 +219,7 @@ An optional guest demo can let a player see the map, walk around, and try practi
 **As a player**, I can control a recognizable male trainer avatar and see him walk naturally in the direction I move.
 
 - Provide an **original** male explorer/trainer design that reads clearly in a low-poly 2.5D portrait scene. No reused character art from existing franchises.
-- Use an original **illustrated low-poly/chibi trainer sprite atlas** with **eight directions** (N, NE, E, SE, S, SW, W, NW), an idle frame per direction and at least four walking frames per direction. Mirroring left/right diagonal artwork is allowed; diagonal travel must not display the wrong cardinal-facing pose. Cycle the frames only while moving.
+- Use an original **illustrated low-poly/chibi trainer sprite atlas** with **eight visible directions** (N, NE, E, SE, S, SW, W, NW), an idle frame per direction and at least four walking frames per direction. To keep the mobile asset compact, opposite left/right views may share artwork by horizontal mirroring (E↔W, NE↔NW, SE↔SW); diagonal travel must still display the correct diagonal-facing pose. Cycle the frames only while moving.
 - Advance walking frames based on elapsed time or actual movement, not map tile loading or display refresh rate. Direction changes update the facing animation without teleporting or snapping the avatar's world position.
 - Keep sprite/mesh scale, ground contact, facing, foot positioning, and shadow consistent across frames; the walking cycle should not visually slide or jitter.
 - **Touch control** drives geographic movement; derive visible **eight-way** sprite facing from accepted geographic movement heading relative to the rotating camera. Keep sprite-facing, player position and camera orientation distinct. Retain the last heading and idle pose when stopped.

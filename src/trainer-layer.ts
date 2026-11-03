@@ -6,9 +6,9 @@ const METERS_PER_RADIAN = 6_371_008.8
 const TRAINER_HEIGHT_METERS = 1.8
 const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
 const TRAINER_RENDER_SCALE = 2
-const TRAINER_ASPECT_RATIO = .75
-const ATLAS_COLUMNS = 5
-const ATLAS_ROWS = 8
+const TRAINER_ASPECT_RATIO = 53 / 80
+const ATLAS_COLUMNS = 8
+const ATLAS_ROWS = 5
 // Keep custom-layer coordinates local so WebGL float32 precision stays stable
 // at the game's zoom range. Absolute 0..1 Mercator coordinates quantize by
 // meters on the GPU and visibly jump/flicker while the camera follows movement.
@@ -105,6 +105,7 @@ export function createTrainerLayer(
   let position = { ...initialPosition }
   let row = 0
   let column = 0
+  let mirrored = false
   let visible = true
   let textureReady = false
   let glProgram: WebGLProgram | null = null
@@ -198,8 +199,10 @@ export function createTrainerLayer(
         TRAINER_HEIGHT_METERS / metersPerPixel,
       ) * TRAINER_RENDER_SCALE
       const widthPx = heightPx * TRAINER_ASPECT_RATIO
-      const u0 = column / ATLAS_COLUMNS
-      const u1 = (column + 1) / ATLAS_COLUMNS
+      const columnStart = column / ATLAS_COLUMNS
+      const columnEnd = (column + 1) / ATLAS_COLUMNS
+      const u0 = mirrored ? columnEnd : columnStart
+      const u1 = mirrored ? columnStart : columnEnd
       const v0 = row / ATLAS_ROWS
       const v1 = (row + 1) / ATLAS_ROWS
 
@@ -241,10 +244,11 @@ export function createTrainerLayer(
       position = { ...next }
       map.triggerRepaint()
     },
-    setFrame(nextRow: number, nextColumn: number) {
-      if (row === nextRow && column === nextColumn) return
+    setFrame(nextRow: number, nextColumn: number, nextMirrored = false) {
+      if (row === nextRow && column === nextColumn && mirrored === nextMirrored) return
       row = nextRow
       column = nextColumn
+      mirrored = nextMirrored
       map.triggerRepaint()
     },
     setVisible(next: boolean) {
