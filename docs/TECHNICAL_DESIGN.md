@@ -537,16 +537,21 @@ Competitive battle latency, action timeouts, exact chance tables and how many ch
         +----------------+-------------------+
                          ^
                          |
-                self-pay OR sponsored
+                contract calls:
+          - self-funded registration/NFTs/swaps
+          - official gym UI via Digital Gold
+          - alternate gym clients self-funded
+                         ^
                          |
-            +------------+-------------+
-            | Independent gas sponsor  |
-            | ads, fraud checks,       |
-            | paymaster / fee payer    |
-            +--------------------------+
+          +--------------+----------------+
+          | Independent Digital Gold      |
+          | ad-credit ledger / gym-only   |
+          | paymaster or network fee payer|
+          +-------------------------------+
 
+       Full local single-player: no chain or Digital Gold.
        Optional: public RPCs, indexers, mirrors, IPFS,
-                 encrypted backup services, proving services.
+                 encrypted backups and proving services.
 ```
 
 ### Authority map
