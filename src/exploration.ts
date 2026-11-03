@@ -1,5 +1,6 @@
-import { Marker, type Map as MapLibreMap } from 'maplibre-gl'
+import type { Map as MapLibreMap } from 'maplibre-gl'
 import { offlineMap, savePosition, tileKeyAt, validPosition, type Position } from './offline-map'
+import { createTrainerLayer } from './trainer-layer'
 
 type Ring = number[][]
 type Polygon = Ring[]
@@ -62,9 +63,6 @@ function contains(area: CollisionArea, point: Position): boolean {
 
 const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft: 5, left: 6, downLeft: 7 } as const
 const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
-const TRAINER_HEIGHT_METERS = 1.8
-const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
-const AVATAR_RENDER_SCALE = 2
 const JOYSTICK_START_MIN = .1
 const JOYSTICK_START_MAX = .9
 const COLLISION_RADIUS_METERS = 28
@@ -126,16 +124,19 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   const coordinateGo = document.querySelector<HTMLButtonElement>('#coordinate-go')!
   const coordinateStatus = document.querySelector<HTMLElement>('#coordinate-status')!
   const coordinateDisplay = document.querySelector<HTMLElement>('#world-coordinates')!
-  const avatar = document.createElement('div')
-  avatar.className = 'trainer'
-  avatar.setAttribute('role', 'img')
-  avatar.setAttribute('aria-label', 'Trainer avatar')
-  // Keep geographic player position and collision size unchanged while
-  // enlarging only the displayed sprite for phone readability.
-  avatar.style.backgroundImage = `url("${import.meta.env.BASE_URL}trainer-atlas.svg")`
-  const avatarMarker = new Marker({
-    element: avatar, anchor: 'bottom', rotationAlignment: 'viewport', pitchAlignment: 'viewport',
-  }).setLngLat([initialPosition.lon, initialPosition.lat]).addTo(map)
+  // Render the trainer inside MapLibre's 3D scene so buildings and the sprite
+  // share one depth buffer. The GPU then resolves partial wall occlusion per
+  // pixel instead of querying rendered features and clipping a DOM marker.
+  const trainer = createTrainerLayer(
+    map,
+    initialPosition,
+    import.meta.env.BASE_URL + 'trainer-atlas.svg',
+  )
+  const addTrainerLayer = () => {
+    if (!map.getLayer(trainer.layer.id)) map.addLayer(trainer.layer)
+  }
+  if (map.isStyleLoaded()) addTrainerLayer()
+  else map.once('style.load', addTrainerLayer)
 
   let position = { ...initialPosition }
   let lastPositionSave = 0
@@ -147,18 +148,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     coordinateDisplay.textContent = position.lat.toFixed(5) + ', ' + position.lon.toFixed(5)
   }
   coordinateDisplay.textContent = position.lat.toFixed(5) + ', ' + position.lon.toFixed(5)
-  // Size the sprite from the nominal 1.8 m projection with a readability floor,
-  // then double both dimensions without changing geographic collision.
-  function updateAvatarScale(): void {
-    const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
-      (512 * 2 ** map.getZoom())
-    const heightPx = Math.max(MIN_VISIBLE_TRAINER_HEIGHT_PX, TRAINER_HEIGHT_METERS / metersPerPixel) * AVATAR_RENDER_SCALE
-    avatar.style.height = `${heightPx}px`
-    avatar.style.width = `${heightPx * .75}px`
-  }
-  map.on('zoom', updateAvatarScale)
-  updateAvatarScale()
-
   let heading = map.getBearing()
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
@@ -193,7 +182,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const step = moving ? 1 + Math.floor(animationTime / .12) % 4 : 0
     const appearance = direction + ':' + step
     if (appearance === lastAppearance) return
-    avatar.style.backgroundPosition = `${step * 25}% ${SPRITE_ROWS[direction] * (100 / 7)}%`
+    trainer.setFrame(SPRITE_ROWS[direction], step)
     lastAppearance = appearance
   }
 
@@ -286,7 +275,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
         }
         if (best) {
           position = best
-          avatarMarker.setLngLat([position.lon, position.lat])
+          trainer.setPosition(position)
           map.jumpTo({ center: [position.lon, position.lat] })
           collisionOrigin = { ...position }
           offlineMap.setPlayerPosition(position)
@@ -316,49 +305,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       result = Math.min(result, clearPitch)
     }
     return result
-  }
-
-  // DOM markers are composited above the WebGL canvas. Approximate the
-  // rendered wall silhouette across the trainer and clip only the lower body
-  // that is actually behind it. This lets the head remain visible while legs
-  // are occluded, instead of treating any overlap as all-or-nothing.
-  function avatarOcclusionClipPath(): string {
-    if (desiredPitch >= CAMERA_EXPLORATION_PITCH - .1) return ''
-    const foot = map.project([position.lon, position.lat])
-    const height = avatar.offsetHeight
-    const width = avatar.offsetWidth
-    if (!height || !width) return ''
-
-    function coveredAt(x: number, fractionFromFeet: number): boolean {
-      return map.queryRenderedFeatures(
-        [x, foot.y - height * fractionFromFeet],
-        { layers: ['buildings'] },
-      ).length > 0
-    }
-
-    // Building walls produce a contiguous lower-body occlusion. Binary-search
-    // the rendered roof/wall boundary independently at left, center and right
-    // so angled edges can reveal different amounts of the sprite.
-    function coveredFraction(x: number): number {
-      if (!coveredAt(x, .04)) return 0
-      if (coveredAt(x, .96)) return 1
-      let covered = .04
-      let clear = .96
-      for (let i = 0; i < 4; i++) {
-        const middle = (covered + clear) / 2
-        if (coveredAt(x, middle)) covered = middle
-        else clear = middle
-      }
-      return (covered + clear) / 2
-    }
-
-    const left = coveredFraction(foot.x - width * .35)
-    const center = coveredFraction(foot.x)
-    const right = coveredFraction(foot.x + width * .35)
-    if (Math.max(left, center, right) < .04) return ''
-
-    const visibleBottom = (covered: number) => (100 * (1 - covered)).toFixed(1) + '%'
-    return `polygon(0 0, 100% 0, 100% ${visibleBottom(right)}, 50% ${visibleBottom(center)}, 0 ${visibleBottom(left)})`
   }
 
   function tileReady(candidate: Position): boolean {
@@ -439,7 +385,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
         walking = true
         heading = degrees(Math.atan2(actualEast, actualNorth))
         animationTime += dt
-        avatarMarker.setLngLat([position.lon, position.lat])
+        trainer.setPosition(position)
         offlineMap.setPlayerPosition(position)
         persistProgress()
       }
@@ -479,8 +425,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     // Adjust camera elevation only when a sourced building would cover the
     // trainer, rather than drawing the trainer through an opaque wall.
     occlusionScanSeconds += dt
-    const updateOcclusion = occlusionScanSeconds >= CAMERA_PITCH_SCAN_SECONDS
-    if (updateOcclusion) {
+    if (occlusionScanSeconds >= CAMERA_PITCH_SCAN_SECONDS) {
       desiredPitch = safeCameraPitch(nextBearing)
       occlusionScanSeconds = 0
     }
@@ -494,9 +439,6 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
-    // Brief true occlusion is preferable to snapping the camera. Update the
-    // partial DOM mask at the same lightweight cadence as the source scan.
-    if (updateOcclusion) avatar.style.clipPath = avatarOcclusionClipPath()
     renderAvatar(walking)
     if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(pitchDifference) >= .15) requestTick()
     else lastFrameTime = 0
@@ -542,7 +484,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       if (!(await offlineMap.ensureTileAt(target))) {
         throw new Error('Destination map is unavailable. Connect or visit it while online first.')
       }
-      avatar.style.visibility = 'hidden'
+      trainer.setVisible(false)
       if (tileKeyAt(target) !== tileKeyAt(original)) decodedTiles.clear()
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => finish(false), 12000)
@@ -563,8 +505,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       if (!collisionOrigin || isBlocked(position)) {
         throw new Error('That coordinate lies inside mapped building/water or unavailable terrain.')
       }
-      avatarMarker.setLngLat([position.lon, position.lat])
-      updateAvatarScale()
+      trainer.setPosition(position)
       hasPlacedSpawn = true
       heading = map.getBearing()
       steadyHeading = null
@@ -587,8 +528,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
       offlineMap.protectLandingPosition(null)
-      avatar.style.clipPath = ''
-      avatar.style.visibility = 'visible'
+      trainer.setVisible(true)
       teleporting = false
       coordinateGo.disabled = false
       requestTick()

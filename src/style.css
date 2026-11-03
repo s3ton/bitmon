@@ -76,9 +76,6 @@ body { overflow: hidden; }
   #rotate span { font-size: 14px; }
 }
 
-/* MapLibre anchors this marker at its genuine WGS84 world position. */
-.trainer { width: 6px; height: 8px; pointer-events: none; background-repeat: no-repeat; background-size: 500% 800%; image-rendering: auto; filter: drop-shadow(0 1px 1px #203b3777); }
-
 #joystick {
   position: absolute;
   z-index: 3;
