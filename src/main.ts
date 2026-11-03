@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
 import { startExploration } from './exploration'
 import { registerPwa } from './pwa'
+import { initializeSettings } from './settings'
 import { MAP_CACHE_LIMIT_MIB, offlineMap, savedPosition } from './offline-map'
 
 setWorkerUrl(workerUrl)
@@ -108,6 +109,8 @@ const style: StyleSpecification = {
 const status = document.querySelector<HTMLParagraphElement>('#status')!
 const zoomSlider = document.querySelector<HTMLInputElement>('#zoom-slider')!
 const zoomValue = document.querySelector<HTMLOutputElement>('#zoom-value')!
+initializeSettings()
+zoomValue.value = Number(zoomSlider.value).toFixed(1)
 const cacheStatus = document.querySelector<HTMLElement>('#offline-cache-status')!
 offlineMap.setStatusListener((bytes, persistent) => {
   cacheStatus.textContent = persistent
@@ -119,7 +122,7 @@ const map = new Map({
   container: 'map',
   style,
   center: [startingPosition.lon, startingPosition.lat],
-  zoom: 16.4,
+  zoom: Number(zoomSlider.value),
   minZoom: 15.5,
   maxZoom: 20,
   pitch: 45,
