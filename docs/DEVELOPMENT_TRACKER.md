@@ -155,17 +155,21 @@ This section records **requirements evolution** separately from actual implement
 | ID | Decision | Blocks / affects | Status |
 |---|---|---|---|
 | OPEN-01 | Virtual traversal and long-distance travel mechanics | MOVE-01/02, ENC-02 | Open |
-| OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
+| OPEN-02 | Bind an authoritative virtual travel/region slot before server RNG; prevent extra online rare rolls by teleport/refresh | ENC-02/04, MOVE-02 | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
 | OPEN-05 | DEC-026 introduces camera response presets and DEC-024 extends zoom (DEC-043 caps it at 15.5–18); remaining tuning includes final preset calibration, readable sprite scaling, joystick orientation after camera turns, and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
-| OPEN-08 | Starter roster, combat/chance/PRNG formulas, ordinary capture balance, gym battle-policy UX, NFT claim deadline, and final rarity/XP quotas | GAME-01/02, ENC-04, GYM-02 | Open |
+| OPEN-08 | Starter roster, common/uncommon local RNG, online Rare/Legendary drop tables/quotas, combat formulas, capture validation, gym battle-policy UX | GAME-01/02, ENC-01/04, GYM-02 | Open |
 | OPEN-09 | Android/iOS browser/version support and phone acceptance of scoped caches, offline shell, reload prompt, local coordinate save and tile eviction | PWA-01, MOBILE-01 | Open — PRs #26, #27 and #29 merged to preview; full device verification pending |
 | OPEN-10 | Longer-term production deployment strategy following direct public-repo Pages prototype | DIST-01 | Open — not blocking test |
-| OPEN-11 | Whether and how local Common/Uncommon may enter verified starting roster at fixed authenticated stats without importing forged XP/levels | ACCOUNT-01, GAME-01, GYM-02 | Open — anti-cheat-critical |
-| OPEN-12 | Measured Digital Gold credit prices vs pre-gym and post-win proof gas/proving costs; rewarded-ad publisher approval and abuse limits | FEES-01, GYM-02 | Open — commercial and policy gate |
+| OPEN-11 | Whether any guest Common/Uncommon can seed a verified profile at fixed server-controlled stats without importing forged XP | ACCOUNT-01, GAME-01, GYM-02 | Open — anti-cheat-critical |
+| OPEN-12 | Digital Gold ad pricing, ordinary gym cost and publisher approval; no network-gas reward | FEES-01, GYM-02 | Open — policy gate |
+| OPEN-13 | Gym DO session state, hibernation/reconnect, multiple challengers, winner consistency, Digital Gold cross-store idempotency/refunds | GYM-02/03 | Open — implementation design |
+| OPEN-14 | WebRTC signaling/STUN/TURN reliability and cost, unranked disconnect behavior, optional ranked arbiter | PVP-01 | Open — reliability/security |
+| OPEN-15 | Hall-of-Fame chain/event schema, privacy, fee budget, idempotent publisher, retry/batching | GYM-03 | Open — chain operations |
+| OPEN-16 | Unique event criteria, free delayed ERC-721 mint, wallet recovery, real-time owner checks, legal/licensing analysis | NFT-01 | Open — legal/security |
 
 ## 6. Rules for updating this tracker
 
