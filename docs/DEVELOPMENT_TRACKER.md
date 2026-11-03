@@ -138,6 +138,8 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-03 | DEC-038 | **Feature in review — user acceptance pending** | Replace the DOM trainer and rendered-feature/CSS occlusion workaround with one depth-tested MapLibre 3D custom-layer billboard. Let the shared WebGL depth buffer resolve building/avatar visibility per pixel while retaining the same atlas, geographic position, visual scale and gradual camera clearance. | **v0.25** VIS-01, VIS-04, EXPL-01 |
 | 2026-11-03 | DEC-039 | **Accepted — implementation in review** | Replace the old trainer art with the owner-approved original avatar. Store only N/NE/E/SE/S in one transparent WebP atlas, use eight elapsed-time walking frames per stored direction, and mirror the texture coordinates for NW/W/SW. Keep the depth-tested WebGL renderer, geographic scale, collision and camera behavior unchanged. | **v0.26** EXPL-01, VIS-04/05 |
 | 2026-11-03 | DEC-040 | **Accepted — implementation in review** | Texture mapped buildings with MapLibre `fill-extrusion-pattern` (no custom renderer). Split each building into ground-floor, upper-floor and 0.5 m roof-cap layers inside the source height. A tile worker splits OpenFreeMap's merged building multipolygons into one feature per footprint and tags it with a POI/landuse-inferred style and a deterministic palette variant; patterns are drawn procedurally on demand per integer zoom so 4 m storeys stay aligned. Regional palettes are deferred. | **v0.27** VIS-02/03, MAP-GATE-04/05 |
+| 2026-11-03 | DEC-041 | **Accepted — implementation in review** | Give world-famous landmarks their own facade archetypes (cathedral, shrine, fortress, arena, ironwork, palace). A landmark is a heritage-class POI whose name has 20+ translations in the tile; all its stacked building parts are grouped with it, its mapped `colour` snaps to a Bitmon stone/metal tint, and a 1 m gold cornice sits under its roof cap. No hand-made per-monument art. | **v0.28** VIS-03, MAP-GATE-04/05 |
+| 2026-11-03 | DEC-042 | **Accepted — implementation in review** | Extend landmark archetypes from six to twelve using tile signals only: mosque and temple from the place-of-worship subclass, ruins from the castle subclass, bell tower for a POI part at least 3× taller than wide, skyscraper for a solid body of 120 m+ (taller open structures stay ironwork), and bridge for a famous POI in water with a raised deck spanning 80 m+. Landmark groups grow up to four steps, and stacked parts may merely abut. | **v0.29** VIS-03, MAP-GATE-04/05 |
 
 ### Open decisions to resolve before related implementation
 
@@ -295,6 +297,23 @@ A stable `main` deployment was cancelled after PR #45 because a later `workflow_
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. This is workflow-only configuration; validation is the existing PWA build plus review of the concurrency expression against the build-job eligibility predicate. Production verification requires the post-promotion `main` Pages run to complete successfully.
 
+### Landmark facades — 3 November 2026
+
+The owner asked for world-famous monuments to stop looking like ordinary buildings. Sampled OpenFreeMap tiles (St Peter's, Colosseum, Sagrada Família, Eiffel Tower, Duomo di Milano, Westminster, Notre-Dame, Taj Mahal, Pantheon) showed two causes. Each landmark is mapped as many stacked parts, but its POI sits in only one of them, so its spires and tiers were styled as office towers. And OpenMapTiles' POI `rank` is only local. The number of `name:*` translations turned out to be a reliable global fame signal: every sampled landmark has 55–73, while about 1% of roughly 60,000 sampled POIs reach 20.
+
+The tile worker now treats a place of worship, attraction, monument, castle, museum, theatre, town hall, library or non-artwork gallery POI with 20+ translations as a landmark. The most famous POI claims its parts first. Each group grows up to two steps:
+- to parts centred within a member's outline
+- to a modest base around a member
+- to parts stacked on or under a member (overlapping in plan, meeting in height, one raised off the ground)
+
+The style comes from the POI class (Christian worship → cathedral, other worship → shrine, castle → fortress) or otherwise from shape (raised rings with holes → ironwork, an elliptical courtyard ring → arena, everything else → palace). The tint comes from the mapped `colour`. Sampled results: the Colosseum is an arena; the Eiffel Tower is bronze ironwork (19 parts including legs); the Sagrada Família is a cathedral with all 27 parts up to 185 m; St Peter's and the Duomo are cathedrals; the Taj Mahal is a white palace.
+
+The same change replaces the worker's pairwise POI, landuse and footprint scans with a uniform grid. A dense Barcelona z14 tile drops from 1,039 ms to 107 ms; the London sample from 49 ms to 13 ms.
+
+**Known limits:** mapped shapes are unchanged, so spires stay flat-topped, domes stay stepped and the ironwork lattice is painted on solid parts. Archetypes are generic; there is no bespoke art per monument.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on the sampled landmark tiles confirmed grouping, group extents and timings, and the London tile still round-trips all 2,108 building polygons identically. Desktop browser review covered the Colosseum, Eiffel Tower, Sagrada Família and St Peter's. Phone appearance and performance remain unverified.
+
 
 ### Coordinate teleport nearest-clear landing fix — 3 November 2026
 
@@ -303,3 +322,23 @@ A stable `main` deployment was cancelled after PR #45 because a later `workflow_
 **Correction:** Treat the entered coordinate as a destination anchor rather than requiring the exact point to be walkable. Reuse one shared nearest-clear-position routine for both startup relocation and teleportation: first project onto nearby loaded OpenFreeMap transportation lines and choose the closest valid point, then fall back to a 2 m radial search against the exact loaded building/water collision index. The search is bounded to 70 m. If no clear landing can be validated, preserve the existing rollback. Successful relocation updates the map, trainer, saved position and offline-cache player position, and reports the landing offset.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. No new test framework is justified for this interaction. Required automated validation remains the existing TypeScript/Vite PWA build. Manual device acceptance should verify (1) a clear coordinate lands exactly, (2) a coordinate inside a mapped building lands nearby and stays there, (3) unavailable/no-clear destinations still roll back, and (4) the relocated position persists after reload.
+
+### More landmark archetypes — 3 November 2026
+
+The owner asked why there were only a few landmark styles. The limit is reliable tile signals, not drawing cost, so only styles with a clear OpenFreeMap signal were added, each checked against sampled tiles:
+- **mosque:** `muslim` worship (Blue Mosque, Hagia Sophia, Sultan Qaboos)
+- **temple:** Buddhist, Hindu, Sikh, Shinto, Taoist or Jain worship (Golden Temple, Akshardham)
+- **ruins:** castle subclass `ruins`
+- **bell tower:** a POI part at least 3× taller than wide and 25 m+ (Leaning Tower of Pisa, Elizabeth Tower)
+- **skyscraper:** a solid body of 120 m+ rising from the ground (Burj Khalifa, Empire State Building)
+- **bridge:** a famous POI standing in water with a raised deck spanning 80 m+ and at least 4× longer than wide (Tower Bridge)
+
+Jewish and other worship keep the shrine style.
+
+Sampling exposed false positives that shaped the rules: the London Eye, HMS Belfast and the Fontana dei Quattro Fiumi also stand in water. The London Eye's capsules also exceed 120 m, so tall groups without a ground-standing tall body stay ironwork. Tower Bridge needed three links from its POI to the far tower and walkways that only abut the towers, so groups now grow up to four steps, and stacked parts join when their bounding boxes touch within about 2 m. Across 26 sampled tiles this added about 10–30% more landmark parts. Group sizes stayed plausible (largest: the Louvre, 776×597 m).
+
+The new art is a lead-scale dome roof, pointed windows over a blue tile band, temple paper screens under dark eaves, weathered stone with moss, belfry arches, and glass curtain walls with spandrel bands.
+
+**Known limits:** Buddhist temples, Golden Gate and Charles Bridge sampled without building polygons, so they have nothing to texture. Archetypes remain generic.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on 26 landmark tiles verified classifications and group sizes, with 602 ms total enrichment time across all 26 tiles. Desktop browser review covered the Blue Mosque, Tower Bridge, Pisa and Burj Khalifa. Phone appearance and performance remain unverified.
