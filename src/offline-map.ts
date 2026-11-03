@@ -1,3 +1,5 @@
+import { CHANNEL } from './channel'
+
 // Local, per-PWA-channel vector-tile storage. No generated geography or bulk prefetching.
 export type Position = { lon: number; lat: number }
 
@@ -5,11 +7,10 @@ export const DEFAULT_POSITION: Position = { lon: 9.1869, lat: 45.4715 }
 export const MAP_CACHE_LIMIT_MIB = 100
 const LIMIT_BYTES = MAP_CACHE_LIMIT_MIB * 1024 * 1024
 const TILE_ZOOM = 14 // OpenFreeMap's maximum vector tile level; MapLibre overzooms above it.
-const CHANNEL = /\/preview(?:\/|$)/.test(location.pathname) ? 'preview' : 'stable'
 const POSITION_KEY = 'bitmon:' + CHANNEL + ':position:v1'
 const DB_NAME = 'bitmon-map-' + CHANNEL
 
-type TileMeta = { key: string; lon: number; lat: number; bytes: number }
+type TileMeta = { key: string; bytes: number }
 type TileRecord = { key: string; data: ArrayBuffer }
 type StatusListener = (usedBytes: number, persistent: boolean) => void
 
@@ -95,12 +96,13 @@ function openDatabase(): Promise<IDBDatabase> {
 class OfflineMapCache {
   private db: IDBDatabase | null = null
   private metadata = new Map<string, TileMeta>()
-  private loaded = new Set<string>()
   private usedBytes = 0
   private player: Position = savedPosition()
   private landingTile: string | null = null
   private onStatus: StatusListener | null = null
   private writeQueue: Promise<void> = Promise.resolve()
+  private inFlight = new Map<string, Promise<ArrayBuffer>>()
+  private pendingWrites = new Map<string, ArrayBuffer>()
   readonly ready: Promise<void>
 
   constructor() {
@@ -136,11 +138,6 @@ class OfflineMapCache {
     this.landingTile = position ? tileKeyAt(position) : null
   }
 
-  hasTileAt(position: Position): boolean {
-    const key = tileKeyAt(position)
-    return this.loaded.has(key) || this.metadata.has(key)
-  }
-
   private report(): void {
     this.onStatus?.(this.usedBytes, this.db !== null)
   }
@@ -165,8 +162,10 @@ class OfflineMapCache {
     if (remaining + data.byteLength > LIMIT_BYTES) {
       const farthest = [...this.metadata.values()]
         .filter((tile) => tile.key !== currentTile && tile.key !== this.landingTile)
-        .sort((a, b) => distanceFromPlayer(b, this.player) -
-          distanceFromPlayer(a, this.player))
+        .map((tile) => ({
+          ...tile, distance: distanceFromPlayer(tileCenter(tile.key), this.player),
+        }))
+        .sort((a, b) => b.distance - a.distance)
       for (const tile of farthest) {
         if (remaining + data.byteLength <= LIMIT_BYTES) break
         toDelete.push(tile.key)
@@ -175,8 +174,7 @@ class OfflineMapCache {
     }
     // Never discard the tile under the trainer just to store a remote tile.
     if (remaining + data.byteLength > LIMIT_BYTES) return
-    const center = tileCenter(key)
-    const meta: TileMeta = { key, ...center, bytes: data.byteLength }
+    const meta: TileMeta = { key, bytes: data.byteLength }
     try {
       const tx = this.db.transaction(['tiles', 'metadata'], 'readwrite')
       const tiles = tx.objectStore('tiles')
@@ -190,7 +188,6 @@ class OfflineMapCache {
       await transactionDone(tx)
       for (const oldKey of toDelete) {
         this.metadata.delete(oldKey)
-        this.loaded.delete(oldKey)
       }
       this.metadata.set(key, meta)
       this.usedBytes = remaining + meta.bytes
@@ -201,24 +198,55 @@ class OfflineMapCache {
     }
   }
 
-  private async getTile(key: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+  private async fetchTile(key: string): Promise<ArrayBuffer> {
     await this.ready
+    // A tile already queued for disk must not be fetched a second time.
+    const pending = this.pendingWrites.get(key)
+    if (pending) return pending
     const saved = await this.readTile(key)
-    if (saved) {
-      this.loaded.add(key)
-      return saved
-    }
+    if (saved) return saved
     const response = await fetch('https://tiles.openfreemap.org/planet/latest/' + key + '.pbf',
-      { signal, cache: 'no-store' })
+      { cache: 'no-store' })
     if (!response.ok) throw new Error('OpenFreeMap tile unavailable (' + response.status + ')')
     const data = await response.arrayBuffer()
     if (!data.byteLength) throw new Error('Empty OpenFreeMap tile')
-    this.loaded.add(key)
-    this.writeQueue = this.writeQueue.then(
-      () => this.storeTile(key, data), () => this.storeTile(key, data),
-    )
-    await this.writeQueue
+    this.pendingWrites.set(key, data)
+    // Do not delay rendering while a previous tile is being written to disk.
+    // The internal buffer is never handed to MapLibre (which may transfer it).
+    this.writeQueue = this.writeQueue.then(async () => {
+      try {
+        await this.storeTile(key, data)
+      } finally {
+        this.pendingWrites.delete(key)
+      }
+    }).catch((error: unknown) => {
+      console.warn('Map tile write failed', error)
+    })
     return data
+  }
+
+  private getTile(key: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+    if (signal?.aborted) return Promise.reject(new DOMException('Tile request aborted', 'AbortError'))
+    let flight = this.inFlight.get(key)
+    if (!flight) {
+      flight = this.fetchTile(key)
+      this.inFlight.set(key, flight)
+      const current = flight
+      // Both success and failure must release the entry for future requests.
+      void flight.then(
+        () => { if (this.inFlight.get(key) === current) this.inFlight.delete(key) },
+        () => { if (this.inFlight.get(key) === current) this.inFlight.delete(key) },
+      )
+    }
+    // Every caller owns its own transferable buffer; there is just one fetch.
+    const result = flight.then((bytes) => bytes.slice(0))
+    if (!signal) return result
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const onAbort = () => reject(new DOMException('Tile request aborted', 'AbortError'))
+      signal.addEventListener('abort', onAbort, { once: true })
+      if (signal.aborted) onAbort()
+      void result.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+    })
   }
 
   async ensureTileAt(position: Position): Promise<boolean> {

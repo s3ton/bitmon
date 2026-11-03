@@ -162,13 +162,14 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   let heading = map.getBearing()
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
+  const decodedTiles = new Set<string>()
   let hasPlacedSpawn = false
   let teleporting = false
   let stick = { x: 0, y: 0 }
   let activePointer: number | null = null
   let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
-  let cameraPreset: CameraPreset = 'balanced'
+  let cameraPreset: CameraPreset = cameraPresetSelect.value as CameraPreset
   let steadyHeading: number | null = null
   let steadySeconds = 0
   let occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
@@ -196,13 +197,22 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     lastAppearance = appearance
   }
 
+  // A 1 m ring covers the player's foot probes and the next 0.5 m step.
+  // Missing distant viewport tiles must not invalidate this local geometry.
+  function neighborhoodReady(point: Position): boolean {
+    for (const east of [-1, 0, 1]) {
+      for (const north of [-1, 0, 1]) {
+        if (!tileReady(displace(point, east, north))) return false
+      }
+    }
+    return true
+  }
+
   // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
-    // Missing peripheral tiles must not freeze an already-verified, cached tile.
-    // First spawn still waits for fully loaded source geometry.
-    if (!offlineMap.hasTileAt(position) ||
-      (!hasPlacedSpawn && !teleporting && !map.isSourceLoaded('openmaptiles'))) return
+    if (!neighborhoodReady(position)) return
     const areas: CollisionArea[] = []
+    const seen = new Set<string>()
     for (const layer of ['building', 'water']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
         const geometry = feature.geometry
@@ -224,6 +234,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           const height = layer === 'building' && feature.properties?.hide_3d !== true
             ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
             : undefined
+          // Exact duplicates have the same geometry and appearance. Keep any
+          // overlapping footprints with different heights for safe occlusion.
+          const signature = layer + ':' + height + ':' + JSON.stringify(rings)
+          if (seen.has(signature)) continue
+          seen.add(signature)
           areas.push({ ...bounds, rings, height })
         }
       }
@@ -304,19 +319,18 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   }
 
   function tileReady(candidate: Position): boolean {
-    if (!validPosition(candidate) || !offlineMap.hasTileAt(candidate)) return false
-    // A stored neighbor still needs to be decoded into the current map view
-    // before its building and water footprints can be checked.
-    return tileKeyAt(candidate) === tileKeyAt(position) ||
-      (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded())
+    if (!validPosition(candidate)) return false
+    // A PBF can authorize movement only after MapLibre has decoded its geometry.
+    // The active map tile remains usable even if disk storage is unavailable.
+    return decodedTiles.has(tileKeyAt(candidate))
   }
 
   function isBlocked(candidate: Position): boolean {
-    if (!tileReady(candidate)) return true
-    // All feet contact points must remain outside mapped building/water polygons.
+    // Both the feet and their small collision margin must be on decoded tiles.
+    // At a tile edge, no unloaded building geometry can be treated as empty.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
-      .some((point) => collisionAreas.some((area) => contains(area, point)))
+      .some((point) => !tileReady(point) || collisionAreas.some((area) => contains(area, point)))
   }
 
   function requestTick(): void {
@@ -474,24 +488,26 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const previousAreas = collisionAreas
     const previousOrigin = collisionOrigin
     const previousSpawn = hasPlacedSpawn
+    const previousDecodedTiles = new Set(decodedTiles)
     offlineMap.protectLandingPosition(target)
     try {
       if (!(await offlineMap.ensureTileAt(target))) {
         throw new Error('Destination map is unavailable. Connect or visit it while online first.')
       }
       avatar.style.visibility = 'hidden'
+      if (tileKeyAt(target) !== tileKeyAt(original)) decodedTiles.clear()
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => finish(false), 12000)
-        const onIdle = () => {
-          if (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()) finish(true)
-        }
+        const onData = () => { if (neighborhoodReady(target)) finish(true) }
         function finish(ready: boolean): void {
           clearTimeout(timer)
-          map.off('idle', onIdle)
+          map.off('sourcedata', onData)
+          map.off('idle', onData)
           if (ready) resolve()
           else reject(new Error('Could not load destination map tiles.'))
         }
-        map.on('idle', onIdle)
+        map.on('sourcedata', onData)
+        map.on('idle', onData)
         map.jumpTo({ center: [target.lon, target.lat] })
       })
       position = { ...target }
@@ -512,12 +528,21 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       coordinateStatus.textContent = ''
     } catch (error) {
       position = original
+      decodedTiles.clear()
+      for (const tile of previousDecodedTiles) decodedTiles.add(tile)
       collisionAreas = previousAreas
       collisionOrigin = previousOrigin
       hasPlacedSpawn = previousSpawn
       offlineMap.setPlayerPosition(original)
       map.jumpTo({ center: [originalCenter.lng, originalCenter.lat] })
-      map.once('idle', refreshCollision)
+      map.once('idle', () => {
+    // Some browsers may finish all visible tiles before their per-tile
+    // sourcedata events are observed. Full source readiness is a safe fallback.
+    if (map.areTilesLoaded() && map.isSourceLoaded('openmaptiles')) {
+      decodedTiles.add(tileKeyAt(position))
+    }
+    refreshCollision()
+  })
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
       offlineMap.protectLandingPosition(null)
@@ -582,9 +607,26 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     keys.clear()
   })
   window.addEventListener('pagehide', () => { if (hasPlacedSpawn) persistProgress(true) })
+  map.on('sourcedataloading', (event) => {
+    if (event.sourceId === 'openmaptiles' && event.coord) {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
+    }
+  })
   map.on('sourcedata', (event) => {
-    if (!teleporting && event.sourceId === 'openmaptiles' && event.isSourceLoaded &&
-      (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
+    if (event.sourceId !== 'openmaptiles') return
+    let newlyDecoded = false
+    if (event.coord && event.tile?.state === 'loaded') {
+      const { z, x, y } = event.coord.canonical
+      const key = z + '/' + x + '/' + y
+      newlyDecoded = !decodedTiles.has(key)
+      decodedTiles.add(key)
+    } else if (event.coord && event.tile?.state === 'errored') {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
+    }
+    if (!teleporting && (newlyDecoded || !collisionOrigin ||
+        distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
       refreshCollision()
     }
   })
