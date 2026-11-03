@@ -5,11 +5,11 @@
 **Geographic world contract:** The [bitmon Product Requirements](PRODUCT_REQUIREMENTS.md) are authoritative for world geometry and visual rendering. **OpenFreeMap is the sole geographic source**; MapLibre renders the tiles; no new real-world building or road geometry may be invented. Mapped building facades and windows may use deterministic art inferred only from OpenFreeMap's available fields and context. Implementation and decision status is tracked separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 **Status:** Concept / architecture proposal, not a security-audited specification
-**Version:** 3.10 (E0 spatially indexed exploration geometry; protocol unchanged)
+**Version:** 3.12 (single-claim high-rarity catches; public-beacon competitive RNG; deterministic local PRNG)
 **Date:** 3 November 2026
 **Project name:** **bitmon** (game and creature name; original characters and artwork required)
 
-> **The vision in one sentence:** Build a browser-first, single-player creature-collection RPG whose progression and creatures are cryptographically verifiable, whose rare encounters are fairly and independently determined, whose trading rules make farming pointless, and whose network features (trading, player-led gyms) remain accessible without trusting or paying the original game developer.
+> **The vision in one sentence:** Build a browser-first creature-collection RPG whose ordinary Common/Uncommon wild play can continue offline from authenticated cached state, whose Rare/Legendary encounters and captures use fresh public randomness online, whose competitive chance events are committed before future randomness is revealed, and whose progression remains cryptographically verifiable without trusting the original game developer.
 
 ### What changed from version 1.0
 
@@ -145,13 +145,13 @@ Registration is permissionless and may also have a modest registration fee or bo
 
 ### 4.3 A typical verified session
 
-- Open the app and retrieve the next authenticated encounter seed.
-- The fixed trainer ID and epoch determine the encounter rarity.
-- Play the battle locally; capture is deterministic according to HP, status, abilities, and consumable resources.
-- Ordinary XP and creatures remain pending until a later settlement proof.
-- If an encounter is rare/legendary, submit a small on-chain commitment **before its deadline**, complete the battle later, and prove it.
-- When ready to swap, challenge a gym, or simply secure progress, generate a ZK proof and submit a settlement transaction.
-- Choose direct gas payment or an independent sponsor if available.
+- While online, authenticate the current rules/randomness state and obtain any ordinary encounter material that may later be consumed offline.
+- **Offline:** explore cached geography and resolve Common/Uncommon wild encounters from authenticated ordinary encounter state. Chance-like local mechanics use deterministic pseudorandom rolls, so play feels stochastic while the same authenticated state always reproduces the same results; keep XP/creatures pending locally.
+- **Online high-rarity spawn:** enter a full-rarity eligible slot whose trainer/region/rules context and assigned beacon round were fixed before the future beacon existed. If the public draw yields Rare/Legendary, no extra pre-capture transaction is required.
+- Battle/capture the Rare/Legendary encounter locally using the same deterministic/pseudorandom PvE rules. If successful, submit **one ZK-backed catch claim transaction within the short deadline measured from the spawn beacon**. The proof verifies the legitimate spawn, unused slot and legal state transition; late claims are rejected.
+- **Friend PvP:** both players exchange signed turn commitments before each assigned future beacon, then use that beacon for security-relevant chance events. These turn commitments are off-chain.
+- **Gym:** submit one pre-battle challenge commitment binding team, active defense snapshot, rules version and a deterministic battle policy/strategy; future beacon rounds resolve chance events. Submit one final proof transaction only if claiming a successful challenge.
+- When ready to swap or simply secure other accumulated progress, generate the required proof and submit settlement; use direct gas payment or an independent sponsor if available.
 
 ### 4.4 Swapping and gyms
 
@@ -169,9 +169,10 @@ Swapping requires both sides' creatures to be finalized and unlocked, of the sam
 | Daily encounter budget | 96 in a rolling 24-hour window | About 8 hours of five-minute opportunities. |
 | Daily XP budget | Level- or region-adjusted cap | Restricts progression beyond intended pace. |
 | Unused encounters | Expire rather than accumulate | Prevents storing months of farming opportunities. |
-| Rare-encounter claim window | ~5–10 minutes from slot availability | Blocks claims hours after a known spawn. |
+| Rare/Legendary catch-claim window | ~5–10 minutes from the assigned spawn beacon (placeholder) | A successful high-rarity catch must be proven promptly; historical beacon scanning cannot be claimed later. |
 | Trainer registration activation | First future eligible epoch after finalized registration and a chain/beacon safety buffer (duration TBD) | Ensures the ID is fixed **before** the corresponding public draw, without an arbitrary day-long first-play delay. |
-| Capture mechanic | Deterministic | Eliminates repeatable public catch-roll attacks. |
+| PvE chance mechanics | Deterministic pseudorandom stream | Preserves familiar crit/accuracy/status/catch variation where desired without requiring fresh public randomness or allowing restart rerolls. |
+| Rare/Legendary security boundary | Fresh randomness for spawn only; one timely final catch claim | Scarcity/luck comes from receiving the high-rarity spawn, not from a second cryptographic capture lottery. |
 | Rare spawn limits | Per-trainer probabilistic, **not** globally capped | Preserves classic single-player collection. |
 | **Swaps per trainer** | **1 per rolling 24 hours** | Caps how fast any one account can change its collection. |
 | **Swap rule** | **Same tier, 1-for-1, levels reset to the lower** | Prevents concentrating rarity or training. |
@@ -237,13 +238,27 @@ A separate `hash(... || "species")` provides the species draw; domain separation
 
 ### 6.4 Beacon availability and cost
 
-No player-specific randomness transaction is necessary. Players fetch published rounds from interchangeable endpoints, while the proving circuit authenticates them. A drand BN254-compatible beacon is a candidate for EVM verification; prover and on-chain performance must be benchmarked.
+No player-specific randomness transaction is necessary merely to read a beacon round. Players fetch published rounds from interchangeable endpoints, while the proving circuit authenticates them. A drand BN254-compatible beacon is a candidate for EVM verification; prover and on-chain performance must be benchmarked.
 
-Network outages need predefined handling: suspend affected slots, shift deadlines deterministically, or apply a transparent fallback protocol. Never let a central developer choose substitute values after seeing player outcomes.
+Network outages need predefined handling: suspend affected online high-rarity/competitive slots, shift deadlines deterministically, or apply a transparent fallback protocol. Never let a central developer choose substitute values after seeing player outcomes.
+
+### 6.5 Offline ordinary play versus online high-rarity play
+
+The protocol deliberately separates ordinary offline-capable play from high-value randomness:
+
+- **Offline ordinary mode:** previously authenticated encounter material may authorize only **Common or Uncommon** wild encounters. It must be domain-separated from high-rarity draws and must not contain a hidden future Rare/Legendary result that the player can inspect offline.
+- **Online high-rarity mode:** an eligible encounter slot is bound to the trainer, rules version and required location/region commitment **before** the deciding future beacon round. The fresh round may yield Rare/Legendary outcomes. A player cannot wait for a published round and then elect to apply it to an arbitrary slot or region.
+- **Mode selection cannot be hindsight-selected.** If the protocol lets a player choose an offline ordinary slot versus an online full-rarity slot, that choice must be fixed before the online slot's deciding randomness is available.
+- **Public security RNG domains:** use strict domain separation such as `BITMON_SPAWN_V1` and `BITMON_COMPETITIVE_V1`. Public-beacon randomness is reserved for outcomes where advance predictability would undermine fairness.
+- **Local deterministic PRNG:** chance-like mechanics that do not require cryptographic unpredictability derive rolls from a canonical seed such as `hash("BITMON_LOCAL_RNG_V1" || rules_version || encounter_or_battle_id || domain || event_index)`. The seed is not secret. Stable domain tags and canonical event counters make results reproducible across clients and restarts. Where feasible, counters advance on fixed game events rather than on player-selected move names, limiting action-shopping for favorable rolls.
+- The battle/UI layer should use one RNG abstraction whose provider is either the authenticated public beacon or the deterministic local PRNG. A normal player should see the same style of crit/miss/status/catch feedback regardless of provider.
+- Reloading, reconnecting, changing devices or replaying the same local encounter must preserve the same deterministic PRNG sequence rather than producing another roll.
+
+This uses one authenticated public-randomness infrastructure for security-critical outcomes and a separate deterministic pseudorandom mechanism for ordinary gameplay feel; the latter is explicitly **not** a security source.
 
 ---
 
-## 7. Deterministic combat and capture
+## 7. Verifiable combat and capture
 
 **World and camera presentation (Task 002 / DEC-019, DEC-021):** The **first prototype is exploration-only**: original male eight-direction animated trainer, floating mid-screen gesture joystick, and a **fixed-pitch, player-zoomable, heading-following camera** over MapLibre's unchanged OpenFreeMap geometry. Later battles remain in the **same 2.5D world scene**, zoom/reframe toward the encountered bitmon, restore the captured pre-battle bearing/pitch/zoom/follow state, and then resume heading-following mode. Camera rotation is **presentation only**: it never rotates true geographic player coordinates, modifies mapped geometry, or affects encounter validity and battle rules.
 
@@ -283,39 +298,45 @@ The cache keeps one network/IndexedDB read in flight per z/x/y and makes each ca
 
 ### 7.1 Battles
 
-The authoritative rules engine computes damage, defense, abilities, status effects, XP, healing, and consumable usage. The browser runs the same deterministic logic for immediate feedback. Settlement uses the exact, versioned rules engine rather than trusting a client claim of victory.
+The authoritative rules engine computes damage, defense, abilities, status effects, XP, healing, consumable usage and any randomness-derived battle events. Settlement uses the exact, versioned rules engine rather than trusting a client claim of victory.
 
-For the first release, minimize random events **within** combat. Random critical hits, stochastic drops, and probabilistic attacks would reintroduce the need for decisions committed before future randomness is revealed.
+**Wild PvE is protocol-deterministic but can look random.** Once an encounter is authenticated, the browser resolves any chance-like crit, accuracy, status, damage-variance or capture mechanics through the canonical local PRNG. The same encounter/battle state and event sequence always produce the same rolls, including after restart. Predictability by sophisticated players is accepted here because these rolls are not the scarcity/security boundary.
+
+**Friend PvP is online and mutually committed.** For each turn, both players sign/commit their actions to each other before the protocol-assigned **future** authenticated beacon round. Once both commitments are fixed, the beacon resolves security-relevant crit/accuracy/status rolls through domain-separated hashes. No on-chain transaction is required per turn; a later proof/final result may be submitted only if that battle affects canonical state.
+
+**Gym challenges use one initial commitment, not per-turn chain writes.** Before the challenge randomness starts, the challenger commits the gym ID, active defense snapshot, challenger team, rules version and a deterministic battle policy/strategy capable of selecting actions from previously known battle state. The registered defense policy similarly fixes defender choices. Future beacon rounds then resolve security-relevant chance events. Because later manual choices are not separately timestamped, they cannot be changed after seeing a beacon; truly manual adaptive gym turns would require additional per-turn commitments and are outside this one-commitment design.
 
 ### 7.2 Capturing
 
-After a spawn has been assigned, capture uses publicly specified deterministic conditions, for example:
+Capture does **not** require a second public-randomness protocol for Rare/Legendary bitmon. The security goal is that the high-rarity **spawn itself** was legitimately assigned to the trainer.
 
-- Wild creature's HP is below a species-dependent threshold.
-- The player's party meets battle requirements.
-- The capture item is available and consumed.
-- Optional status, skill, and equipment requirements are satisfied.
+Wild capture mechanics may still feel probabilistic if the game design calls for it. In that case, Common/Uncommon and Rare/Legendary PvE use the canonical deterministic local PRNG, with HP, status, item quality, species difficulty and other published state feeding the rules. Because this PRNG is reproducible rather than unpredictable, a sophisticated player may simulate or optimize the encounter after seeing a Rare/Legendary spawn. **That is an accepted trade-off:** rarity scarcity comes from the unpredictable spawn, not from cryptographically hiding the later battle/catch sequence.
 
-This permits rare **encounters** without random **catch** rolls and makes complete sessions practical to prove in batches.
+A ZK proof can verify that the claimed post-encounter state follows the versioned PvE rules and deterministic PRNG sequence. No pre-capture commitment, future capture beacon, or per-attempt on-chain transaction is required.
 
-### 7.3 Rare-encounter claims and deadlines
+### 7.3 Rare/Legendary single-claim flow and deadline
 
-A valuable encounter receives a short-lived **claim opportunity**. The cheapest humane variant is to require a transaction promptly **reserving the rare encounter**, not proving a completed multi-minute battle in the same window.
+A high-rarity encounter is an **online-only, short-lived authenticated opportunity**, but there is no separate reservation transaction. The trainer's account registration is the prior on-chain commitment; protocol rules must deterministically bind each eligible high-rarity slot to its trainer, rules version, assigned beacon round and any required region/location context before that beacon exists.
+
+Illustrative successful flow:
 
 | Time | Event |
 |---|---|
-| 10:00 | Beacon reveals epoch 1,234. Trainer's fixed roll produces a rare dragon. |
-| 10:04 | Trainer sends an on-chain commitment to this slot, trainer ID, rules version, and starting-state context. |
-| 10:10 | New reservations for epoch 1,234 close. |
-| Later | Player completes the deterministic encounter and proves the full state transition. |
-| Later | Contract verifies the claim, proof, state lineage, and absence of replay. |
-| 23:00 | A new claim for the 10:00 rare encounter is rejected as expired. |
+| 09:59 | Registered trainer/slot/required region context is already eligible and bound by protocol rules. |
+| 10:00 | Assigned future beacon reveals; the fixed draw produces a Rare/Legendary species. |
+| 10:00–10:07 | Player fights and captures locally under the versioned PvE rules and deterministic local PRNG. |
+| 10:07 | Player submits the **single high-rarity catch transaction** with a ZK proof. |
+| On-chain | Contract verifies registration predates the beacon, slot/region/rules binding, authenticated beacon, resulting rarity/species, unused slot, legal state transition and that the claim is still inside the deadline. |
 
-A commitment alone **does not prove capture** or active play. It prevents late creation of a claim; only a later valid proof establishes capture. Commitments should be bound to the trainer, encounter, prior state lineage, protocol version, and nonce, with clear rules for multiple pending claims. An invalid or abandoned claim must not mint a creature.
+If the player loses, abandons the encounter, cannot produce a valid proof, or submits after the deadline, no high-rarity creature is finalized. The exact deadline is a parameter; the current design hypothesis is only that it is measured in minutes and leaves enough time for normal battle, proof generation, mobile latency and chain inclusion.
+
+This intentionally permits a player to know they received a Rare/Legendary spawn before deciding how aggressively to optimize the fight. What they cannot do is manufacture a different high-rarity spawn, substitute an old beacon round, reuse the slot, or claim it long after the live opportunity.
 
 ### 7.4 Ordinary encounters
 
-Common encounters, ordinary XP, and non-rare captures need no prompt claim for the MVP. Their results can be proven later, within enforced encounter and daily budgets. A player might therefore reconstruct old ordinary slots and simulate legal play afterward. **That remains permitted within the declared security model.**
+**Common and Uncommon** encounters and ordinary XP need no prompt online claim for the MVP. Authenticated ordinary encounter material can be cached while online and consumed later offline, within enforced encounter and daily budgets. Their chance-like battle/capture events use the deterministic local PRNG. Offline material cannot upgrade into Rare/Legendary outcomes. Results can be proven later.
+
+A player might reconstruct old ordinary slots and simulate legal Common/Uncommon play afterward. **That remains permitted within the declared security model** because high-rarity issuance and competitive public randomness are excluded from this offline path.
 
 ---
 
@@ -471,10 +492,10 @@ For accessibility, the initial world design should make at least one Common-tier
 ### 11.4 Challenge flow
 
 1. The challenger assembles a finalized, owned team of 1–6 creatures, **each matching the gym type** (with either type counting for dual-type creatures).
-2. The challenger fights the leader's published defense **locally** using the deterministic engine. The defending team must pass the same type check. Failed attempts need no transaction.
-3. On a win, the challenger generates a proof of the battle result. It is bound to the **gym ID, immutable gym type, active defense-team hash**, and the challenger's team.
-4. The contract verifies the proof against the gym defense state **active at submission time**, including type eligibility for every creature on both sides.
-5. On success, the challenger becomes leader. The winning team automatically becomes the new registered defense, any pending update from the previous leader is cancelled, and the gym type remains unchanged.
+2. Before battle, the challenger submits **one challenge commitment transaction** binding the gym ID, immutable gym type, currently active defense-team hash/policy, challenger team, rules version and challenger battle policy/strategy. The commitment fixes these inputs before the assigned future beacon sequence exists.
+3. The challenge runs online. The committed challenger policy and registered defender policy choose actions only from already-known battle state; assigned future beacon rounds resolve security-relevant chance events.
+4. On a win, the challenger generates one proof of the complete battle result. The **final proof transaction** verifies the initial commitment, authenticated beacon rounds, battle rules, team/type eligibility and that the committed defense snapshot is the challenge target.
+5. On success, the challenger becomes leader. The winning team automatically becomes the new registered defense, any pending update from the previous leader is cancelled, and the gym type remains unchanged. A failed/abandoned challenge needs no final transaction.
 
 ### 11.5 Defense updates and front-running
 
@@ -492,17 +513,13 @@ A leader who sees a winning challenge in the public mempool cannot instantly rep
 
 At launch, every gym is held by an **NPC leader** with a published team that satisfies its permanent type restriction. NPC teams are not owned by any account and have no privileged mint. The first challenger to defeat the NPC becomes the first player leader. Gym types are distributed across the world at creation, not selected by the first player who takes control.
 
-### 11.8 Open design problem: deterministic battles are solvable
+### 11.8 Competitive randomness model
 
-If combat has no randomness and the defender's behavior is a published, fixed policy, a challenger can search offline for a perfect counter. Outcomes would then be decided by **team strength and search effort**, not live play. Options:
+Gym challenges use the **future-beacon** model with a single pre-battle on-chain commitment plus a final proof transaction only on successful claim. The committed challenger battle policy/strategy may react deterministically to previously resolved battle state, but it cannot be rewritten after future randomness becomes known. The human gym leader does not need to be online because the registered defense policy is already fixed.
 
-| Option | Behavior | Trade-off |
-|---|---|---|
-| **A. Accept it (MVP recommendation)** | Gyms are puzzle-like. Leaders craft type-eligible teams and move-priority policies; challengers craft counters using the same gym type. Reigns are short and the metagame churns. | Simple and fully provable. Rewards preparation over reflexes. |
-| **B. Live signed battles** | The leader plays defense live when online. | Needs both players present; unfit for async play. |
-| **C. Future-beacon randomness** | Challenger commits a team and strategy; critical hits and similar events derive from a later beacon round. | Prevents precomputation but needs non-adaptive commitments and a more complex protocol. |
+Friend PvP uses the same public-beacon randomness but does **not** need the gym's on-chain precommit pattern: the two live players mutually sign/commit each turn's actions before the assigned future beacon and can reject a peer who fails to reveal a matching action. This gives each participant a counterparty who timestamps the other's choice. Canonical rewards, rankings or other persistent consequences may still require a later proof/settlement transaction, but ordinary turn resolution stays off-chain.
 
-Recommended path: ship option A, measure how quickly gyms turn over, and consider C or a hybrid later.
+Competitive battle latency, action timeouts, exact chance tables and how many chance events are derived from one beacon round remain balance/UX parameters. The security invariant is fixed: **no participant chooses or changes the action or policy input after learning the randomness that resolves it.**
 
 ### 11.9 Gym risks
 
