@@ -294,3 +294,12 @@ A stable `main` deployment was cancelled after PR #45 because a later `workflow_
 **Correction:** Real deployable events continue to share `bitmon-pages` with `cancel-in-progress: true`, preserving stale-deployment cancellation. Any `workflow_run` that does not exactly satisfy the existing preview-push deployment gate now receives a run-specific `bitmon-pages-skip-<run_id>` group and therefore cannot cancel or displace a real deployment.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. This is workflow-only configuration; validation is the existing PWA build plus review of the concurrency expression against the build-job eligibility predicate. Production verification requires the post-promotion `main` Pages run to complete successfully.
+
+
+### Coordinate teleport nearest-clear landing fix — 3 November 2026
+
+**Owner-reported regression:** Entering coordinates can visibly move the map to the requested destination and then immediately return to the previous location. The current teleport flow intentionally rolls back whenever the exact requested point is inside mapped building/water geometry. This is especially common for landmark or address coordinates that resolve to a building centroid, so the behavior reads as a broken teleport even though the destination map loaded correctly.
+
+**Correction:** Treat the entered coordinate as a destination anchor rather than requiring the exact point to be walkable. Reuse one shared nearest-clear-position routine for both startup relocation and teleportation: first project onto nearby loaded OpenFreeMap transportation lines and choose the closest valid point, then fall back to a 2 m radial search against the exact loaded building/water collision index. The search is bounded to 70 m. If no clear landing can be validated, preserve the existing rollback. Successful relocation updates the map, trainer, saved position and offline-cache player position, and reports the landing offset.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. No new test framework is justified for this interaction. Required automated validation remains the existing TypeScript/Vite PWA build. Manual device acceptance should verify (1) a clear coordinate lands exactly, (2) a coordinate inside a mapped building lands nearby and stays there, (3) unavailable/no-clear destinations still roll back, and (4) the relocated position persists after reload.
