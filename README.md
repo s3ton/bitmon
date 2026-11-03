@@ -4,6 +4,12 @@
 
 The geographic base uses **OpenFreeMap as the sole geographic data source** and **MapLibre for rendering**. No physical building or road may be generated unless it exists in the OpenFreeMap tiles. Original window, roof, and facade art may be inferred from those tiles but does not claim to reproduce actual architecture. The game adds original facade and roof treatments on mapped buildings, plus characters and creatures. **Immediate development focus:** touch-controlled walking-avatar exploration with a normally 45° zoomable camera that gently recenters after sustained movement and tilts toward overhead only when real mapped buildings obscure the avatar. **Later battles** zoom/reframe in the same low-poly world, then restore and resume heading-following exploration. Progression is local-first and verifiable with permissionless trainer registration, public randomness, restricted creature swaps, and player-led gyms.
 
+## License and reuse
+
+**Proprietary — all rights reserved.** Bitmon's original source code and artwork are **not open source**. No permission is granted to copy, modify, redistribute, rehost, or reuse the original project materials in other projects without written authorization from the applicable copyright holder(s). See [LICENSE](LICENSE).
+
+GitHub's Terms of Service still permit viewing and forking this public repository through GitHub. The official hosted game can be used as intended. Third-party dependencies and OpenFreeMap/OpenStreetMap geographic data remain subject to their own licenses and attribution requirements.
+
 ## Documents
 
 - [Product Requirements](docs/PRODUCT_REQUIREMENTS.md) — player-facing development requirements.
