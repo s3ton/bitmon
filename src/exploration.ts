@@ -325,11 +325,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   }
 
   function isBlocked(candidate: Position): boolean {
-    if (!tileReady(candidate)) return true
-    // All feet contact points must remain outside mapped building/water polygons.
+    // Both the feet and their small collision margin must be on decoded tiles.
+    // At a tile edge, no unloaded building geometry can be treated as empty.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
-      .some((point) => collisionAreas.some((area) => contains(area, point)))
+      .some((point) => !tileReady(point) || collisionAreas.some((area) => contains(area, point)))
   }
 
   function requestTick(): void {
