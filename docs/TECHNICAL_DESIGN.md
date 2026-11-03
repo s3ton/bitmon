@@ -30,9 +30,9 @@
 ### What changed from version 2.1
 
 - **Registration occurs before the verified adventure begins**, not later when the player first wants to trade or challenge a gym.
-- The trainer's immutable ID and initial region are recorded before the beacon rounds that may generate their encounters. Old guest-mode encounters cannot be retroactively verified or imported into the canonical collection.
+- The opted-in trainer's immutable ID and initial region are recorded before future beacon rounds that may generate verified encounters. Earlier local-only Rare/Legendary captures cannot be retroactively minted or imported as canonical assets.
 - **Local-first means local execution, not an unregistered canonical save.** After registration, exploration, ordinary battles, and proof preparation still run locally; blockchain settlements occur only at the defined boundaries.
-- A separate **optional guest/demo mode** can work without a wallet or transaction, but it has its own non-transferable, non-verifiable save. It is not the beginning of the same verified adventure.
+- The complete local single-player mode works without a wallet or transaction, and its persistent non-verifiable save remains usable after opting into a separate verified multiplayer lineage.
 - Replace the proposed 24-hour wait with **activation at the first future eligible randomness epoch after registration is finalized and the protocol's safety margin has passed**. Exact finality buffer/epoch duration remain to be benchmarked; the waiting period is a parameter, not a fixed security requirement.
 
 ---
@@ -635,7 +635,7 @@ Do not choose the chain solely on the price of a token transfer. Benchmark a **r
 - Reusing an encounter slot after finalization.
 - Forging the randomness beacon outcome.
 - Registering a fresh trainer **after** a known round to pick its outcome.
-- Claiming a rare encounter after the reservation deadline.
+- Claiming or NFT-minting a verified Rare/Legendary encounter after its single catch-claim deadline.
 - Double-spending or duplicating a creature.
 - Swapping across tiers, gifting, or swapping more than once per 24 hours.
 - Carrying levels or training through a swap.
@@ -679,7 +679,7 @@ Do not choose the chain solely on the price of a token transfer. Benchmark a **r
 
 ### Phase 0 — Feasibility and adversarial design
 
-**Goal:** Determine whether the core cryptography, trade rules, and optional sponsorship are viable before building a full game.
+**Goal:** Determine whether the cryptography, self-funded rare NFT minting/trade rules and optional Digital Gold gym funding are viable before building verified multiplayer.
 
 Deliverables:
 
@@ -774,7 +774,7 @@ Track the game as a **game first**.
 | Collection | Species discovered per trainer, progression milestones, capture diversity |
 | Fairness | Forged-proof acceptance (target zero in tests), duplicate epoch claims rejected |
 | Concentration | Share of top-tier creatures held by the top 1% of trainers; swaps per trainer per week; swap partner diversity |
-| Farming signals | Registrations per funding source or sponsor; trainers that swap but never play |
+| Farming signals | Canonical registrations per funding source; trainers that swap but never play |
 | Gyms | Leader turnover time, distinct leaders per gym, defense-update frequency, available Common-tier creatures per gym type |
 | Performance | Client FPS, proof latency and memory on mid-tier mobile, settlement confirmation time |
 | Cost | Real gas per proof, claim, swap, registration, gym claim, plus prover costs |
@@ -794,7 +794,7 @@ Avoid using speculative trading volume as a success indicator. Do not build an i
 | Swap-slot sales off-chain | Players may pay money for swaps. | Accept; the caps limit volume and profit. |
 | Tier too coarse | Players swap toward the best species in each tier. | Balance within tiers; consider sub-tiers. |
 | Swap cap too tight or too loose | Hurts casual play vs. enables consolidation. | Playtest; treat the cap as a tunable parameter. |
-| Deterministic gyms are solvable | Outcome depends on search effort, not live play. | Option A for MVP; evaluate later options (Section 11.8). |
+| Competitive gym entropy | Beacon timing and fixed pre-battle policies must prevent post-reveal strategy changes. | One commitment before future beacon randomness, one verified post-win claim (Section 11.8). |
 | Gym type imbalance | Some gym types may have too few accessible creatures or limited strategic variety. | Ensure Common-tier options for every assigned type and balance the roster globally. |
 | Mempool front-running of gym claims | Leader could try to invalidate a challenger's proof by replacing the defense. | Delayed-activation defense-team updates; proof bound to the active snapshot. |
 | Rare claim timing | Too-short deadlines punish human players or network outages. | Benchmark one self-funded proof-and-NFT-mint after capture, with mobile latency included; tune the window. |
