@@ -15,7 +15,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: bitmon-pages
+  # Non-deployable workflow_run events must not enter the real deployment group:
+  # workflow-level concurrency is evaluated before the build job's if condition.
+  group: >-
+    ${{
+      github.event_name == 'workflow_run' &&
+      !(
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'preview' &&
+        github.event.workflow_run.head_repository.full_name == github.repository
+      ) &&
+      format('bitmon-pages-skip-{0}', github.run_id) ||
+      'bitmon-pages'
+    }}
   cancel-in-progress: true
 
 jobs:
