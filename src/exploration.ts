@@ -61,8 +61,21 @@ function contains(area: CollisionArea, point: Position): boolean {
 }
 
 
-const SPRITE_ROWS = { down: 0, downRight: 1, right: 2, upRight: 3, up: 4, upLeft: 5, left: 6, downLeft: 7 } as const
+const SPRITE_APPEARANCE = {
+  up: { row: 0, mirrored: false },
+  upRight: { row: 1, mirrored: false },
+  right: { row: 2, mirrored: false },
+  downRight: { row: 3, mirrored: false },
+  down: { row: 4, mirrored: false },
+  downLeft: { row: 3, mirrored: true },
+  left: { row: 2, mirrored: true },
+  upLeft: { row: 1, mirrored: true },
+} as const
 const SCREEN_DIRECTIONS = ['up', 'upRight', 'right', 'downRight', 'down', 'downLeft', 'left', 'upLeft'] as const
+const WALK_FRAME_COUNT = 8
+const WALK_FRAME_SECONDS = .09
+// Prefer grounded poses over freezing a raised foot when movement stops.
+const IDLE_FRAME_BY_ROW = [0, 7, 7, 7, 0] as const
 const JOYSTICK_START_MIN = .1
 const JOYSTICK_START_MAX = .9
 const COLLISION_RADIUS_METERS = 28
@@ -130,7 +143,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   const trainer = createTrainerLayer(
     map,
     initialPosition,
-    import.meta.env.BASE_URL + 'trainer-atlas.svg',
+    import.meta.env.BASE_URL + 'trainer-atlas.webp',
   )
   const addTrainerLayer = () => {
     if (!map.getLayer(trainer.layer.id)) map.addLayer(trainer.layer)
@@ -179,10 +192,13 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const relativeHeading = angleDelta(heading, map.getBearing())
     const octant = (Math.round(relativeHeading / 45) + 8) % 8
     const direction = SCREEN_DIRECTIONS[octant]
-    const step = moving ? 1 + Math.floor(animationTime / .12) % 4 : 0
+    const sprite = SPRITE_APPEARANCE[direction]
+    const step = moving
+      ? Math.floor(animationTime / WALK_FRAME_SECONDS) % WALK_FRAME_COUNT
+      : IDLE_FRAME_BY_ROW[sprite.row]
     const appearance = direction + ':' + step
     if (appearance === lastAppearance) return
-    trainer.setFrame(SPRITE_ROWS[direction], step)
+    trainer.setFrame(sprite.row, step, sprite.mirrored)
     lastAppearance = appearance
   }
 
@@ -292,8 +308,8 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     }
   }
 
-  // A building can occlude a DOM marker, which otherwise draws over 3D walls.
-  // Tilt toward overhead only as far as the nearest mapped building requires.
+  // Gradually pitch clear of nearby sourced buildings while GPU depth testing
+  // independently occludes only the pixels temporarily hidden by their walls.
   function safeCameraPitch(bearing: number): number {
     let result = CAMERA_EXPLORATION_PITCH
     for (const area of collisionAreas) {
@@ -384,7 +400,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
         position = candidate
         walking = true
         heading = degrees(Math.atan2(actualEast, actualNorth))
-        animationTime += dt
+        animationTime += Math.hypot(actualEast, actualNorth) / SPEED_METERS_PER_SECOND
         trainer.setPosition(position)
         offlineMap.setPlayerPosition(position)
         persistProgress()
