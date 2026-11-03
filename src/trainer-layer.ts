@@ -31,19 +31,29 @@ function program(gl: WebGL2RenderingContext): WebGLProgram {
   const vertex = shader(gl, gl.VERTEX_SHADER, `#version 300 es
     uniform mat4 u_matrix;
     uniform vec3 u_origin;
-    uniform vec2 u_right;
-    uniform float u_width;
-    uniform float u_height;
+    uniform float u_altitude;
+    uniform vec2 u_viewport;
+    uniform vec2 u_size;
     uniform vec4 u_uv;
     in vec2 a_corner;
     out highp vec2 v_uv;
 
     void main() {
-      vec3 world = vec3(
-        u_origin.xy + u_right * (a_corner.x * u_width),
-        u_origin.z + a_corner.y * u_height
-      );
-      gl_Position = u_matrix * vec4(world, 1.0);
+      // Keep the atlas sprite screen-facing like the previous DOM marker,
+      // while interpolating depth from the physical feet to 1.8 m head height.
+      // This avoids the billboard becoming edge-on near top-down pitch, yet
+      // still lets building depth hide only the pixels physically behind it.
+      vec4 foot = u_matrix * vec4(u_origin, 1.0);
+      vec4 head = u_matrix * vec4(u_origin.xy, u_origin.z + u_altitude, 1.0);
+      vec4 clip = foot;
+      clip.xy += vec2(
+        a_corner.x * u_size.x * 2.0 / u_viewport.x,
+        a_corner.y * u_size.y * 2.0 / u_viewport.y
+      ) * foot.w;
+      float footDepth = foot.z / foot.w;
+      float headDepth = head.z / head.w;
+      clip.z = mix(footDepth, headDepth, a_corner.y) * foot.w;
+      gl_Position = clip;
       v_uv = vec2(
         mix(u_uv.x, u_uv.z, a_corner.x + 0.5),
         mix(u_uv.w, u_uv.y, a_corner.y)
@@ -99,9 +109,9 @@ export function createTrainerLayer(
   let aCorner = -1
   let uMatrix: WebGLUniformLocation | null = null
   let uOrigin: WebGLUniformLocation | null = null
-  let uRight: WebGLUniformLocation | null = null
-  let uWidth: WebGLUniformLocation | null = null
-  let uHeight: WebGLUniformLocation | null = null
+  let uAltitude: WebGLUniformLocation | null = null
+  let uViewport: WebGLUniformLocation | null = null
+  let uSize: WebGLUniformLocation | null = null
   let uUv: WebGLUniformLocation | null = null
   let uTexture: WebGLUniformLocation | null = null
 
@@ -116,9 +126,9 @@ export function createTrainerLayer(
       if (aCorner < 0) throw new Error('Missing trainer corner attribute.')
       uMatrix = uniform(gl, glProgram, 'u_matrix')
       uOrigin = uniform(gl, glProgram, 'u_origin')
-      uRight = uniform(gl, glProgram, 'u_right')
-      uWidth = uniform(gl, glProgram, 'u_width')
-      uHeight = uniform(gl, glProgram, 'u_height')
+      uAltitude = uniform(gl, glProgram, 'u_altitude')
+      uViewport = uniform(gl, glProgram, 'u_viewport')
+      uSize = uniform(gl, glProgram, 'u_size')
       uUv = uniform(gl, glProgram, 'u_uv')
       uTexture = uniform(gl, glProgram, 'u_texture')
 
@@ -159,19 +169,17 @@ export function createTrainerLayer(
 
     render(gl, args) {
       if (!visible || !textureReady || !glProgram || !buffer || !texture ||
-          !uMatrix || !uOrigin || !uRight || !uWidth || !uHeight || !uUv || !uTexture) return
+          !uMatrix || !uOrigin || !uAltitude || !uViewport || !uSize || !uUv || !uTexture) return
 
       const origin = MercatorCoordinate.fromLngLat([position.lon, position.lat], 0)
       const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
         (512 * 2 ** map.getZoom())
-      const heightMeters = Math.max(
-        TRAINER_HEIGHT_METERS,
-        MIN_VISIBLE_TRAINER_HEIGHT_PX * metersPerPixel,
+      const heightPx = Math.max(
+        MIN_VISIBLE_TRAINER_HEIGHT_PX,
+        TRAINER_HEIGHT_METERS / metersPerPixel,
       ) * TRAINER_RENDER_SCALE
-      const mercatorPerMeter = origin.meterInMercatorCoordinateUnits()
-      const height = heightMeters * mercatorPerMeter
-      const width = heightMeters * TRAINER_ASPECT_RATIO * mercatorPerMeter
-      const bearing = radians(map.getBearing())
+      const widthPx = heightPx * TRAINER_ASPECT_RATIO
+      const physicalHeight = TRAINER_HEIGHT_METERS * origin.meterInMercatorCoordinateUnits()
       const u0 = column / ATLAS_COLUMNS
       const u1 = (column + 1) / ATLAS_COLUMNS
       const v0 = row / ATLAS_ROWS
@@ -180,9 +188,9 @@ export function createTrainerLayer(
       gl.useProgram(glProgram)
       gl.uniformMatrix4fv(uMatrix, false, args.defaultProjectionData.mainMatrix)
       gl.uniform3f(uOrigin, origin.x, origin.y, origin.z)
-      gl.uniform2f(uRight, Math.cos(bearing), Math.sin(bearing))
-      gl.uniform1f(uWidth, width)
-      gl.uniform1f(uHeight, height)
+      gl.uniform1f(uAltitude, physicalHeight)
+      gl.uniform2f(uViewport, gl.drawingBufferWidth, gl.drawingBufferHeight)
+      gl.uniform2f(uSize, widthPx * map.getPixelRatio(), heightPx * map.getPixelRatio())
       gl.uniform4f(uUv, u0, v0, u1, v1)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, texture)
