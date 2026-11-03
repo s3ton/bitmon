@@ -353,41 +353,10 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     requestTick()
 
     // The default or restored spawn point can fall inside a mapped building.
-    // Spawn at a nearby mapped route, not by disabling building collisions.
+    // Move to the nearest clear sourced position rather than disabling collisions.
     if (!hasPlacedSpawn && !teleporting) {
-      const search = (candidate: Position) => !isBlocked(candidate) &&
-        distanceMeters(initialPosition, candidate) <= 70
-      let best: Position | null = null
-      let bestDistance = Infinity
       if (isBlocked(position)) {
-        for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: 'transportation' })) {
-          if (!['path', 'pedestrian', 'minor', 'service', 'tertiary', 'track'].includes(String(feature.properties?.class))) continue
-          const geometry = feature.geometry
-          if (geometry.type !== 'LineString' && geometry.type !== 'MultiLineString') continue
-          const lines: number[][][] = geometry.type === 'LineString'
-            ? [geometry.coordinates] : geometry.coordinates
-          for (const line of lines) {
-            for (let i = 1; i < line.length; i++) {
-              const candidate = closestOnSegment(initialPosition, line[i - 1], line[i])
-              const distance = distanceMeters(initialPosition, candidate)
-              if (distance < bestDistance && search(candidate)) {
-                best = candidate
-                bestDistance = distance
-              }
-            }
-          }
-        }
-        // Source roads may be absent. Select the nearest safe coordinate
-        // using only the existing source polygons, without drawing a new road.
-        if (!best) {
-          for (let radius = 2; radius <= 60 && !best; radius += 2) {
-            for (let bearing = 0; bearing < 360; bearing += 20) {
-              const candidate = displace(initialPosition,
-                Math.sin(radians(bearing)) * radius, Math.cos(radians(bearing)) * radius)
-              if (search(candidate)) { best = candidate; break }
-            }
-          }
-        }
+        const best = findNearbyClearPosition(initialPosition, 70)
         if (best) {
           position = best
           trainer.setPosition(position)
@@ -440,6 +409,43 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
       .some((point) => !tileReady(point) || !collisionIndex || collisionAt(collisionIndex, point))
+  }
+
+  function findNearbyClearPosition(origin: Position, maxDistance: number): Position | null {
+    const clear = (candidate: Position) =>
+      distanceMeters(origin, candidate) <= maxDistance && !isBlocked(candidate)
+    if (clear(origin)) return { ...origin }
+
+    let best: Position | null = null
+    let bestDistance = Infinity
+    for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: 'transportation' })) {
+      if (!['path', 'pedestrian', 'minor', 'service', 'tertiary', 'track'].includes(String(feature.properties?.class))) continue
+      const geometry = feature.geometry
+      if (geometry.type !== 'LineString' && geometry.type !== 'MultiLineString') continue
+      const lines: number[][][] = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates
+      for (const line of lines) {
+        for (let i = 1; i < line.length; i++) {
+          const candidate = closestOnSegment(origin, line[i - 1], line[i])
+          const distance = distanceMeters(origin, candidate)
+          if (distance < bestDistance && clear(candidate)) {
+            best = candidate
+            bestDistance = distance
+          }
+        }
+      }
+    }
+    if (best) return best
+
+    // Source roads may be absent. Search outward against the exact loaded
+    // building/water polygons without inventing geography.
+    for (let radius = 2; radius <= maxDistance; radius += 2) {
+      for (let bearing = 0; bearing < 360; bearing += 20) {
+        const candidate = displace(origin,
+          Math.sin(radians(bearing)) * radius, Math.cos(radians(bearing)) * radius)
+        if (clear(candidate)) return candidate
+      }
+    }
+    return null
   }
 
   function requestTick(): void {
@@ -618,8 +624,17 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       })
       position = { ...target }
       refreshCollision()
-      if (!collisionOrigin || isBlocked(position)) {
-        throw new Error('That coordinate lies inside mapped building/water or unavailable terrain.')
+      if (!collisionOrigin) {
+        throw new Error('Could not validate destination terrain.')
+      }
+      if (isBlocked(position)) {
+        const clearLanding = findNearbyClearPosition(target, 70)
+        if (!clearLanding) {
+          throw new Error('No clear landing point was found near that coordinate.')
+        }
+        position = clearLanding
+        map.jumpTo({ center: [position.lon, position.lat] })
+        collisionOrigin = { ...position }
       }
       trainer.setPosition(position)
       hasPlacedSpawn = true
@@ -630,7 +645,10 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       persistProgress(true)
       cameraMenu.open = false
       coordinateGo.blur()
-      coordinateStatus.textContent = ''
+      const landingOffset = distanceMeters(target, position)
+      coordinateStatus.textContent = landingOffset >= 1
+        ? 'Landed ' + Math.round(landingOffset) + ' m from the requested coordinate at the nearest clear point.'
+        : ''
     } catch (error) {
       position = original
       decodedTiles.clear()
