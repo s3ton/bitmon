@@ -1,4 +1,4 @@
-import { MercatorCoordinate, type CustomLayerInterface, type Map as MapLibreMap } from 'maplibre-gl'
+import { EXTENT, MercatorCoordinate, type CustomLayerInterface, type Map as MapLibreMap } from 'maplibre-gl'
 
 type Position = { lon: number; lat: number }
 
@@ -9,6 +9,10 @@ const TRAINER_RENDER_SCALE = 2
 const TRAINER_ASPECT_RATIO = .75
 const ATLAS_COLUMNS = 5
 const ATLAS_ROWS = 8
+// Keep custom-layer coordinates local so WebGL float32 precision stays stable
+// at the game's zoom range. Absolute 0..1 Mercator coordinates quantize by
+// meters on the GPU and visibly jump/flicker while the camera follows movement.
+const TRAINER_POSITION_TILE_ZOOM = 20
 
 function radians(degrees: number): number {
   return degrees * Math.PI / 180
@@ -172,6 +176,21 @@ export function createTrainerLayer(
           !uMatrix || !uOrigin || !uAltitude || !uViewport || !uSize || !uUv || !uTexture) return
 
       const origin = MercatorCoordinate.fromLngLat([position.lon, position.lat], 0)
+      const tiles = 2 ** TRAINER_POSITION_TILE_ZOOM
+      const scaledX = origin.x * tiles
+      const scaledY = origin.y * tiles
+      const unwrappedTileX = Math.floor(scaledX)
+      const tileY = Math.min(tiles - 1, Math.max(0, Math.floor(scaledY)))
+      const wrap = Math.floor(unwrappedTileX / tiles)
+      const tileX = ((unwrappedTileX % tiles) + tiles) % tiles
+      const localX = (scaledX - unwrappedTileX) * EXTENT
+      const localY = (scaledY - Math.floor(scaledY)) * EXTENT
+      const projectionData = args.getProjectionData({
+        tileID: {
+          wrap,
+          canonical: { x: tileX, y: tileY, z: TRAINER_POSITION_TILE_ZOOM },
+        },
+      })
       const metersPerPixel = 2 * Math.PI * METERS_PER_RADIAN * Math.cos(radians(position.lat)) /
         (512 * 2 ** map.getZoom())
       const heightPx = Math.max(
@@ -179,16 +198,18 @@ export function createTrainerLayer(
         TRAINER_HEIGHT_METERS / metersPerPixel,
       ) * TRAINER_RENDER_SCALE
       const widthPx = heightPx * TRAINER_ASPECT_RATIO
-      const physicalHeight = TRAINER_HEIGHT_METERS * origin.meterInMercatorCoordinateUnits()
       const u0 = column / ATLAS_COLUMNS
       const u1 = (column + 1) / ATLAS_COLUMNS
       const v0 = row / ATLAS_ROWS
       const v1 = (row + 1) / ATLAS_ROWS
 
       gl.useProgram(glProgram)
-      gl.uniformMatrix4fv(uMatrix, false, args.defaultProjectionData.mainMatrix)
-      gl.uniform3f(uOrigin, origin.x, origin.y, origin.z)
-      gl.uniform1f(uAltitude, physicalHeight)
+      // Use MapLibre's tile-relative projection matrix. The matrix accepts X/Y
+      // in 0..EXTENT tile units and Z in meters, avoiding absolute-Mercator
+      // float32 cancellation at zoom 15.5-20 while preserving shared depth.
+      gl.uniformMatrix4fv(uMatrix, false, projectionData.mainMatrix)
+      gl.uniform3f(uOrigin, localX, localY, 0)
+      gl.uniform1f(uAltitude, TRAINER_HEIGHT_METERS)
       gl.uniform2f(uViewport, gl.drawingBufferWidth, gl.drawingBufferHeight)
       gl.uniform2f(uSize, widthPx * map.getPixelRatio(), heightPx * map.getPixelRatio())
       gl.uniform4f(uUv, u0, v0, u1, v1)
