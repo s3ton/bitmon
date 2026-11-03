@@ -168,7 +168,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   let activePointer: number | null = null
   let touchOrigin = { x: 0, y: 0 }
   let controlBearing = heading
-  let cameraPreset: CameraPreset = 'balanced'
+  let cameraPreset: CameraPreset = cameraPresetSelect.value as CameraPreset
   let steadyHeading: number | null = null
   let steadySeconds = 0
   let occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
