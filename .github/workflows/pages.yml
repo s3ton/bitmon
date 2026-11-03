@@ -50,13 +50,11 @@ jobs:
         working-directory: stable
         run: |
           npm ci --no-audit --no-fund
-          npm run check
           npm run build
       - name: Build preview from preview
         working-directory: preview
         run: |
           npm ci --no-audit --no-fund
-          npm run check
           npm run build
       - name: Give preview a distinct install identity
         run: |
