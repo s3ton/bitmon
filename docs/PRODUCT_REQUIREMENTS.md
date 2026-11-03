@@ -224,7 +224,7 @@ A 1:1 Earth cannot be practical to explore exclusively by walking at a human-sca
 
 ### MOVE-03 — Privacy and physical location
 
-The game should not require disclosure of the player's real-world location merely to explore a geographic map. If an optional “go to my location” control is later added, request permission transparently and keep the physical-location data separate from the on-chain trainer identity unless deliberately specified and reviewed. **No mandatory GPS or proof-of-physical-presence rule is approved in this PRD.**
+The game should not require disclosure of the player's real-world location merely to explore a geographic map. If an optional “go to my location” control is later added, request permission transparently and keep physical-location data separate from the authenticated game profile unless deliberately specified and reviewed. **No mandatory GPS or proof-of-physical-presence rule is approved in this PRD.**
 
 ## 7. Encounters, regions, and fair randomness
 
@@ -392,7 +392,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 ### E0 — First development milestone: exploration-only prototype
 
-**Build this before registration, battles, captures, gyms, trades, ZK proofs, or advertising.** E0 is a focused visual/movement prototype, **not yet the verified game**.
+**Build this before authentication, battles, captures, gyms, trades, server randomness, blockchain achievements, or advertising.** E0 remains a focused visual/movement prototype, not the complete RPG.
 
 1. Run an installable **portrait-only smartphone PWA** that loads OpenFreeMap through MapLibre.
 2. Display a real neighborhood with the original **low-poly 2.5D** rendering, using only actual OpenFreeMap roads and building footprints.
@@ -403,38 +403,33 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 7. Repeat the demo on a sparsely mapped area; no missing roads or buildings may be procedurally invented.
 8. In settings, enter latitude and longitude to jump to a source-validated map location; when the exact coordinate is inside mapped building/water geometry, land at the nearest validated clear point nearby instead of rolling back. Reload the installed PWA to restore last playable coordinates. Walk online to cache map tiles, reopen offline and walk only in cached terrain. At the 100 MiB limit, evict the geographically farthest tiles rather than deleting the player's current area. Reload and confirm camera responsiveness and zoom preferences are restored; keep temporary coordinate-entry text out of the saved settings. When launched from its installed home-screen icon, check Settings for the offline storage protection result and retry if denied; launching in an ordinary browser tab must not request persistence.
 
-**Explicitly deferred after E0:** battle camera transition (CAM-01), encounter rules, wallet registration, proving/finality, trade, gyms, advertising. Their product requirements remain valid for later work.
+**Explicitly deferred after E0:** battle camera transition (CAM-01), local encounters, server-authoritative online rare eligibility, PvP signaling, gym Durable Objects, advertising and optional on-chain publishing/NFT claims. E0 does not depend on any backend.
 
-### P0 — Must work in the first map/game vertical slice
+### P0 — First map/game vertical slice
 
-1. Load an arbitrary supported city coordinate with **MapLibre + OpenFreeMap** and display real street/land-use/building geometry.
-2. Show the **human-scale, eight-direction animated avatar** and a smooth heading-following, fixed-pitch exploration camera with a visible right-side zoom slider, correct diagonal facing, and an independent middle-screen joystick activation zone.
-3. Raise building footprints into stylized volumes and use available building heights or deterministic fallbacks.
-4. Show at least **two distinguishable facade treatments** on buildings present in OpenFreeMap (for example generic and residential-like), selected deterministically from available tile fields/context; never claim inferred usage is verified.
-5. Keep roads, buildings, player collision, and camera aligned while **moving via touch controls on a portrait smartphone** and crossing tile boundaries.
-6. Create a verified trainer before issuing the first authenticated encounter, with clear registration/activation state.
-7. Complete one local deterministic encounter, one capture, local pending save, and successful verified finalization.
-8. Show errors or degraded rendering rather than falsely implying detailed map data exist where they do not; verify that areas with no source footprints contain **no generated buildings**, and no roads appear where OpenFreeMap contains none.
-9. Open the PWA on Android and iOS, install it to a home screen, and launch in an app-like standalone display with all core controls **portrait-first**.
-10. Rotate a device that does not enforce portrait orientation; gameplay pauses safely with a **rotate-phone** prompt instead of a landscape gameplay layout.
-11. Load the installed PWA from the **GitHub Pages repository subpath**; verify manifest, app assets and service worker paths resolve.
+1. Preserve E0 OpenFreeMap-only real geometry, collision and smartphone controls, without fabricated missing roads/buildings.
+2. Add a complete account-free local Common/Uncommon encounter/capture loop using browser device randomness, deterministic combat animation and IndexedDB save/reload; offline on cached map data.
+3. Provide a distinct login affordance only when requesting online Rare/Legendary access, official gyms or saved verified progression. Supabase is not needed for opening the game.
+4. Demonstrate one authenticated Cloudflare-issued online Rare/Legendary opportunity: one server roll, no refresh reroll, authoritative battle/capture and D1 collection, with no wallet or NFT.
+5. Run same-world camera battle framing and restore geographic exploration controls afterward.
+6. Continue to support portrait-only installed Android/iOS PWA, the GitHub Pages Preview/Stable identities and map-source integrity gates.
 
-### P1 — Required for a usable first game release
+### P1 — Required for a usable release
 
-- Map/world streaming across multiple urban and rural test regions; a documented travel mechanism.
-- A polished visual vocabulary for existing OpenFreeMap roads, parks, water, vegetation, and several **inferred facade styles**; no additional geographic dataset.
-- More species, levels, moves, inventory, quests/progression, and reliable recovery/export.
-- Regional/habitat encounter design with a **specified anti-hindsight location commitment model**.
-- Same-tier swaps with level reset and 24-hour rate limiting.
-- Fixed-type NPC/player gyms, defense team updates, fame history, and challenge validation.
-- **Portrait smartphone** performance and touch usability, installability on Android/iOS, offline/error states, map attribution, and alternative OpenFreeMap mirror tests.
-- GitHub-only publishing of compiled artifacts to the public PWA repository; exclude original source, credentials, unpublished assets and development source maps.
+- Cloudflare Worker API, D1 authoritative inventory/currency, Supabase Auth-only integration, abuse controls and account/guest save boundaries.
+- One type-fixed gym with server-owned, SQLite-backed Durable Object challenge state, persistent battles, Digital Gold debits, leadership/defense updates and centralized leaderboard.
+- Optional rewarded-ad integration only after publisher/privacy review, with appropriate non-ad availability for the rest of the game.
+- WebRTC direct casual/unranked PvP with lightweight signaling and tested TURN fallback; no invented claim of cheat-proof ranked results.
+- A Bitmon-financed, asynchronous, idempotent Hall-of-Fame publication for verified gym wins; failure of chain publication cannot block the result.
+- Stable mobile PWA, ordinary inventory swaps, multiple real mapped regions, original battle art, accessibility, export/recovery, GDPR/privacy and cost monitoring.
+- Keep E0's source-fidelity/portrait/PWA deployment gates unchanged.
 
-### P2 — Later enhancements, not release blockers
+### P2 — Optional later additions
 
-- Additional decorative variants and roof treatments **on existing mapped buildings**, richer nighttime lighting, seasonal art, animated crowds, and surface-only landmark art (never new building/road geometry).
-- Optional localized art packs, more extensive points of interest, or enhanced environmental audio.
-- Advanced portability/mirroring, third-party sponsorship integrations, and independently hosted game portals.
+- Exceptional unique event-monster entitlement and free-to-player one-of-one NFT minting, recoverable wallet creation, current-holder in-game access after external transfer, and legal/security review.
+- Ranked PvP with authoritative arbiter if demand warrants it; more extensive matchmaking, habitat detail from OpenFreeMap-only tags, art packs, additional gym modes and optional cosmetic subscription.
+- More elaborate public on-chain gym explorer or batched proof strategy if public records become expensive.
+- Decorative/seasonal art strictly on mapped geometry; never invent missing geography.
 
 ### Acceptance scenarios for the map team
 
@@ -448,35 +443,33 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Dense city on smartphone | Low-poly gameplay remains responsive on an agreed low-/mid-range portrait device, with predictable level-of-detail fallback. |
 | Sparse rural area | The scene degrades gracefully when buildings or roads are missing in the tiles; the renderer never fills them in by invention. |
 | Different trainer at same location | Physical map layout is consistent; encounters may differ by trainer identity. |
-| Known-beacon location exploit | A player cannot choose a better location **after** seeing encounter randomness and still claim the result as a valid earlier slot. |
-| Unregistered account | No verified bitmon can be claimed without pre-registered eligible trainer identity. |
+| Online rare farming | Refreshing, reconnecting, changing tabs or teleporting cannot grant extra independent Rare/Legendary rolls beyond the account's server-issued opportunity quota. |
+| Guest training | Common/Uncommon training works offline without account; attempts to request an authoritative Rare/Legendary encounter require a valid Supabase session. |
 | Animated explorer | Geographic joystick movement uses camera-relative eight-direction poses; vertical thumb input matches the intended direction, the camera turns smoothly toward heading, and idle retains the bearing. |
 | Same-world battle camera | On battle start the active camera zooms toward the encountered bitmon while the mapped world remains visible; after battle it returns to the exact exploration framing. **Deferred until after E0.** |
 | Fire gym | Fire and Fire/Wind are accepted; Water/Wind is rejected for both attack and defense. |
-| Sponsor outage | A player with their own gas and a valid proof can still finalize progress. |
+| Chain outage | Gym victories update D1/DO leaderboards without waiting for the Bitmon-funded on-chain Hall-of-Fame transaction; publication retries later. |
 | Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
 | Landscape rotation | Unsupported orientation lock shows a rotate-phone message and preserves session state; no landscape gameplay is implemented. |
 | GitHub Pages distribution | Preview installs as a distinct PWA with its own browser-computed manifest ID, purple Preview icon and name, while Stable retains its original identity and `main`-only gameplay. Preview updates after `preview` CI and each service-worker cache remains isolated. No credentials, private code or source maps appear in the Pages artifact. |
 
 ## 14. Open decisions blocking detailed development
 
-These questions need product decisions; implementing guesses as if already settled would create significant rework.
+These questions need explicit product decisions; do not mistake unmeasured parameters for confirmed requirements.
 
-1. **Virtual travel versus physical travel:** Is bitmon entirely joystick-driven, GPS-driven, or a hybrid? This draft assumes joystick-driven virtual exploration with **no GPS requirement**, pending confirmation.
-2. **Scale and speed:** How quickly should one traverse an actual kilometer? How do players visit distant cities without trivializing exploration?
-3. **Map coordinate access:** E0 prototype coordinate jumps are approved for testing anywhere with available map data. Whether a **verified** adventure allows arbitrary starting regions, unrestricted revisits or instant travel remains open; future anti-seed-shopping rules must not trust local saved coordinates.
-4. **Encounter location commitment:** Exactly when and how is a region/habitat fixed relative to the public randomness beacon? This is essential to fair, worldwide encounters.
-5. **Walkable space:** Does play primarily follow mapped paths, or allow free walking through parks, fields, and plazas? What to do with roads lacking foot-access information?
-6. **Facade inference rulebook:** Which existing OpenFreeMap attributes/context influence facade variants, how should uncertain inferences be weighted, and how do source-tile updates affect deterministic art? **No additional geographic data source is allowed.**
-7. **Camera/art direction:** **Heading-following bearing is now decided**; open tuning includes fixed pitch/zoom values, turning smoothness, input dead zone, sprite scale/timing, battle easing, roof presentation and building-height stylization. Same-world battle framing remains decided and deferred.
-8. **Interiors:** Are any buildings enterable in the first release? No such feature is assumed here.
-9. **Gym placement:** How are gyms distributed fairly across a worldwide map? How does a player find and reach them?
-10. **Starter and habitat design:** Initial bitmon types, starting conditions, balance of cities/rural areas, and whether region influences **species only** or also rarity.
-11. **Map revision consistency:** How often does basemap data refresh, and how do updated streets/buildings interact with saved gameplay/collisions and proof rules?
-12. **Device targets:** Minimum Android/iOS versions, smartphone portrait viewport sizes, touch target dimensions, frame rate, browser storage persistence permission/eviction and offline behavior. **100 MiB of cached vector tile data per channel** is the current prototype limit; device-level storage availability and update policies remain to be tested. **Portrait-only smartphone-first is already fixed.**
-13. **Release automation:** Main-context dual-channel Pages publishing is decided; only the Stable channel waits for a reviewed `preview` → `main` promotion. Preview publishes after successful `preview` push checks. Long-term release hosting/privacy remains open.
+1. **Online rare cadence:** accepted virtual movement/time, per-account opportunities, rarity rates, ticket expiry and retries. Prevent teleport/refresh farming without inventing a physical GPS guarantee.
+2. **Habitat balance:** validate any species/region modifier from OpenFreeMap-only data; until safe, use location-independent rare odds.
+3. **Guest progression:** preserve local save, but decide a fixed verified starter roster and whether any Common/Uncommon can enter canonical inventory without importing forged XP/levels.
+4. **Gym concurrence:** multiple simultaneous challengers, defense snapshot expiry, timeouts, rollback/refund rules, Digital Gold debit retry and disconnected mobile sessions.
+5. **PvP connectivity:** acceptable STUN/TURN coverage, QR invites/signaling, mobile network fallbacks and whether ranked reward-bearing matches justify a server arbiter.
+6. **Advertising and subscriptions:** Digital Gold pricing, age/consent eligibility, no forced ads for offline game, reward policy approval, subscription terms and fees.
+7. **Hall of Fame:** on-chain network, one transaction per win versus batch threshold, publisher retry costs, privacy treatment of public pseudonyms, on-chain record schema.
+8. **Unique event NFTs:** actual one-of-one criteria, event award fairness, mint wallet recovery and contract chain, transfer/owner synchronization, licensing and MiCA/legal assessment.
+9. **Map controls and world:** fast virtual travel, world geometry integrity, walkable/offroad rules, gym distribution, map revision cadence and no alternate geography sources.
+10. **Art and device targets:** original creature art, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
+11. **Production infrastructure:** Cloudflare Worker/D1/DO/Queues costs, persistent backups, Supabase Auth recovery, monitoring, operational security and alternative hosting after GitHub Pages prototype.
 
-## 15. Map data and implementation constraints (supporting notes, not player-facing features)
+## 15. Map data and implementation constraints## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 
 These notes distinguish the desired player experience from the information actually available in the selected map source.
 
