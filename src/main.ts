@@ -1,11 +1,17 @@
-import { AttributionControl, Map, setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
+import { addProtocol, AttributionControl, Map, setWorkerUrl, type StyleSpecification } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
 import { startExploration } from './exploration'
 import { registerPwa } from './pwa'
+import { MAP_CACHE_LIMIT_MIB, offlineMap, savedPosition } from './offline-map'
 
 setWorkerUrl(workerUrl)
+addProtocol('bitmon', async (params, controller) => ({
+  data: await offlineMap.loadProtocolTile(params.url, controller.signal),
+}))
+const startingPosition = savedPosition()
+offlineMap.setPlayerPosition(startingPosition)
 
 // Every geographic layer reads geometry from this single OpenFreeMap tile source.
 // Only its visual treatment (color, line width and building height fallback) is ours.
@@ -14,7 +20,8 @@ const style: StyleSpecification = {
   sources: {
     openmaptiles: {
       type: 'vector',
-      url: 'https://tiles.openfreemap.org/planet/latest',
+      tiles: ['bitmon://tiles/{z}/{x}/{y}.pbf'],
+      maxzoom: 14,
       attribution: '© OpenFreeMap · © OpenStreetMap contributors',
     },
   },
@@ -101,11 +108,17 @@ const style: StyleSpecification = {
 const status = document.querySelector<HTMLParagraphElement>('#status')!
 const zoomSlider = document.querySelector<HTMLInputElement>('#zoom-slider')!
 const zoomValue = document.querySelector<HTMLOutputElement>('#zoom-value')!
+const cacheStatus = document.querySelector<HTMLElement>('#offline-cache-status')!
+offlineMap.setStatusListener((bytes, persistent) => {
+  cacheStatus.textContent = persistent
+    ? 'Offline map: ' + (bytes / 1024 / 1024).toFixed(1) + ' / ' + MAP_CACHE_LIMIT_MIB + ' MiB'
+    : 'Offline map storage unavailable'
+})
 
 const map = new Map({
   container: 'map',
   style,
-  center: [9.1869, 45.4715], // Brera, Milan: geographic coordinates, not a fictional level.
+  center: [startingPosition.lon, startingPosition.lat],
   zoom: 16.4,
   minZoom: 15.5,
   maxZoom: 20,
@@ -125,11 +138,14 @@ zoomSlider.addEventListener('input', () => {
   map.setZoom(zoom)
 })
 map.addControl(new AttributionControl({ compact: false }), 'bottom-right')
-map.once('idle', () => { status.hidden = true })
-startExploration(map)
+map.on('idle', () => {
+  if (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()) status.hidden = true
+})
+startExploration(map, startingPosition)
 map.on('error', () => {
+  status.classList.add('map-warning')
   status.hidden = false
-  status.textContent = 'Map data unavailable. Reconnect to load this neighborhood.'
+  status.textContent = 'Some map tiles are unavailable. Reconnect to explore farther.'
 })
 
 registerPwa()
