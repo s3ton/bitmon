@@ -2,8 +2,8 @@
 export type Position = { lon: number; lat: number }
 
 export const DEFAULT_POSITION: Position = { lon: 9.1869, lat: 45.4715 }
-export const MAP_CACHE_LIMIT_MB = 100
-const LIMIT_BYTES = MAP_CACHE_LIMIT_MB * 1024 * 1024
+export const MAP_CACHE_LIMIT_MIB = 100
+const LIMIT_BYTES = MAP_CACHE_LIMIT_MIB * 1024 * 1024
 const TILE_ZOOM = 14 // OpenFreeMap's maximum vector tile level; MapLibre overzooms above it.
 const CHANNEL = /\/preview(?:\/|$)/.test(location.pathname) ? 'preview' : 'stable'
 const POSITION_KEY = 'bitmon:' + CHANNEL + ':position:v1'
