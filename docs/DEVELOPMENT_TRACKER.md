@@ -139,6 +139,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-03 | DEC-039 | **Accepted — implementation in review** | Replace the old trainer art with the owner-approved original avatar. Store only N/NE/E/SE/S in one transparent WebP atlas, use eight elapsed-time walking frames per stored direction, and mirror the texture coordinates for NW/W/SW. Keep the depth-tested WebGL renderer, geographic scale, collision and camera behavior unchanged. | **v0.26** EXPL-01, VIS-04/05 |
 | 2026-11-03 | DEC-040 | **Accepted — implementation in review** | Texture mapped buildings with MapLibre `fill-extrusion-pattern` (no custom renderer). Split each building into ground-floor, upper-floor and 0.5 m roof-cap layers inside the source height. A tile worker splits OpenFreeMap's merged building multipolygons into one feature per footprint and tags it with a POI/landuse-inferred style and a deterministic palette variant; patterns are drawn procedurally on demand per integer zoom so 4 m storeys stay aligned. Regional palettes are deferred. | **v0.27** VIS-02/03, MAP-GATE-04/05 |
 | 2026-11-03 | DEC-041 | **Accepted — implementation in review** | Give world-famous landmarks their own facade archetypes (cathedral, shrine, fortress, arena, ironwork, palace). A landmark is a heritage-class POI whose name has 20+ translations in the tile; all its stacked building parts are grouped with it, its mapped `colour` snaps to a Bitmon stone/metal tint, and a 1 m gold cornice sits under its roof cap. No hand-made per-monument art. | **v0.28** VIS-03, MAP-GATE-04/05 |
+| 2026-11-03 | DEC-042 | **Accepted — implementation in review** | Extend landmark archetypes from six to twelve using tile signals only: mosque and temple from the place-of-worship subclass, ruins from the castle subclass, bell tower for a POI part at least 3× taller than wide, skyscraper for a solid body of 120 m+ (taller open structures stay ironwork), and bridge for a famous POI in water with a raised deck spanning 80 m+. Landmark groups grow up to four steps, and stacked parts may merely abut. | **v0.29** VIS-03, MAP-GATE-04/05 |
 
 ### Open decisions to resolve before related implementation
 
@@ -321,3 +322,23 @@ The same change replaces the worker's pairwise POI, landuse and footprint scans 
 **Correction:** Treat the entered coordinate as a destination anchor rather than requiring the exact point to be walkable. Reuse one shared nearest-clear-position routine for both startup relocation and teleportation: first project onto nearby loaded OpenFreeMap transportation lines and choose the closest valid point, then fall back to a 2 m radial search against the exact loaded building/water collision index. The search is bounded to 70 m. If no clear landing can be validated, preserve the existing rollback. Successful relocation updates the map, trainer, saved position and offline-cache player position, and reports the landing offset.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. No new test framework is justified for this interaction. Required automated validation remains the existing TypeScript/Vite PWA build. Manual device acceptance should verify (1) a clear coordinate lands exactly, (2) a coordinate inside a mapped building lands nearby and stays there, (3) unavailable/no-clear destinations still roll back, and (4) the relocated position persists after reload.
+
+### More landmark archetypes — 3 November 2026
+
+The owner asked why there were only a few landmark styles. The limit is reliable tile signals, not drawing cost, so only styles with a clear OpenFreeMap signal were added, each checked against sampled tiles:
+- **mosque:** `muslim` worship (Blue Mosque, Hagia Sophia, Sultan Qaboos)
+- **temple:** Buddhist, Hindu, Sikh, Shinto, Taoist or Jain worship (Golden Temple, Akshardham)
+- **ruins:** castle subclass `ruins`
+- **bell tower:** a POI part at least 3× taller than wide and 25 m+ (Leaning Tower of Pisa, Elizabeth Tower)
+- **skyscraper:** a solid body of 120 m+ rising from the ground (Burj Khalifa, Empire State Building)
+- **bridge:** a famous POI standing in water with a raised deck spanning 80 m+ and at least 4× longer than wide (Tower Bridge)
+
+Jewish and other worship keep the shrine style.
+
+Sampling exposed false positives that shaped the rules: the London Eye, HMS Belfast and the Fontana dei Quattro Fiumi also stand in water. The London Eye's capsules also exceed 120 m, so tall groups without a ground-standing tall body stay ironwork. Tower Bridge needed three links from its POI to the far tower and walkways that only abut the towers, so groups now grow up to four steps, and stacked parts join when their bounding boxes touch within about 2 m. Across 26 sampled tiles this added about 10–30% more landmark parts. Group sizes stayed plausible (largest: the Louvre, 776×597 m).
+
+The new art is a lead-scale dome roof, pointed windows over a blue tile band, temple paper screens under dark eaves, weathered stone with moss, belfry arches, and glass curtain walls with spandrel bands.
+
+**Known limits:** Buddhist temples, Golden Gate and Charles Bridge sampled without building polygons, so they have nothing to texture. Archetypes remain generic.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on 26 landmark tiles verified classifications and group sizes, with 602 ms total enrichment time across all 26 tiles. Desktop browser review covered the Blue Mosque, Tower Bridge, Pisa and Burj Khalifa. Phone appearance and performance remain unverified.

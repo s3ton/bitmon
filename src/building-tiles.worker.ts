@@ -37,6 +37,10 @@ const LANDUSE_STYLES: Record<string, JoinedStyle> = { commercial: 'commercial', 
 const LANDMARK_CLASSES = new Set([
   'place_of_worship', 'attraction', 'monument', 'castle', 'museum', 'theatre', 'town_hall', 'library', 'art_gallery',
 ])
+const WORSHIP_STYLES: Record<string, LandmarkStyle> = {
+  '': 'cathedral', christian: 'cathedral', muslim: 'mosque',
+  buddhist: 'temple', hindu: 'temple', sikh: 'temple', shinto: 'temple', taoist: 'temple', jain: 'temple',
+}
 // A name translated into many languages marks a world-famous place: every
 // landmark sampled (Colosseum, Eiffel Tower, Taj Mahal...) has 55+, while
 // only about 1% of all POIs reach 20.
@@ -47,7 +51,7 @@ type Polygon = Point[][]
 type Value = string | number | boolean
 type Area = { rings: Polygon; minX: number; maxX: number; minY: number; maxY: number }
 type Footprint = Area & { tags: Record<string, Value>; size: number; center: Point; group?: LandmarkGroup }
-type LandmarkGroup = { style: LandmarkStyle | null; members: Footprint[] }
+type LandmarkGroup = { style: LandmarkStyle | null; members: Footprint[]; core: Footprint[]; onWater: boolean }
 
 function bounded(rings: Polygon): Area {
   const area = { rings, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
@@ -143,17 +147,39 @@ function landmarkSeed(properties: Record<string, Value>): { style: LandmarkStyle
   let fame = 0
   for (const key in properties) if (key.startsWith('name:') && key !== 'name:latin' && key !== 'name:nonlatin') fame++
   if (fame < FAMOUS_TRANSLATIONS) return undefined
-  if (poiClass === 'place_of_worship') {
-    return { style: !properties.subclass || properties.subclass === 'christian' ? 'cathedral' : 'shrine', fame }
-  }
-  return { style: poiClass === 'castle' ? 'fortress' : null, fame }
+  if (poiClass === 'place_of_worship') return { style: WORSHIP_STYLES[String(properties.subclass ?? '')] ?? 'shrine', fame }
+  if (poiClass === 'castle') return { style: properties.subclass === 'ruins' ? 'ruins' : 'fortress', fame }
+  return { style: null, fame }
 }
 
-function shapeStyle(members: Footprint[]): LandmarkStyle {
+// Landmarks without a telling class are judged by where and how they stand.
+// Heights are metres; footprint extents are tile units.
+function shapeStyle(group: LandmarkGroup, metresPerUnit: number): LandmarkStyle {
+  const top = (member: Footprint) => Number(member.tags.render_height) || 0
+  // A famous POI standing in water with a raised, long and narrow deck or
+  // walkway is a bridge (Tower Bridge), unlike a moored ship or a fountain.
+  const deck = group.members.some((member) => {
+    if (!(Number(member.tags.render_min_height) > 0)) return false
+    let span = 0
+    for (const a of member.rings[0]) for (const b of member.rings[0]) span = Math.max(span, Math.hypot(a.x - b.x, a.y - b.y))
+    return span * metresPerUnit >= 80 && span * span >= 4 * member.size
+  })
+  if (group.onWater && deck) return 'bridge'
   // Raised open rings (Eiffel-like towers) read as ironwork.
-  if (members.some((member) => Number(member.tags.render_min_height) > 0 && member.rings.length > 1)) return 'ironwork'
+  const ironwork = group.members.some((member) => Number(member.tags.render_min_height) > 0 && member.rings.length > 1)
+  // Very tall landmarks: a solid body rising from the ground is a skyscraper;
+  // height made of raised pieces (Eiffel Tower, London Eye) is open ironwork.
+  if (Math.max(...group.members.map(top)) >= 120) {
+    const tallBody = group.members.some((member) => top(member) >= 120 && (Number(member.tags.render_min_height) || 0) <= 5)
+    return tallBody && !ironwork ? 'skyscraper' : 'ironwork'
+  }
+  // A POI part at least three times taller than wide is a bell or clock tower.
+  const slender = group.core.some((member) => top(member) >= 25 &&
+    top(member) >= 3 * Math.max(member.maxX - member.minX, member.maxY - member.minY) * metresPerUnit)
+  if (slender) return 'belltower'
+  if (ironwork) return 'ironwork'
   // A courtyard inside a near-elliptical outline reads as an arena.
-  const arena = members.some((member) => {
+  const arena = group.members.some((member) => {
     const width = member.maxX - member.minX, depth = member.maxY - member.minY
     const fill = member.size / (width * depth)
     return member.rings.length > 1 && fill > .7 && fill < .85 && Math.min(width, depth) / Math.max(width, depth) > .6
@@ -181,13 +207,15 @@ function tintFor(colour: Value | undefined): number | undefined {
   return best
 }
 
-// Parts that overlap in plan and meet in height, one of them raised off the
+// Parts that touch in plan and meet in height, one of them raised off the
 // ground: legs carrying a platform, a drum carrying a dome.
 function stacked(a: Footprint, b: Footprint): boolean {
   const [aBase, aTop] = [Number(a.tags.render_min_height) || 0, Number(a.tags.render_height) || 0]
   const [bBase, bTop] = [Number(b.tags.render_min_height) || 0, Number(b.tags.render_height) || 0]
   if ((aBase <= 0 && bBase <= 0) || aTop < bBase || bTop < aBase) return false
-  return a.rings[0].some((point) => withinOutline(b, point)) || b.rings[0].some((point) => withinOutline(a, point))
+  // Footprints that merely abut (a walkway against a tower wall) still count.
+  const margin = 4
+  return a.minX - margin <= b.maxX && b.minX - margin <= a.maxX && a.minY - margin <= b.maxY && b.minY - margin <= a.maxY
 }
 
 function signedArea(ring: Point[]): number {
@@ -275,6 +303,9 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
   if (!buildings) return out.finish()
 
   const extent = buildings.extent
+  // Every enriched tile is z14; Web Mercator shrinks metres by cos(latitude).
+  const latitude = Math.atan(Math.sinh(Math.PI * (1 - (2 * y + 1) / 2 ** 14)))
+  const metresPerUnit = 40_075_016.7 * Math.cos(latitude) / 2 ** 14 / extent
   const pois = new Grid<{ point: Point; style: JoinedStyle }>()
   const seeds: { point: Point; style: LandmarkStyle | null; fame: number }[] = []
   const poiLayer = tile.layers.poi
@@ -286,6 +317,15 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
     for (const [point] of feature.loadGeometry()) {
       if (style) pois.add({ point, style }, pointBox(point))
       if (landmark) seeds.push({ point, ...landmark })
+    }
+  }
+  const water = new Grid<Area>()
+  const waterLayer = tile.layers.water
+  for (let i = 0; waterLayer && i < waterLayer.length; i++) {
+    const feature = waterLayer.feature(i)
+    if (feature.type === 3) for (const rings of classifyRings(feature.loadGeometry())) {
+      const area = bounded(rings)
+      water.add(area, area)
     }
   }
   const landuse = new Grid<Area & { style: JoinedStyle }>()
@@ -319,7 +359,7 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
   }
 
   // A landmark is mapped as many stacked parts (spires, tiers, domes) and its
-  // POI sits in only one of them. Grow each group up to two steps: to parts
+  // POI sits in only one of them. Grow each group up to four steps: to parts
   // centred within a member's outline (courtyards and the gaps between tower
   // legs included), to a modest base that surrounds one, or to a part stacked
   // on or under one.
@@ -330,11 +370,12 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
     const members = [...footprintGrid.near(pointBox(seed.point))]
       .filter((footprint) => !footprint.group && contains(footprint, seed.point))
     if (!members.length) continue
-    const group = { style: seed.style, members }
+    const onWater = [...water.near(pointBox(seed.point))].some((area) => contains(area, seed.point))
+    const group = { style: seed.style, members, core: [...members], onWater }
     for (const member of members) member.group = group
     groups.push(group)
     let frontier = members
-    for (let step = 0; step < 2; step++) {
+    for (let step = 0; step < 4; step++) {
       const next: Footprint[] = []
       for (const member of frontier) {
         for (const footprint of footprintGrid.near(member)) {
@@ -350,7 +391,7 @@ function enrich(data: ArrayBuffer, x: number, y: number): Uint8Array {
     }
   }
   for (const group of groups) {
-    const style = group.style ?? shapeStyle(group.members)
+    const style = group.style ?? shapeStyle(group, metresPerUnit)
     const tint = group.members.map((member) => tintFor(member.tags.colour)).find((index) => index !== undefined) ?? DEFAULT_TINT[style]
     for (const { tags } of group.members) Object.assign(tags, { bitmon_style: style, bitmon_variant: tint, bitmon_landmark: true })
   }

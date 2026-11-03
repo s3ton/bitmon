@@ -22,12 +22,13 @@ const GOLD = '#d9a93a'
 const PART_LAYERS = ['ground', 'upper', 'roof'] as const
 type Part = typeof PART_LAYERS[number]
 
-type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic' | 'portal' | 'arcade' | 'lattice' | 'colonnade'
-type UpperKind = 'window' | 'strip' | 'arched' | 'ribbed' | 'balcony' | 'band' | 'lancet' | 'arcade' | 'lattice' | 'slit' | 'pilaster'
-type RoofKind = 'tiles' | 'flat' | 'ribbed'
+type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic' | 'portal' | 'arcade' | 'lattice' | 'colonnade' | 'screen'
+type UpperKind = 'window' | 'strip' | 'arched' | 'ribbed' | 'balcony' | 'band' | 'lancet' | 'arcade' | 'lattice' | 'slit' | 'pilaster' |
+  'pointed' | 'eave' | 'belfry' | 'curtain'
+type RoofKind = 'tiles' | 'flat' | 'ribbed' | 'scales'
 type FacadeStyle = {
   walls: string[]; accents: string[]; roofs: string[]
-  ground: GroundKind; upper: UpperKind; roof: RoofKind; glass?: string; masonry?: boolean
+  ground: GroundKind; upper: UpperKind; roof: RoofKind; glass?: string; masonry?: boolean; weathered?: boolean
 }
 
 const STYLES: Record<JoinedStyle | LandmarkStyle | 'house' | 'block' | 'tower', FacadeStyle> = {
@@ -48,10 +49,16 @@ const STYLES: Record<JoinedStyle | LandmarkStyle | 'house' | 'block' | 'tower', 
   tower: { walls: ['#b9c4cf', '#c9c3b8', '#aab8c2'], accents: ['#3e7cc0', '#5d7590', '#7a5cc4'], roofs: ['#8f99a3', '#9a9488', '#7f8c99'], ground: 'entrance', upper: 'strip', roof: 'flat', glass: '#4f6f8f' },
   // Landmarks: the variant is a LANDMARK_TINTS index chosen by the tile worker.
   cathedral: { walls: LANDMARK_TINTS, accents: ['#7a5cc4', '#3e7cc0', '#c4553f'], roofs: ['#5b6573', '#4f8a7c'], ground: 'portal', upper: 'lancet', roof: 'tiles', glass: '#6f7fc4', masonry: true },
+  mosque: { walls: LANDMARK_TINTS, accents: ['#2f6fb0', '#2f9a8e'], roofs: ['#8a96a3', '#7f8c99'], ground: 'portal', upper: 'pointed', roof: 'scales', masonry: true },
+  temple: { walls: LANDMARK_TINTS, accents: ['#b8453a', '#c99a3a'], roofs: ['#3d4a45', '#4f6b5a', '#7a3a32'], ground: 'screen', upper: 'eave', roof: 'tiles' },
   shrine: { walls: LANDMARK_TINTS, accents: ['#3f8f8a', '#c99a3a'], roofs: ['#4f8a7c', '#c9a24a'], ground: 'arch', upper: 'arched', roof: 'flat', masonry: true },
   fortress: { walls: LANDMARK_TINTS, accents: ['#6b4a3a', '#5b6573'], roofs: ['#9a958a', '#8a8579'], ground: 'arch', upper: 'slit', roof: 'flat', masonry: true },
+  ruins: { walls: LANDMARK_TINTS, accents: ['#5f7d4a', '#6f8a52'], roofs: ['#7d8a6a', '#8a8579'], ground: 'arch', upper: 'slit', roof: 'flat', masonry: true, weathered: true },
   arena: { walls: LANDMARK_TINTS, accents: ['#8a7458'], roofs: ['#cdbb94', '#c2b08a'], ground: 'arcade', upper: 'arcade', roof: 'flat', masonry: true },
   ironwork: { walls: LANDMARK_TINTS, accents: ['#c99a3a'], roofs: ['#6f6250', '#5c5a55'], ground: 'lattice', upper: 'lattice', roof: 'ribbed' },
+  belltower: { walls: LANDMARK_TINTS, accents: ['#c99a3a', '#3e5f99'], roofs: ['#5b6573', '#4f8a7c'], ground: 'portal', upper: 'belfry', roof: 'tiles', masonry: true },
+  skyscraper: { walls: LANDMARK_TINTS, accents: ['#5d86ad'], roofs: ['#8f99a3', '#7f8c99'], ground: 'entrance', upper: 'curtain', roof: 'flat', glass: '#7fb2d6' },
+  bridge: { walls: LANDMARK_TINTS, accents: ['#3e7cc0', '#5d7590'], roofs: ['#5b6573', '#6b7f99'], ground: 'arcade', upper: 'lancet', roof: 'tiles', masonry: true },
   palace: { walls: LANDMARK_TINTS, accents: ['#3e5f99', '#4f8a7c', '#9a6a3a'], roofs: ['#8a8f98', '#4f8a7c'], ground: 'colonnade', upper: 'pilaster', roof: 'flat', masonry: true },
 }
 
@@ -167,6 +174,16 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
       rect(0, .5, 1, .5, shade(roof, -.18))
       rect(0, 0, 1, 2 * py, shade(roof, .22))
       for (let row = 1; row < 12; row++) rect(0, row / 12, 1, py, shade(roof, row < 6 ? -.08 : -.26))
+    } else if (style.roof === 'scales') {
+      // Overlapping lead scallops read as a dome or cupola covering.
+      ctx.fillStyle = shade(roof, -.18)
+      for (let row = 0; row < 6; row++) {
+        for (let col = 0; col < 7; col++) {
+          ctx.beginPath()
+          ctx.arc((col + (row % 2) / 2) / 6 * width, (row + .5) / 6 * heightPx, width / 14, 0, Math.PI)
+          ctx.fill()
+        }
+      }
     } else if (style.roof === 'ribbed') {
       for (let col = 0; col < 8; col++) rect(col / 8, 0, px, 1, shade(roof, -.15))
     } else {
@@ -185,6 +202,13 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
       rect(0, row / 4, 1, py, shade(wall, -.1))
       for (const x of row % 2 ? [.25, .75] : [0, .5]) rect(x, row / 4, px, .25, shade(wall, -.1))
     }
+  }
+  if (style.weathered) {
+    // Missing stones and moss on a fixed, repeatable layout.
+    rect(.38, 0, .14, .07, shade(wall, -.4))
+    rect(.78, .5, .12, .06, shade(wall, -.35))
+    rect(.04, .62, .18, .12, accent)
+    rect(.6, .04, .2, .08, shade(accent, .2))
   }
   if (style.ground === 'lattice' || style.upper === 'lattice') {
     // Open ironwork: sky-pale gaps behind X-braced girders.
@@ -258,6 +282,14 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
           column(i / 4 + .02, .16, .05, .74)
         }
         break
+      case 'screen':
+        // Paper-and-timber screens between red posts under a lintel.
+        rect(0, .1, 1, .08, accent)
+        rect(.04, .26, .92, .64, '#efe3c6')
+        for (let x = .04; x < .96; x += .115) rect(x, .26, px, .64, shade(accent, -.3))
+        rect(.04, .58, .92, py, shade(accent, -.3))
+        for (const x of [.0, .47, .94]) rect(x, .18, .06, .72, accent)
+        break
       case 'lattice':
         break
     }
@@ -312,6 +344,28 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
       column(.04, 0, .1, .92)
       pane(.3, .22, .4, .5)
       rect(.26, .14, .48, .06, shade(wall, -.15))
+      break
+    case 'pointed':
+      rect(0, .08, 1, .06, accent)
+      opening(.16, .28, .26, .52, glass, true)
+      opening(.58, .28, .26, .52, glass, true)
+      break
+    case 'eave':
+      // A dark tiled eave caps every storey, as on stacked temple roofs.
+      rect(0, 0, 1, .14, pick(style.roofs))
+      rect(0, .14, 1, .04, shade(wall, -.35))
+      for (const x of [.04, .9]) rect(x, .18, .06, .74, accent)
+      pane(.3, .34, .4, .38, false)
+      break
+    case 'belfry':
+      opening(.14, .12, .3, .7, shade(wall, -.6))
+      opening(.56, .12, .3, .7, shade(wall, -.6))
+      break
+    case 'curtain':
+      rect(0, 0, 1, .78, glass)
+      for (const x of [.25, .5, .75]) rect(x, 0, px, .78, shade(glass, -.3))
+      rect(.06, .08, px, .3, SHINE)
+      rect(0, .78, 1, .14, wall)
       break
     case 'lattice':
       break
