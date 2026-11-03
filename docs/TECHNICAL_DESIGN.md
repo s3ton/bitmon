@@ -5,7 +5,7 @@
 **Geographic world contract:** The [bitmon Product Requirements](PRODUCT_REQUIREMENTS.md) are authoritative for world geometry and visual rendering. **OpenFreeMap is the sole geographic source**; MapLibre renders the tiles; no new real-world building or road geometry may be invented. Mapped building facades and windows may use deterministic art inferred only from OpenFreeMap's available fields and context. Implementation and decision status is tracked separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 **Status:** Concept / architecture proposal, not a security-audited specification
-**Version:** 3.2 (mapped-footprint line-of-sight camera pitch correction; protocol unchanged)
+**Version:** 3.3 (E0 settings persistence, decoded-tile collision safety and map-cache simplification; protocol unchanged)
 **Date:** 2 November 2026
 **Project name:** **bitmon** (game and creature name; original characters and artwork required)
 
