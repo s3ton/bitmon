@@ -230,8 +230,8 @@ Network outages need predefined handling: suspend affected online high-rarity/co
 
 The protocol deliberately separates ordinary offline-capable play from high-value randomness:
 
-- **Offline ordinary mode:** previously authenticated encounter material may authorize only **Common or Uncommon** wild encounters. It must be domain-separated from high-rarity draws and must not contain a hidden future Rare/Legendary result that the player can inspect offline.
-- **Online high-rarity mode:** an eligible encounter slot is bound to the trainer, rules version and required location/region commitment **before** the deciding future beacon round. The fresh round may yield Rare/Legendary outcomes. A player cannot wait for a published round and then elect to apply it to an arbitrary slot or region.
+- **Verified offline ordinary mode:** previously authenticated encounter material may authorize only **Common or Uncommon** wild encounters. It must be domain-separated from high-rarity draws and must not contain a hidden future Rare/Legendary result that the player can inspect offline.
+- **Verified online high-rarity mode:** an eligible encounter slot is bound to the trainer, rules version and required location/region commitment **before** the deciding future beacon round. The fresh round may yield Rare/Legendary outcomes. A player cannot wait for a published round and then elect to apply it to an arbitrary slot or region.
 - **Mode selection cannot be hindsight-selected.** If the protocol lets a player choose an offline ordinary slot versus an online full-rarity slot, that choice must be fixed before the online slot's deciding randomness is available.
 - **Public security RNG domains:** use strict domain separation such as `BITMON_SPAWN_V1` and `BITMON_COMPETITIVE_V1`. Public-beacon randomness is reserved for outcomes where advance predictability would undermine fairness.
 - **Local deterministic PRNG:** chance-like mechanics that do not require cryptographic unpredictability derive rolls from a canonical seed such as `hash("BITMON_LOCAL_RNG_V1" || rules_version || encounter_or_battle_id || domain || event_index)`. The seed is not secret. Stable domain tags and canonical event counters make results reproducible across clients and restarts. Where feasible, counters advance on fixed game events rather than on player-selected move names, limiting action-shopping for favorable rolls.
@@ -298,7 +298,7 @@ Wild capture mechanics may still feel probabilistic if the game design calls for
 
 A ZK proof can verify that the claimed post-encounter state follows the versioned PvE rules and deterministic PRNG sequence. No pre-capture commitment, future capture beacon, or per-attempt on-chain transaction is required.
 
-### 7.3 Rare/Legendary single-claim flow and deadline
+### 7.3 Verified Rare/Legendary single-claim NFT mint and deadline
 
 A high-rarity encounter is an **online-only, short-lived authenticated opportunity**, but there is no separate reservation transaction. The trainer's account registration is the prior on-chain commitment; protocol rules must deterministically bind each eligible high-rarity slot to its trainer, rules version, assigned beacon round and any required region/location context before that beacon exists.
 
@@ -309,7 +309,7 @@ Illustrative successful flow:
 | 09:59 | Registered trainer/slot/required region context is already eligible and bound by protocol rules. |
 | 10:00 | Assigned future beacon reveals; the fixed draw produces a Rare/Legendary species. |
 | 10:00–10:07 | Player fights and captures locally under the versioned PvE rules and deterministic local PRNG. |
-| 10:07 | Player submits the **single high-rarity catch transaction** with a ZK proof. |
+| 10:07 | Player **self-funds one high-rarity catch + restricted NFT mint transaction** with a ZK proof; Digital Gold is ineligible. |
 | On-chain | Contract verifies registration predates the beacon, slot/region/rules binding, authenticated beacon, resulting rarity/species, unused slot, legal state transition and that the claim is still inside the deadline. |
 
 If the player loses, abandons the encounter, cannot produce a valid proof, or submits after the deadline, no high-rarity creature is finalized. The exact deadline is a parameter; the current design hypothesis is only that it is measured in minutes and leaves enough time for normal battle, proof generation, mobile latency and chain inclusion.
@@ -318,7 +318,7 @@ This intentionally permits a player to know they received a Rare/Legendary spawn
 
 ### 7.4 Ordinary encounters
 
-**Common and Uncommon** encounters and ordinary XP need no prompt online claim for the MVP. Authenticated ordinary encounter material can be cached while online and consumed later offline, within enforced encounter and daily budgets. Their chance-like battle/capture events use the deterministic local PRNG. Offline material cannot upgrade into Rare/Legendary outcomes. Results can be proven later.
+**Verified Common and Uncommon** encounters and ordinary XP need no prompt online claim for the MVP. Authenticated ordinary encounter material can be cached while online and consumed later offline, within enforced encounter and daily budgets. Their chance-like battle/capture events use the deterministic local PRNG. Offline material cannot upgrade into Rare/Legendary outcomes. Results can be proven later.
 
 A player might reconstruct old ordinary slots and simulate legal Common/Uncommon play afterward. **That remains permitted within the declared security model** because high-rarity issuance and competitive public randomness are excluded from this offline path.
 
@@ -350,7 +350,7 @@ The contract must reject replays, stale checkpoints, conflicting branches, forge
 
 ### 8.2 Checkpoint strategy
 
-Ordinary progress stays pending and local until the player wants to secure it, swap, or challenge a gym. One proof can validate many encounters.
+Verified ordinary progress stays pending and local until the player wants to secure it, swap, or challenge a gym; a local-only single-player save cannot be automatically canonized. One proof can validate many encounters.
 
 **Trade-off:** fewer chain transactions shift work to proof generation and data retention. General-purpose zkVM proving can be resource-intensive on mobile devices. Evaluate:
 
@@ -370,25 +370,18 @@ Start with an immutable versioned ruleset and verifier. If bugs require revision
 
 ---
 
-## 9. Creature ownership
+## 9. Creature ownership and competitive eligibility
 
-Creatures are **verifiable game assets with restricted transfer**, not freely tradable collectibles.
+Only **verified Rare and Legendary** bitmon become individually minted, restricted-transfer NFTs. **Common and Uncommon** are authenticated inventory entries in verified play, with **no individual NFTs**. Local-only creatures at all rarities are game-save data, not on-chain assets.
 
 ### Requirements
 
-- Each trainer has an authenticated creature inventory commitment.
-- Proof verification establishes species, tier, innate traits, capture lineage, XP, and ownership changes.
-- A creature has exactly one canonical owner at any time.
-- A creature may be represented as an ERC-721-style token for wallet display and provenance, **but the standard `transfer` and `approve` paths are disabled**. The only way to change owner is the game's swap contract (Section 10) or a documented, time-locked trainer-control rotation.
-- Creatures exported into escrow for a swap are locked in the same step that imports their replacements, so there is no double ownership.
-- Creatures assigned to a gym defense team are **trade-locked** while assigned (Section 11).
-- Metadata derives from authenticated on-chain data and content-addressed assets, not operator-editable JSON.
-
-**Why transfer must be restricted:** if a creature were a standard transferable NFT, anyone could gift or sell it outside the swap contract, and every anti-consolidation rule below would be bypassed. A free-transfer wrapper token must therefore not exist, and third-party marketplaces cannot list these assets natively.
-
-**No global cap on every species:** rarity is personal and probabilistic. The goal is fair acquisition under fixed rules, not artificial universal scarcity.
-
----
+- Verified trainer inventories carry authenticated commitments; proof verification establishes species, tiers, traits, lineage, XP and ownership.
+- A Rare/Legendary NFT may be minted only through a **self-funded**, in-deadline proof for a lawful capture from a fresh, previously assigned public-beacon spawn. An old local capture can never be minted retroactively. Digital Gold is not authorized to fund NFT mints.
+- Each verified creature has exactly one canonical owner. Rare/Legendary NFT metadata is authenticated and content-addressed; standard token `transfer` and `approve` paths are disabled. Ownership changes only via the restricted swap contract or documented time-locked wallet recovery.
+- **Official gym and friend PvP eligibility:** every Rare/Legendary participant must be represented by an already-minted authenticated NFT; verified Common/Uncommon use authenticated inventory entries and valid competitive stats. No unverified local XP, levels or creatures can be asserted as canonical.
+- Gym-defense creatures are trade-locked. NFT swaps must be atomic; no freely transferable wrapper bypassing swap restrictions may exist.
+- Rarity is personal/probabilistic, not a global mint quota. Off-chain whole-account sales remain a residual risk.
 
 ## 10. Trading rules and anti-farming
 
@@ -432,7 +425,7 @@ A farmer creates thousands of trainers, harvests rare creatures and levels on al
 
 ### 10.6 Registration cost
 
-Because verified play now begins with registration, **onboarding cost and availability are core UX constraints**, not an optional upgrade cost. Unlimited free registration creates state bloat and invites cheap spam. Options to evaluate: a small non-refundable fee scaled to storage cost, or a refundable bond released after a period. Either should be modest, and the game must honestly disclose the self-pay requirement unless a sponsor is available. Gas sponsors need their own abuse limits, because paying for unlimited registrations removes even the gas cost.
+Because **optional verified multiplayer** begins with registration, its self-funded onboarding cost is a choice rather than a single-player prerequisite. Unlimited free registration creates state bloat and invites spam; evaluate a modest non-refundable fee or refundable bond. **Digital Gold is never used for registration**, and any compatible client can register permissionlessly with native gas.
 
 ---
 
@@ -476,9 +469,9 @@ For accessibility, the initial world design should make at least one Common-tier
 ### 11.4 Challenge flow
 
 1. The challenger assembles a finalized, owned team of 1–6 creatures, **each matching the gym type** (with either type counting for dual-type creatures).
-2. Before battle, the challenger submits **one challenge commitment transaction** binding the gym ID, immutable gym type, currently active defense-team hash/policy, challenger team, rules version and challenger battle policy/strategy. The commitment fixes these inputs before the assigned future beacon sequence exists.
+2. In the official Bitmon interface, the challenger **spends Digital Gold** to fund **one on-chain challenge commitment** binding the gym ID, immutable gym type, active defense-team hash/policy, verified challenger team, rules version and battle policy. Any Rare/Legendary participant must already be NFT-minted. An independent client may self-fund the same permissionless call. The commitment precedes future beacon randomness.
 3. The challenge runs online. The committed challenger policy and registered defender policy choose actions only from already-known battle state; assigned future beacon rounds resolve security-relevant chance events.
-4. On a win, the challenger generates one proof of the complete battle result. The **final proof transaction** verifies the initial commitment, authenticated beacon rounds, battle rules, team/type eligibility and that the committed defense snapshot is the challenge target.
+4. On victory, the challenger generates one proof. The official UI spends **Digital Gold** on the **final on-chain proof transaction**, verifying commitment, future beacon rounds, rules, NFT/verified-inventory eligibility and defense snapshot before updating the leader and recording **on-chain fame**. Independent clients may self-fund the same public call.
 5. On success, the challenger becomes leader. The winning team automatically becomes the new registered defense, any pending update from the previous leader is cancelled, and the gym type remains unchanged. A failed/abandoned challenge needs no final transaction.
 
 ### 11.5 Defense updates and front-running
@@ -499,7 +492,7 @@ At launch, every gym is held by an **NPC leader** with a published team that sat
 
 ### 11.8 Competitive randomness model
 
-Gym challenges use the **future-beacon** model with a single pre-battle on-chain commitment plus a final proof transaction only on successful claim. The committed challenger battle policy/strategy may react deterministically to previously resolved battle state, but it cannot be rewritten after future randomness becomes known. The human gym leader does not need to be online because the registered defense policy is already fixed.
+Gym challenges use the **future-beacon** model with one pre-battle on-chain commitment and one post-win proof only on success. The official UI spends Digital Gold on both; alternate clients can self-fund these calls. The committed challenger battle policy/strategy may react deterministically to previously resolved battle state, but it cannot be rewritten after future randomness becomes known. The human gym leader does not need to be online because the registered defense policy is already fixed.
 
 Friend PvP uses the same public-beacon randomness but does **not** need the gym's on-chain precommit pattern: the two live players mutually sign/commit each turn's actions before the assigned future beacon and can reject a peer who fails to reveal a matching action. This gives each participant a counterparty who timestamps the other's choice. Canonical rewards, rankings or other persistent consequences may still require a later proof/settlement transaction, but ordinary turn resolution stays off-chain.
 
@@ -573,66 +566,47 @@ This is **decentralized gameplay authority**, not proof that every dependency is
 
 ---
 
-## 13. Optional advertising-funded gas sponsorship
+## 13. Digital Gold — ad-funded official gym competition
 
-### 13.1 Business separation
+### 13.1 Player-facing reward and separation
 
-An independent company may operate an advertising and gas sponsorship service without owning the game or controlling its contracts. It may receive ad revenue, pay for selected transactions, and keep the difference after costs, taxes, and fraud losses.
+**Digital Gold** is a fictional, **off-chain, non-transferable, non-redeemable** credit earned **only from optional verified rewarded ads**. The official Bitmon interface accepts **exclusively Digital Gold** for official gym pre-battle challenges and successful post-battle proof/leadership claims. Local practice gym battles are free. The player receives no gas token or cryptocurrency; Digital Gold never enters a wallet as an asset.
 
-Players must always have a fallback to **self-pay**. Refusal by the sponsor cannot block a valid contract call.
+A separate operator administers the Digital Gold ledger, verifies ad completion, funds eligible gym gas fees, and retains any advertising margin. This operator cannot mint, issue or transfer NFTs; control trainer registration, trading or canonical rules; override verifiers; choose battle outcomes; or hold player keys.
 
-**Technical separation is not legal immunity.** An advertising company's branding, marketing, privacy processing, and commercial arrangements could still create legal duties. Publishing software as an individual does not eliminate the developer's legal obligations either. Legal advice is needed for the actual jurisdictions.
+**Strict boundary:** registration, Rare/Legendary NFT minting and all NFT swaps/escrow are self-funded by players. Digital Gold cannot sponsor them. Friend PvP ownership verification also does not consume Digital Gold.
 
-### 13.2 Sponsor-authorized transaction flow
+**Decentralization boundary:** "Digital Gold-only" describes the **official game's gym-payment UI**. Contracts remain permissionless and accept valid, self-funded gym commitment/victory calls from alternate clients. They must **never** check a Digital Gold balance or require the operator's approval. Otherwise the sponsor would become a centralized multiplayer gatekeeper.
 
-1. Player locally prepares a permitted game transaction, such as `registerTrainer`, `commitRareEncounter`, `settleProgress`, `swap`, or `claimGym`.
-2. Player requests sponsorship from an independent company.
-3. If the sponsor offers an ad-based path, its own compliant advertising experience verifies ad completion.
-4. The sponsor issues a **single-use authorization** bound to the wallet or trainer, exact operation/hash, target contract, chain ID, expiry, nonce, and maximum gas cost.
-5. A paymaster or fee-payer signs/pays the transaction. The player retains authority over their action.
-6. The contract validates the proof and updates state; the sponsor cannot override the result.
-7. On refusal or outage, the player submits the same valid operation with self-paid gas or another sponsor.
+### 13.2 Credit and transaction flow
 
-Because personhood checks no longer exist, **sponsors must apply their own per-user and per-device limits**, especially for `registerTrainer`, to keep subsidies from funding mass account creation.
+1. Player voluntarily watches an eligible rewarded ad; the operator verifies its reward callback and credits a fixed number of Digital Gold units to a non-transferable off-chain balance. Do not assume exact per-impression revenue is known in real time.
+2. Player submits an official gym challenge request or a successful victory-proof request. The client signs the exact game operation; the operator checks the balance and reserves the required credits.
+3. Issue a **single-use** gym-only authorization bound to trainer, wallet, exact calldata hash, contract, chain ID, expiry, nonce and maximum gas; a paymaster or fee payer funds only that operation.
+4. After confirmed settlement, consume the appropriate credits; failed/unsubmitted authorizations release reserved credits idempotently. No cryptocurrency is transferred to the player as an advertising reward.
+5. If Digital Gold is insufficient or the provider is unavailable, the official UI cannot submit that official challenge; local practice continues, and an independent client can self-fund the public gym call.
 
-For Arbitrum and other EVM networks, investigate **ERC-4337 paymasters**. On Solana, third-party fee payers are supported natively; verifier feasibility and chain costs should drive the platform choice.
+Prevent fraudulent ads, duplicate callbacks, credit farming, replayed authorizations, and unlimited sponsor gas exposure. Credit reserves are future service liabilities. The provider must budget for reorgs, failures, variable proof costs, invalid traffic and ad revenue delays.
 
-### 13.3 Google policy feasibility: **not yet approved**
+### 13.3 Google policy uncertainty
 
-- **Ordinary AdSense ads:** publishers generally cannot incentivize users to view or click non-rewarded ads. "Watch normal ads and we will pay your gas" is inappropriate for standard inventory.
-- **Google Ad Manager rewarded web ads:** supports opt-in rewarded placements, but Google's reward rules prohibit direct monetary rewards and require indirect rewards to be **non-transferable** and usable within the **publisher's own platform**.
+Google's rewarded-ad policies permit some non-transferable in-platform rewards, but **this precise blockchain fee-funded gym mechanic is not approved**. Do not state or imply that calling it Digital Gold, separating companies, not sending crypto to players, or excluding NFT mints automatically establishes compliance. Gym participants may include player-owned restricted NFTs; the distinction between NFT creation and indirect reward benefit still requires an authoritative ad-provider assessment.
 
-A **non-transferable, single-use gas-sponsorship service** is not the same as handing someone cryptocurrency. Version 2.0 helps here: because creatures can no longer be freely transferred or sold through the protocol, a sponsored action no longer creates a tradable NFT with market value. Off-chain account sales still exist, and a separate sponsor website might not qualify as the platform where the reward is consumed. These remain **unresolved policy interpretation issues**, not guaranteed exceptions.
+Use opt-in rewarded inventory only; do not reward ordinary ad views/clicks. Meet applicable invalid-traffic, publisher/platform, privacy, consent/CMP, and child-protection rules. If the network declines, remove the ads/Digital Gold integration without altering gameplay rules or the self-funded contract route.
 
-Google expects the publisher to control and verify its inventory, take responsibility for opt-in and reward delivery, and handle invalid traffic. Its rewarded web flow provides server-side verification callbacks; the sponsor needs endpoint infrastructure. For EEA/UK/Swiss users, Google's consent and CMP rules and privacy law also apply.
+### 13.4 Economics and fallback
 
-**Feasibility gate before relying on Google:** obtain authoritative approval for (a) a separately operated sponsor/publisher, (b) opt-in ads at an approved publisher property, (c) non-transferable gas payment as the reward, (d) sponsored transactions that update non-freely-transferable game assets, (e) anti-fraud treatment, and (f) geographic restrictions.
-
-### 13.4 Alternatives if Google declines
-
-- An independent sponsor funded by ads on its own independently useful, policy-compliant website, **without** conditioning ordinary ad impressions/clicks on a gas reward.
-- Direct advertiser-funded sponsorship campaigns with explicit contractual terms.
-- Non-Google rewarded-ad networks that permit the service, subject to their policies.
-- Community grants or voluntary donations to an independent sponsor/treasury.
-- Self-funded gas as the guaranteed baseline.
-
-Do not build a product that depends on evading ad policies.
-
-### 13.5 Unit economics
+Start with a conservative target of **no more than 50% of realized eligible advertising proceeds allocated to Digital Gold gas capacity**; the remainder is a reserve for operating costs and margin, not guaranteed profit. Credits represent outstanding potential gas expenses. Never redeem credits for money, quote them as a stored dollar balance, or promise a fixed cash exchange rate.
 
 ```text
-Gross ad revenue per completed impression = eCPM / 1,000
-Contribution margin per sponsored action =
-    eligible ads watched * (realized eCPM / 1,000)
-    - actual network gas
-    - ad/verification/relay fees
-    - fraud and chargeback losses
-    - infrastructure and compliance allocation
+Contribution = realized eligible ad revenue
+             - actual sponsored gym commitment/victory gas
+             - ad verification and paymaster/relayer costs
+             - proving, hosting, privacy/compliance and fraud expenses
+             - credit reserve adjustments
 ```
 
-At a hypothetical **$3 eCPM**, one monetized impression yields about **$0.003**. A **$0.03** sponsorship would need roughly **10 such impressions just to cover that amount**, excluding overhead. This may be poor UX. Fill rates, geography, ad formats, revenue share, invalid traffic, prover costs, and chain fees must be measured.
-
-A sponsor could instead subsidize some transactions, cap free saves per person, or fund only the cheapest operations. Advertising profit is a potential independent business, not a prerequisite for the game.
+Benchmark separately **gym pre-commit gas** and **ZK-verified victory gas**, as well as failure/retry behavior, before setting fixed Digital Gold prices. If ads fail commercially or contractually, the independent player-funded protocol and the complete local RPG still work.
 
 ---
 
