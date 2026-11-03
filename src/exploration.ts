@@ -471,6 +471,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     const previousAreas = collisionAreas
     const previousOrigin = collisionOrigin
     const previousSpawn = hasPlacedSpawn
+    offlineMap.protectLandingPosition(target)
     try {
       if (!(await offlineMap.ensureTileAt(target))) {
         throw new Error('Destination map is unavailable. Connect or visit it while online first.')
@@ -516,6 +517,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       map.once('idle', refreshCollision)
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
+      offlineMap.protectLandingPosition(null)
       avatar.style.visibility = 'visible'
       teleporting = false
       coordinateGo.disabled = false
