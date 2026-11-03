@@ -19,8 +19,8 @@ const CAMERA_BACKWARD_ANGLE = 135
 const CAMERA_EXPLORATION_PITCH = 45
 const CAMERA_PITCH_SAFETY_METERS = 1
 const CAMERA_PITCH_SCAN_SECONDS = .1
-const CAMERA_PITCH_UP_RATE = 120
-const CAMERA_PITCH_DOWN_RATE = 45
+const CAMERA_PITCH_RATE = 45
+const CAMERA_PITCH_DAMPING_SECONDS = .65
 const DEAD_ZONE = 0.16
 
 // Geographic heading: 0° north, 90° east. MapLibre's bearing uses the same convention.
@@ -462,14 +462,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     }
     const pitch = map.getPitch()
     const pitchDifference = desiredPitch - pitch
-    const pitchRate = pitchDifference < 0 ? CAMERA_PITCH_UP_RATE : CAMERA_PITCH_DOWN_RATE
     const pitchStep = Math.sign(pitchDifference) * Math.min(
-      Math.abs(pitchDifference) * (1 - Math.exp(-dt / .2)), pitchRate * dt,
+      Math.abs(pitchDifference) * (1 - Math.exp(-dt / CAMERA_PITCH_DAMPING_SECONDS)),
+      CAMERA_PITCH_RATE * dt,
     )
     const nextPitch = Math.abs(pitchDifference) < .15 ? desiredPitch : pitch + pitchStep
     if (walking || Math.abs(pitchDifference) >= .15) {
       map.jumpTo({ center: [position.lon, position.lat], bearing: nextBearing, pitch: nextPitch })
     }
+    // Brief true occlusion is preferable to snapping the camera. The
+    // rendered-building test alone controls visibility while pitch catches up.
     avatar.style.visibility = avatarIsRenderedBehindBuilding() ? 'hidden' : 'visible'
     renderAvatar(walking)
     if ((usingStick && length > DEAD_ZONE) || keys.size || Math.abs(pitchDifference) >= .15) requestTick()
