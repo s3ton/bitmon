@@ -402,6 +402,6 @@ The owner reported that a building at 51.50874, −0.07369 (Tower Hill, London) 
 - no output vertex lies outside its tile;
 - of 40,000 sample points per tile (half within 15 m of an edge), 0–0.09% changed coverage, all within 0.22 units (about 8 cm) of a footprint edge, which is cut-point rounding;
 - the Tower Hill halves meet on the same seam vertices;
-- worker time is unchanged within noise.
+- the building pass costs 2–3% more (7–9 ms in total across all 26 tiles), after `contains` stopped allocating a hole list on every call.
 
 In the desktop browser at the reported coordinate, the live source shows the two halves meeting exactly at the tile edge, and the building stays stable while the camera moves. Phone confirmation is pending.

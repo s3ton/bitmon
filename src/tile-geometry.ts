@@ -39,7 +39,9 @@ export function withinOutline(area: Area, point: Point): boolean {
 }
 
 export function contains(area: Area, point: Point): boolean {
-  return withinOutline(area, point) && !area.rings.slice(1).some((hole) => inRing(point, hole))
+  if (!withinOutline(area, point)) return false
+  for (let i = 1; i < area.rings.length; i++) if (inRing(point, area.rings[i])) return false
+  return true
 }
 
 export function signedArea(ring: Point[]): number {
