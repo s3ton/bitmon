@@ -2,15 +2,17 @@ import { addProtocol, AttributionControl, Map, setWorkerUrl, type StyleSpecifica
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
-import { buildingLayers, enrichTile, startBuildingArt } from './building-art'
+import { buildingImage, buildingLayers } from './building-art'
 import { startExploration } from './exploration'
 import { registerPwa } from './pwa'
+import { roadImage, roadLayers } from './road-art'
 import { initializeSettings } from './settings'
 import { MAP_CACHE_LIMIT_MIB, offlineMap, savedPosition } from './offline-map'
+import { enrichTile } from './tiles'
 
 setWorkerUrl(workerUrl)
 addProtocol('bitmon', async (params, controller) => {
-  // The offline cache keeps source bytes; facade tags are derived per delivery.
+  // The offline cache keeps source bytes; art tags are derived per delivery.
   const [, , x, y] = new URL(params.url).pathname.split(/[/.]/).map(Number)
   return { data: await enrichTile(await offlineMap.loadProtocolTile(params.url, controller.signal), x, y) }
 })
@@ -18,7 +20,7 @@ const startingPosition = savedPosition()
 offlineMap.setPlayerPosition(startingPosition)
 
 // Every geographic layer reads geometry from this single OpenFreeMap tile source.
-// Only its visual treatment (color, line width, facade art and building height fallback) is ours.
+// Only its visual treatment (colours, road widths and surfaces, facade art and building height fallback) is ours.
 const style: StyleSpecification = {
   version: 8,
   sources: {
@@ -59,38 +61,7 @@ const style: StyleSpecification = {
       id: 'waterways', type: 'line', source: 'openmaptiles', 'source-layer': 'waterway',
       paint: { 'line-color': '#8bbdc2', 'line-width': 2.5 },
     },
-    {
-      id: 'mapped-plazas', type: 'fill', source: 'openmaptiles', 'source-layer': 'transportation',
-      filter: ['==', ['geometry-type'], 'Polygon'],
-      paint: { 'fill-color': '#eee8d8' },
-    },
-    {
-      id: 'roads-edge', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
-      filter: ['in', ['get', 'class'],
-        ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service', 'track', 'busway']]],
-      paint: {
-        'line-color': '#cfc8b9',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 3, 17, 15],
-      },
-    },
-    {
-      id: 'roads', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
-      filter: ['in', ['get', 'class'],
-        ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service', 'track', 'busway']]],
-      paint: {
-        'line-color': '#f6f0e1',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 2, 17, 11],
-      },
-    },
-    {
-      id: 'paths', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
-      filter: ['==', ['get', 'class'], 'path'],
-      paint: {
-        'line-color': '#e8ddc4',
-        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1.5, 17, 5],
-        'line-dasharray': [1, 1.25],
-      },
-    },
+    ...roadLayers(),
     ...buildingLayers(),
   ],
 }
@@ -113,7 +84,7 @@ const map = new Map({
   center: [startingPosition.lon, startingPosition.lat],
   zoom: Number(zoomSlider.value),
   minZoom: 15.5,
-  maxZoom: 20,
+  maxZoom: 18,
   pitch: 45,
   minPitch: 0,
   maxPitch: 45,
@@ -133,7 +104,12 @@ map.addControl(new AttributionControl({ compact: false }), 'bottom-right')
 map.on('idle', () => {
   if (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()) status.hidden = true
 })
-startBuildingArt(map)
+// Procedural facade and road images are drawn the first time a tile needs them.
+map.setMissingStyleImageResolver((id) => {
+  const pixelRatio = map.getPixelRatio()
+  const image = buildingImage(id, pixelRatio) ?? roadImage(id, pixelRatio)
+  if (image) map.addImage(id, image, { pixelRatio })
+})
 startExploration(map, startingPosition)
 map.on('error', () => {
   status.classList.add('map-warning')

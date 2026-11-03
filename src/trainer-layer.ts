@@ -5,7 +5,7 @@ type Position = { lon: number; lat: number }
 const METERS_PER_RADIAN = 6_371_008.8
 const TRAINER_HEIGHT_METERS = 1.8
 const MIN_VISIBLE_TRAINER_HEIGHT_PX = 8
-const TRAINER_RENDER_SCALE = 2
+const TRAINER_RENDER_SCALE = 3
 const TRAINER_ASPECT_RATIO = 53 / 80
 const ATLAS_COLUMNS = 8
 const ATLAS_ROWS = 5
@@ -209,7 +209,7 @@ export function createTrainerLayer(
       gl.useProgram(glProgram)
       // Use MapLibre's tile-relative projection matrix. The matrix accepts X/Y
       // in 0..EXTENT tile units and Z in meters, avoiding absolute-Mercator
-      // float32 cancellation at zoom 15.5-20 while preserving shared depth.
+      // float32 cancellation at zoom 15.5-18 while preserving shared depth.
       gl.uniformMatrix4fv(uMatrix, false, projectionData.mainMatrix)
       gl.uniform3f(uOrigin, localX, localY, 0)
       gl.uniform1f(uAltitude, TRAINER_HEIGHT_METERS)

@@ -33,7 +33,7 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | WORLD-02 | Roads and paths correspond to existing OpenFreeMap geometry | E0 | In review | Road-source feature audit; test no added road, intersection, alley or connector | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | WORLD-03 | Distinct environments and habitats from available tile context | P0 | Not started | Demonstrate tile-driven park/water/residential-context artwork with neutral fallbacks | — |
 | WORLD-04 | Global continuity and graceful gaps | P1 | Not started | Urban, rural and missing-data scenarios without invented geography | — |
-| VIS-01 | Soft-follow camera with preset delay/capped yaw, building-safe pitch and 15.5–20 zoom slider | E0 | In review — device check pending | Phone checks hamburger accessibility/preset dismissal, delayed turns, no reverse flip/idle coast, visible zoom, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
+| VIS-01 | Soft-follow camera with preset delay/capped yaw, building-safe pitch and 15.5–18 zoom slider | E0 | In review — device check pending | Phone checks hamburger accessibility/preset dismissal, delayed turns, no reverse flip/idle coast, visible zoom, 45° pitch and avatar resizing | [#8](https://github.com/s3ton/bitmon/pull/8), control/zoom fix PR |
 | VIS-02 | Mapped building footprints become low-poly volumes | E0 | In review | Source polygon ↔ simple rendered volume test; no unsourced building instance | [#3](https://github.com/s3ton/bitmon/pull/3) |
 | VIS-03 | OpenFreeMap-only inferred facade and window art | E0 | In review — device check pending | Deterministic generic + residential-like variants using only source tile fields/context | building textures PR |
 | VIS-04 | Layers, roofs and player occlusion work together | P0 | In review — source-based pitch correction | Walk behind mapped buildings: no through-wall overlay, camera pitches toward overhead then restores 45°, collision unchanged | — |
@@ -140,6 +140,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-03 | DEC-040 | **Accepted — implementation in review** | Texture mapped buildings with MapLibre `fill-extrusion-pattern` (no custom renderer). Split each building into ground-floor, upper-floor and 0.5 m roof-cap layers inside the source height. A tile worker splits OpenFreeMap's merged building multipolygons into one feature per footprint and tags it with a POI/landuse-inferred style and a deterministic palette variant; patterns are drawn procedurally on demand per integer zoom so 4 m storeys stay aligned. Regional palettes are deferred. | **v0.27** VIS-02/03, MAP-GATE-04/05 |
 | 2026-11-03 | DEC-041 | **Accepted — implementation in review** | Give world-famous landmarks their own facade archetypes (cathedral, shrine, fortress, arena, ironwork, palace). A landmark is a heritage-class POI whose name has 20+ translations in the tile; all its stacked building parts are grouped with it, its mapped `colour` snaps to a Bitmon stone/metal tint, and a 1 m gold cornice sits under its roof cap. No hand-made per-monument art. | **v0.28** VIS-03, MAP-GATE-04/05 |
 | 2026-11-03 | DEC-042 | **Accepted — implementation in review** | Extend landmark archetypes from six to twelve using tile signals only: mosque and temple from the place-of-worship subclass, ruins from the castle subclass, bell tower for a POI part at least 3× taller than wide, skyscraper for a solid body of 120 m+ (taller open structures stay ironwork), and bridge for a famous POI in water with a raised deck spanning 80 m+. Landmark groups grow up to four steps, and stacked parts may merely abut. | **v0.29** VIS-03, MAP-GATE-04/05 |
+| 2026-11-03 | DEC-043 | **Accepted — implementation in review** | Cap zoom at 15.5–18 with 18 as the default, and draw the trainer at 3× true scale instead of 2×. Replace plain road lines with street art on existing transportation geometry: true-metre class widths, kerbs, sidewalk strips only where sidewalks are not mapped, asphalt, alley setts, lane markings, footway paving/dirt/steps/cycleway, tiled plazas, bridge decks over the ground network, and painted crossings where a mapped footway crosses a mapped street. Tunnels and indoor/underground features are not drawn. The tile worker rebuilds the transportation layer with geometry unchanged. | **v0.30** VIS-01, WORLD-02, MAP-GATE-03/05 |
 
 ### Open decisions to resolve before related implementation
 
@@ -149,7 +150,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-02 | Where and when region/location is committed relative to randomness | ENC-02, regional species | Open — fairness-critical |
 | OPEN-03 | Walkable/off-road surfaces and inferred access on incomplete tile attributes | MOVE-01, WORLD-02 | Open |
 | OPEN-04 | Deterministic facade inference weightings and default art library | VIS-03 | Open — **must stay OpenFreeMap-only** |
-| OPEN-05 | DEC-026 introduces camera response presets and DEC-024 extends 15.5–20 zoom; remaining tuning includes final preset calibration, readable sprite scaling, joystick orientation after camera turns, and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
+| OPEN-05 | DEC-026 introduces camera response presets and DEC-024 extends zoom (DEC-043 caps it at 15.5–18); remaining tuning includes final preset calibration, readable sprite scaling, joystick orientation after camera turns, and mobile performance | VIS-01/04/05, MOVE-01, EXPL-01, MOBILE-01 | Open — parameters only |
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
@@ -342,3 +343,41 @@ The new art is a lead-scale dome roof, pointed windows over a blue tile band, te
 **Known limits:** Buddhist temples, Golden Gate and Charles Bridge sampled without building polygons, so they have nothing to texture. Archetypes remain generic.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on 26 landmark tiles verified classifications and group sizes, with 602 ms total enrichment time across all 26 tiles. Desktop browser review covered the Blue Mosque, Tower Bridge, Pisa and Burj Khalifa. Phone appearance and performance remain unverified.
+
+### Road surface art and 15.5–18 zoom — 3 November 2026
+
+The owner asked for streets that read as a game town (paved streets, kerbs and sidewalks, lane and crossing markings, tiled plazas, dirt paths) using only the OpenFreeMap PBF, with performance as the priority. To pay for the extra layers, zoom is capped at 15.5–18 with 18 as the default, and the trainer is drawn at 3× true scale so it stays readable.
+
+Sampling ten z14 tiles (London, Paris, Rome, Amsterdam, New York, Tokyo, São Paulo, Mumbai, Lagos, Cotswolds) shaped the design:
+- `surface` is only `paved`/`unpaved`, on about 60% of features. There is no width, lane, sidewalk or crossing data.
+- `oneway=1` is set on about 97% of roads, so it is ignored.
+- Sidewalks are already mapped as parallel footways for 74% of footway length in London, 91% in New York and 56% in Paris, but only 5–24% in Lagos, Mumbai and the Cotswolds. A painted sidewalk everywhere would double up in the first group.
+- Footways cross streets about 1,000 times per dense tile, usually without a shared vertex.
+- The old `roads` and `paths` layers drew tunnels and underground corridors on the street surface.
+
+Source review of MapLibre 6.16 showed that `line-pattern` stretches the image to the line width (one image serves every zoom), while `fill-pattern` is sized per integer tile zoom like extrusions.
+
+**Implementation:** the tile worker became `tiles.worker.ts`, with the building pass in `building-tiles.ts`, a road pass in `road-tiles.ts` and shared geometry and the layer writer in `tile-geometry.ts`. The worker rebuilds `transportation` with every source feature's geometry and attributes unchanged. It adds `bitmon_ppm` for true-metre widths at any latitude and `bitmon_sidewalk: 'mapped'` where a street's sidewalks are already mapped. It also writes a `bitmon_crossing` layer from the stretch of each at-ground footway across an at-ground street. `road-art.ts` defines the 12 road layers and draws their patterns on demand through the same missing-image resolver as the facades.
+
+**Measurements** (desktop Apple GPU, 375×812 viewport at pixel ratio 2, zoom 18, 45° pitch, same views, `preview` versus this branch):
+
+| City | GPU ms/frame (median) | CPU ms/frame (median) | Full tile re-parse (ms) |
+|---|---|---|---|
+| Milan | 1.32 → 1.43 | 0.6 → 0.7 | 363 → 388 |
+| London | 1.67 → 1.74 | 0.6 → 0.7 | 559 → 646 |
+| Paris | 1.75 → 1.91 | 0.5 → 0.6 | 749 → 770 |
+| Rome | 1.44 → 1.61 | 0.4 → 0.6 | 532 → 581 |
+| New York | 1.81 → 1.90 | 0.6 → 0.6 | 700 → 718 |
+| Mumbai | 1.02 → 1.12 | 0.6 → 0.6 | (baseline run unreliable) → 356 |
+
+In Node, the tile worker went from 2–38 ms to 3–60 ms per z14 tile (road pass 1–17 ms; densest: Paris 38 → 60 ms). Enriched tiles grow 0–2%. Overall that is about 5–12% more GPU time per frame and up to 16% more parse time, from a low base. Phone figures are not yet measured.
+
+**Known limits:** widths are class guesses; round joins overlap at complex junctions; line-pattern phase restarts at feature ends and z14 tile seams; a street with mapped sidewalks on only part of its length is judged as a whole; crossing paint does not prove a marked crossing exists.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. An ephemeral Node check on the ten sampled tiles confirmed:
+- every non-rebuilt layer is byte-identical;
+- the building layer is byte-identical to the previous worker's output;
+- every transportation feature keeps its type, geometry and source attributes;
+- all 4,151 painted crossings lie on a mapped at-ground footway segment.
+
+Desktop browser review covered Milan, London Soho, Piazza Navona, Pont Neuf, Central Park and Mumbai. Phone appearance and frame rate remain unverified.
