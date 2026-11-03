@@ -1,6 +1,6 @@
 import { classifyRings, type VectorTile } from '@mapbox/vector-tile'
 import { DEFAULT_TINT, LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
-import { bounded, contains, Grid, metresPerUnit, pointBox, signedArea, withinOutline, type Area, type Feature, type Point, type Polygon, type Value } from './tile-geometry'
+import { bounded, clipRing, contains, Grid, metresPerUnit, pointBox, signedArea, withinOutline, type Area, type Feature, type Point, type Polygon, type Value } from './tile-geometry'
 
 // Rebuilds the `building` layer of an OpenFreeMap tile. OpenFreeMap merges
 // every building sharing height/colour into one multipolygon feature, so this
@@ -252,5 +252,15 @@ export function buildingFeatures(tile: VectorTile, x: number, y: number): Featur
   // World-unique part ids (tile, then footprint index) let the style pick out
   // the parts covering the trainer.
   const tileId = (x * 2 ** 14 + y) * 2 ** 20
-  return footprints.map(({ tags, rings }, i) => ({ id: tileId + i, type: 3, tags, geometry: rings }))
+  // Each tile also carries the edges of its neighbours' footprints, and the two
+  // copies of a footprint crossing a tile edge may be styled differently. Both
+  // would draw the overlap and flicker as they fight for depth, so each tile
+  // keeps only the part inside its own square; together they cover the footprint.
+  const features: Feature[] = []
+  footprints.forEach(({ tags, rings, minX, minY, maxX, maxY }, i) => {
+    const inside = minX >= 0 && minY >= 0 && maxX <= extent && maxY <= extent
+    const clipped = inside ? rings : rings.map((ring) => clipRing(ring, extent))
+    if (clipped[0]) features.push({ id: tileId + i, type: 3, tags, geometry: clipped.filter((ring) => ring !== undefined) })
+  })
+  return features
 }
