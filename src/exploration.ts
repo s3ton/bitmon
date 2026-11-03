@@ -198,7 +198,10 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
 
   // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
-    if (!map.isSourceLoaded('openmaptiles')) return
+    // Missing peripheral tiles must not freeze an already-verified, cached tile.
+    // First spawn still waits for fully loaded source geometry.
+    if (!offlineMap.hasTileAt(position) ||
+      (!hasPlacedSpawn && !teleporting && !map.isSourceLoaded('openmaptiles'))) return
     const areas: CollisionArea[] = []
     for (const layer of ['building', 'water']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
