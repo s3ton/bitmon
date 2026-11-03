@@ -45,6 +45,12 @@ self.addEventListener('fetch', (event) => {
       (!IS_PREVIEW && url.pathname.startsWith(SCOPE_PATH + 'preview/'))) return
   event.respondWith((async () => {
     const cache = await caches.open(CACHE)
+    // Hashed bundles, worker scripts, icons and the manifest belong to this
+    // build's scoped cache. Avoid re-fetching them on each launch.
+    if (request.mode !== 'navigate') {
+      const stored = await cache.match(request)
+      if (stored) return stored
+    }
     try {
       const response = await fetch(request)
       if (response.ok && request.mode === 'navigate') {
