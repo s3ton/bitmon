@@ -5,6 +5,14 @@ import { createTrainerLayer } from './trainer-layer'
 type Ring = number[][]
 type Polygon = Ring[]
 type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number }
+type MeterBounds = { minX: number; maxX: number; minY: number; maxY: number }
+type CollisionIndex = {
+  buildOrigin: Position
+  lonScale: number
+  cells: Map<string, CollisionArea[]>
+  overflow: CollisionArea[]
+  maxIndexedBuildingDistance: number
+}
 
 const METERS_PER_RADIAN = 6_371_008.8
 const SPEED_METERS_PER_SECOND = 10
@@ -81,12 +89,101 @@ const JOYSTICK_START_MAX = .9
 const COLLISION_RADIUS_METERS = 28
 const CACHE_REFRESH_METERS = 12
 const METERS_PER_DEGREE = METERS_PER_RADIAN * Math.PI / 180
+const COLLISION_CELL_METERS = 24
+const MAX_INDEX_CELLS_PER_AREA = 64
 
 function distanceMeters(a: Position, b: Position): number {
   return Math.hypot(
     (a.lon - b.lon) * METERS_PER_DEGREE * Math.cos(radians(a.lat)),
     (a.lat - b.lat) * METERS_PER_DEGREE,
   )
+}
+
+function localMeters(index: CollisionIndex, point: Position): { x: number; y: number } {
+  return {
+    x: (point.lon - index.buildOrigin.lon) * index.lonScale,
+    y: (point.lat - index.buildOrigin.lat) * METERS_PER_DEGREE,
+  }
+}
+
+function areaMeterBounds(index: CollisionIndex, area: CollisionArea): MeterBounds {
+  return {
+    minX: (area.minLon - index.buildOrigin.lon) * index.lonScale,
+    maxX: (area.maxLon - index.buildOrigin.lon) * index.lonScale,
+    minY: (area.minLat - index.buildOrigin.lat) * METERS_PER_DEGREE,
+    maxY: (area.maxLat - index.buildOrigin.lat) * METERS_PER_DEGREE,
+  }
+}
+
+function cellKeys(bounds: MeterBounds, limit = Infinity): string[] | null {
+  const minX = Math.floor(bounds.minX / COLLISION_CELL_METERS)
+  const maxX = Math.floor(bounds.maxX / COLLISION_CELL_METERS)
+  const minY = Math.floor(bounds.minY / COLLISION_CELL_METERS)
+  const maxY = Math.floor(bounds.maxY / COLLISION_CELL_METERS)
+  if ((maxX - minX + 1) * (maxY - minY + 1) > limit) return null
+  const result: string[] = []
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) result.push(x + ':' + y)
+  }
+  return result
+}
+
+function indexArea(index: CollisionIndex, area: CollisionArea): void {
+  const bounds = areaMeterBounds(index, area)
+  const keys = cellKeys(bounds, MAX_INDEX_CELLS_PER_AREA)
+  if (!keys) {
+    index.overflow.push(area)
+    return
+  }
+  for (const key of keys) {
+    const areas = index.cells.get(key)
+    if (areas) areas.push(area)
+    else index.cells.set(key, [area])
+  }
+  if (area.height !== undefined) {
+    index.maxIndexedBuildingDistance = Math.max(
+      index.maxIndexedBuildingDistance,
+      Math.hypot(bounds.minX, bounds.minY),
+      Math.hypot(bounds.minX, bounds.maxY),
+      Math.hypot(bounds.maxX, bounds.minY),
+      Math.hypot(bounds.maxX, bounds.maxY),
+    )
+  }
+}
+
+function collisionAt(index: CollisionIndex, point: Position): boolean {
+  const local = localMeters(index, point)
+  const key = Math.floor(local.x / COLLISION_CELL_METERS) + ':' +
+    Math.floor(local.y / COLLISION_CELL_METERS)
+  if (index.cells.get(key)?.some((area) => contains(area, point))) return true
+  return index.overflow.some((area) => contains(area, point))
+}
+
+function cameraCandidates(index: CollisionIndex, position: Position, bearing: number): Set<CollisionArea> {
+  const result = new Set<CollisionArea>()
+  for (const area of index.overflow) {
+    if (area.height !== undefined) result.add(area)
+  }
+  if (!index.maxIndexedBuildingDistance) return result
+  const start = localMeters(index, position)
+  const ray = radians(bearing + 180)
+  const distance = index.maxIndexedBuildingDistance + Math.hypot(start.x, start.y)
+  const endX = start.x + Math.sin(ray) * distance
+  const endY = start.y + Math.cos(ray) * distance
+  // One-cell padding makes the coarse candidate query conservative; the exact
+  // polygon/ray test below remains authoritative for camera clearance.
+  const keys = cellKeys({
+    minX: Math.min(start.x, endX) - COLLISION_CELL_METERS,
+    maxX: Math.max(start.x, endX) + COLLISION_CELL_METERS,
+    minY: Math.min(start.y, endY) - COLLISION_CELL_METERS,
+    maxY: Math.max(start.y, endY) + COLLISION_CELL_METERS,
+  }) ?? []
+  for (const key of keys) {
+    for (const area of index.cells.get(key) ?? []) {
+      if (area.height !== undefined) result.add(area)
+    }
+  }
+  return result
 }
 
 // Return the nearest source footprint crossed by a ray from the player toward
@@ -162,7 +259,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   }
   coordinateDisplay.textContent = position.lat.toFixed(5) + ', ' + position.lon.toFixed(5)
   let heading = map.getBearing()
-  let collisionAreas: CollisionArea[] = []
+  let collisionIndex: CollisionIndex | null = null
   let collisionOrigin: Position | null = null
   const decodedTiles = new Set<string>()
   let hasPlacedSpawn = false
@@ -212,7 +309,13 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
     if (!neighborhoodReady(position)) return
-    const areas: CollisionArea[] = []
+    const index: CollisionIndex = {
+      buildOrigin: { ...position },
+      lonScale: METERS_PER_DEGREE * Math.cos(radians(position.lat)),
+      cells: new Map(),
+      overflow: [],
+      maxIndexedBuildingDistance: 0,
+    }
     const seen = new Set<string>()
     for (const layer of ['building', 'water']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
@@ -240,11 +343,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           const signature = layer + ':' + height + ':' + JSON.stringify(rings)
           if (seen.has(signature)) continue
           seen.add(signature)
-          areas.push({ ...bounds, rings, height })
+          indexArea(index, { ...bounds, rings, height })
         }
       }
     }
-    collisionAreas = areas
+    collisionIndex = index
     collisionOrigin = { ...position }
     occlusionScanSeconds = CAMERA_PITCH_SCAN_SECONDS
     requestTick()
@@ -308,7 +411,8 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   // independently occludes only the pixels temporarily hidden by their walls.
   function safeCameraPitch(bearing: number): number {
     let result = CAMERA_EXPLORATION_PITCH
-    for (const area of collisionAreas) {
+    if (!collisionIndex) return result
+    for (const area of cameraCandidates(collisionIndex, position, bearing)) {
       if (area.height === undefined) continue
       const distance = rayDistanceToBuilding(position, bearing, area)
       if (!Number.isFinite(distance)) continue
@@ -335,7 +439,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     // At a tile edge, no unloaded building geometry can be treated as empty.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
-      .some((point) => !tileReady(point) || collisionAreas.some((area) => contains(area, point)))
+      .some((point) => !tileReady(point) || !collisionIndex || collisionAt(collisionIndex, point))
   }
 
   function requestTick(): void {
@@ -487,7 +591,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     coordinateStatus.textContent = 'Checking destination map…'
     const original = { ...position }
     const originalCenter = map.getCenter()
-    const previousAreas = collisionAreas
+    const previousIndex = collisionIndex
     const previousOrigin = collisionOrigin
     const previousSpawn = hasPlacedSpawn
     const previousDecodedTiles = new Set(decodedTiles)
@@ -531,7 +635,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       position = original
       decodedTiles.clear()
       for (const tile of previousDecodedTiles) decodedTiles.add(tile)
-      collisionAreas = previousAreas
+      collisionIndex = previousIndex
       collisionOrigin = previousOrigin
       hasPlacedSpawn = previousSpawn
       offlineMap.setPlayerPosition(original)
