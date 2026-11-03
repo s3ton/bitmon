@@ -1,8 +1,8 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.16 — automatically raise the camera toward overhead to reveal a player hidden by mapped building extrusions  
-**Date:** 2 November 2026  
+**Version:** 0.17 — prevent PWA updates from interrupting active exploration and let players choose when to reload  
+**Date:** 3 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
 **Creature name:** **bitmon** (singular and plural)  
@@ -387,7 +387,7 @@ The game should not require disclosure of the player's real-world location merel
 - On Android and iOS, provide the appropriate install/Add to Home Screen guidance. The first release needs **no downloadable APK/IPA** and no store listing.
 - **Portrait preference is not a universal hardware lock**. Some browsers, notably iOS browsers, may not honor orientation settings; use the **MOBILE-01** fallback instead of relying on an unsupported API.
 - Cache a lightweight application shell and preserve unsent local progress where feasible. `Preview` and `Stable` must have genuinely distinct, browser-computed manifest IDs, start URLs, visible names/icons and service-worker scopes. **Do not use relative `id: "."` for both**; that may resolve both to the same origin-root install identity. Keep the currently installed Stable manifest ID unchanged; Preview must use an explicit unique origin-relative path. Use channel-prefixed CacheStorage and future local-save keys. Updating either channel must not delete or overwrite the other's shell or progress. Do not imply the whole Earth, missing map tiles, network randomness, or blockchain transactions are available offline.
-- A connectivity loss or app update must not silently discard pending progress. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
+- A connectivity loss or app update must not silently discard pending progress. When a new application version is ready, notify the player and offer a deliberate reload rather than interrupting their active exploration. Clearly indicate unavailable features, loading failures, and the distinction between locally saved and finalized state.
 
 ### DIST-01 — Test distribution from the public source repository
 

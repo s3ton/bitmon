@@ -13,37 +13,37 @@ The geographic base uses **OpenFreeMap as the sole geographic data source** and 
 
 The source repository is **public**. The currently deployed build is [bitmon Stable](https://s3ton.github.io/bitmon/) from `main`. A [bitmon Preview](https://s3ton.github.io/bitmon/preview/) channel is now deployed alongside Stable. A Preview-specific app ID and purple icon were integrated to distinguish its installation from Stable; smartphone confirmation of independent installs remains pending. The two PWAs share GitHub Pages hosting but use separate manifest identities and service-worker caches; no second repository is required.
 
-## Current development status (2 November 2026)
+## Current development status (3 November 2026)
 
-- [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) merged into `preview`; [release PR #4](https://github.com/s3ton/bitmon/pull/4) merged `preview` into `main`.
-- The **Task 001 map-rendering foundation** is live on `main`: OpenFreeMap geographic tiles, extruded mapped buildings, oblique 45° camera pitch, portrait fallback and installable PWA shell.
-- [**Task 002 PR #8**](https://github.com/s3ton/bitmon/pull/8) has been released from `main` via [PR #9](https://github.com/s3ton/bitmon/pull/9), but the owner's first phone test shows **movement is blocked** and the placeholder SVG avatar does not meet the desired illustration quality.
-- [**Corrective PR #10**](https://github.com/s3ton/bitmon/pull/10) and [PWA cache PR #12](https://github.com/s3ton/bitmon/pull/12) are merged into `preview`; the [release PR #11](https://github.com/s3ton/bitmon/pull/11) remains open. Their phone acceptance is pending.
-- [**Task 002 refinement PR #13**](https://github.com/s3ton/bitmon/pull/13) is merged into `preview`: the eight-way 40-frame atlas, **10 m/s** geographic walking, and invisible floating joystick. The latest follow-up expands the joystick start area from the historical 20–80% range to **10–90%** of portrait screen height. Stable remains unchanged; owner phone acceptance is pending.
-- [Control/zoom PR #17](https://github.com/s3ton/bitmon/pull/17) was followed by merged [PR #19](https://github.com/s3ton/bitmon/pull/19), correcting downward input, rendering the avatar at 2× display size (not physical collision size), and extending the zoom slider to level 20. A new soft-follow camera replaces rapid heading chase with a short delay, yaw speed cap, idle freeze, reverse-movement hold and three camera response presets (**Balanced** default). Phone acceptance remains pending.
-- The repository owner confirmed installation and successful launch on a smartphone, and reports high real-world map fidelity. This is not a formal geometry audit.
-- **Still pending:** owner re-test of movement, map collision and sprite quality, cross-platform Android/iOS support, service-worker/offline behavior, tile-edge handling, screenshots and performance.
+- [Task 001 PR #3](https://github.com/s3ton/bitmon/pull/3) and [release PR #4](https://github.com/s3ton/bitmon/pull/4) established the map, portrait PWA and initial deployment. The owner installed the app on a phone and reported strong geographic fidelity; that report is not a source-geometry audit.
+- Task 002 exploration has reached Stable: street-scale geographic movement at **10 m/s**, eight-direction walking sprites, an invisible floating joystick within the middle **80%** of the portrait screen, corrected direction, and zoom **15.5–20**. The soft-follow heading camera and camera responsiveness presets are under the top-right hamburger menu. The reviewed [release PR #11](https://github.com/s3ton/bitmon/pull/11) and [PR #25](https://github.com/s3ton/bitmon/pull/25) are merged.
+- The [building occlusion change #24](https://github.com/s3ton/bitmon/pull/24) adjusts camera pitch just enough to reveal a trainer blocked by a mapped building, rather than drawing the trainer through walls. CI and Pages deployment passed on 2 November. Phone acceptance of camera, movement, collision and sprite readability remains pending.
+- [Maintenance PR #26](https://github.com/s3ton/bitmon/pull/26) is proposed for `preview`: a tracked lockfile, `npm ci` CI/build steps, build-revisioned offline app shell and a deliberate update/reload prompt. It is not part of Stable until a separately approved release to `main`.
+- **Not yet accepted:** independent installed Preview/Stable behavior on devices, Android/iOS offline/update flow, tile-boundary collisions, device performance, and wider source-geometry fidelity.
 
 ## Toolchain
 
-Use **Node.js 26 LTS** (local `.nvmrc`, and GitHub Actions). Core package versions are pinned: MapLibre GL JS 6.16.0, Vite 8.3.5, TypeScript 7.0.2. An npm lockfile is not yet tracked; dependency installation is still performed with `npm install`, so transitives are not reproducibly pinned. Changes to the published Pages workflow must reach `main` before its main-context deployment action will use the new workflow versions.
+Use **Node.js 26 LTS** (root `.nvmrc`, package engine, and GitHub Actions). Direct packages are exact-pinned: MapLibre GL JS 6.16.0, Vite 8.3.5 and TypeScript 7.0.2. PR #26 adds `package-lock.json` (npm lockfile v3) and switches both CI jobs to `npm ci` for reproducible transitive dependencies. **The Pages workflow executes from `main`**, so its `npm ci` change only takes effect after an explicitly approved promotion to `main`.
 
 ## Local build
 
 ```sh
-npm install
+nvm use
+npm ci
 npm run check
 npm run build
 npm run dev
 ```
 
+The build stamps `dist/sw.js` with a digest of the compiled app shell and assets so each changed deployed build is detectable by the browser, even if the service-worker source itself did not change.
+
 ## Two GitHub Pages PWAs — phone testing and stable releases
 
 1. Keep [Settings → Pages](https://github.com/s3ton/bitmon/settings/pages) set to **GitHub Actions** with `github-pages` environment deployments restricted to `main`. The independent Preview/Stable publishing infrastructure has already been bootstrapped on `main`.
-2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. It should have a **purple Preview icon and "bitmon DEV" home-screen label**, distinct from the teal Stable app. It auto-updates after `preview` branch **successful** push CI, without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
+2. After deployment, open and install **[bitmon Preview](https://s3ton.github.io/bitmon/preview/)** to test the latest reviewed `preview` branch. It should have a **purple Preview icon and "bitmon DEV" home-screen label**, distinct from the teal Stable app. A successful `preview` push CI automatically republishes Preview without a gameplay merge to `main`. The root [bitmon Stable](https://s3ton.github.io/bitmon/) remains compiled only from `main`.
 3. On a portrait phone, verify Preview offers a **separate installation**, with its purple icon and distinct name, while Stable remains installed. Then check joystick up/down direction, short sidesteps/backward walks without sudden camera flips, source-driven automatic overhead tilt instead of through-wall avatar rendering, the top-right hamburger menu with camera presets (close it by choosing a preset), 10 m/s diagonals, 15.5–20 right-side zoom slider, scale-adjusting trainer, collision, offline shell and both home-screen launches. Verify changing preview leaves Stable unchanged.
-4. The owner requested a Stable promotion of this Preview baseline (including the hamburger camera menu). [Release PR #11](https://github.com/s3ton/bitmon/pull/11) is the existing `preview` → `main` integration path. The stable site updates only on a successfully merged release followed by a successful GitHub Pages deploy; Preview continues to evolve independently.
+4. [Release PR #11](https://github.com/s3ton/bitmon/pull/11) and [release PR #25](https://github.com/s3ton/bitmon/pull/25) have been merged. Future changes to Stable still require a separate, explicitly approved `preview` → `main` release PR.
 
-Both PWAs need internet for uncached map tiles. Current source code has no saved game progress; any future localStorage or IndexedDB keys must include the channel name because browser storage is shared by origin.
+On a device running a previously installed version, a new service worker waits until the user taps **Reload** in the update notice; a new build does not forcibly reload an active session. After PR #26 reaches Preview, test this by deploying a subsequent changed Preview build, reopening/foregrounding the installed app, and verifying that the prompt appears and reloads only on request. Check offline reopening of the cached shell and confirm Stable's cache is unchanged. Both PWAs still require internet for uncached OpenFreeMap tiles. No game progress is saved yet; future localStorage or IndexedDB keys must be namespaced by channel because browser storage is origin-wide.
 
 These are working design documents, not a completed game or security audit.

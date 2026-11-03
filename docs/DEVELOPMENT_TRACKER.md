@@ -1,10 +1,10 @@
 # bitmon — Development Tracker
 
 **Purpose:** Track implementation progress, evidence, blockers, and product decisions separately from the normative [Product Requirements](PRODUCT_REQUIREMENTS.md).  
-**Baseline PRD:** v0.16 (2 November 2026)  
+**Baseline PRD:** v0.17 (3 November 2026)  
 **Related design:** [Technical Design](TECHNICAL_DESIGN.md)  
 **Tracker created:** 2 November 2026  
-**Current reporting state:** The owner explicitly approved promotion of the reviewed Preview exploration feature set to Stable after moving camera settings into a top-right hamburger menu. Preview includes 10 m/s movement, eight-way sprites, 2× visual avatar scale, 10–90% joystick activation, corrected vertical direction, a 15.5–20 zoom slider and Balanced soft-follow camera presets. Release PR [#11](https://github.com/s3ton/bitmon/pull/11) is the reviewed Preview → Main promotion route. Code/build CI and Pages deployment are separate gates; smartphone E0 visual/collision acceptance has **not** been established. **Last evidence review:** 2 November 2026.
+**Current reporting state:** Task 002's camera, controls and occlusion corrections have been merged into `main` via [PR #25](https://github.com/s3ton/bitmon/pull/25); both Stable and Preview have successful Pages deployment evidence dated 2 November. Owner phone acceptance of movement, collision, independent installs and occlusion handling remains pending. The owner approved maintenance items 1, 2, 4 and 5 only: npm lockfile, `npm ci`, PWA cache/update improvements and documentation. They are proposed in [PR #26](https://github.com/s3ton/bitmon/pull/26) targeting `preview`; `main` must not be merged without separate owner confirmation. **Last evidence review:** 3 November 2026.
 
 > **Separation of concerns:** The PRD says **what bitmon must do from the player's perspective**. This tracker says **what has been implemented, tested, blocked, or decided**. Changing a requirement requires updating the PRD first (or in the same change), then logging it here. Do not silently redefine requirements through tracker comments.
 
@@ -59,8 +59,8 @@ The requirement IDs and language are defined in [PRODUCT_REQUIREMENTS.md](PRODUC
 | INDEPENDENCE-01 | Alternative client/map endpoint continuity | P1 | Not started | Equivalent OpenFreeMap mirror/self-hosted tiles and independent settlement | — |
 | UX-01 | Usable, accessible controls and clear status | P0 | Not started | Portrait touch UI, loading, attribution and finality states | — |
 | MOBILE-01 | Smartphone-first, portrait-only gameplay | E0 | In review | Portrait UI covers all play; unsupported landscape rotation preserves state with prompt | [#3](https://github.com/s3ton/bitmon/pull/3) |
-| PWA-01 | Install independently named/iconed Preview and Stable PWA home-screen apps | E0 | In review — duplicate install identity reported | Verify Preview prompts a separate installation with its own name/icon, Stable remains installed, standalone launch and scoped caches work | [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
-| DIST-01 | Separate Preview/Stable Pages builds with explicit unique Preview PWA ID | P0 | In review — owner reports install conflict | Confirm working links, independently installable icons and root stable stays unchanged by `preview` pushes | [#15](https://github.com/s3ton/bitmon/pull/15), [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
+| PWA-01 | Install independently named/iconed Preview and Stable PWA home-screen apps | E0 | In review — manifest-ID fix deployed; device re-test pending | Verify Preview prompts a separate installation with its own name/icon, Stable remains installed, standalone launch and scoped caches work | [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
+| DIST-01 | Separate Preview/Stable Pages builds with explicit unique Preview PWA ID | P0 | In review — distinct manifest identity deployed; device re-test pending | Confirm working links, independently installable icons and root stable stays unchanged by `preview` pushes | [#15](https://github.com/s3ton/bitmon/pull/15), [#16](https://github.com/s3ton/bitmon/pull/16), install identity fix PR |
 
 ## 3. Map fidelity release gates
 
@@ -90,7 +90,7 @@ These requirements are **fixed decisions**, not open design options. A change re
 | M4 — Social mechanics | Fixed-type gyms, same-tier swaps, recognition, optional fees | Not started | Two independent clients can trade and claim a gym |
 | M5 — First release readiness | Wider region coverage, travel, fair region binding, performance, recovery | Not started | P1 acceptance and security reviews complete |
 
-Milestones are **proposed sequencing**, not calendar commitments. M1/E0's code is integrated through PRs #8, #10, #12 and #13, but its **first owner device check failed** and the corrective build awaits release and retest; M3 includes a confirmed owner-installed Task 001 PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
+Milestones are **proposed sequencing**, not calendar commitments. M1/E0's code is integrated through PRs #8, #10, #12 and #13, but its **first owner device check failed** and the corrective build is deployed, but a full device retest remains pending; M3 includes a confirmed owner-installed Task 001 PWA but requires offline/cross-platform evidence. Neither exit criterion has passed.
 
 ## 5. Decisions and requirement change log
 
@@ -126,6 +126,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-02 | DEC-026 | **Accepted — refines DEC-019 camera responsiveness** | Replace immediate heading chase with delayed soft-follow yaw, capped angular speed, 12° turn dead zone, reverse-input guard and idle freeze. Add Relaxed/Balanced/Responsive presets for mobile tuning; position follows immediately and camera/input geography remains independent. | **v0.14** VIS-01, MOVE-01, EXPL-01, MOBILE-01 |
 | 2026-11-02 | DEC-027 | **Accepted** | Move the camera presets under a compact top-right hamburger menu. Open/close through a native accessible disclosure; selecting a preset dismisses it. Keep the zoom slider visible at the right of the map. Owner explicitly approves promotion of all currently reviewed Preview gameplay to Stable through a separate release PR, subject to CI and deployment verification. | **v0.15** VIS-01, MOVE-01, MOBILE-01, DIST-01 |
 | 2026-11-02 | DEC-028 | **Accepted — refines normal fixed-pitch exploration** | When a real mapped building would block the trainer, automatically tilt the camera toward overhead by the minimum clearance angle instead of depicting the avatar through walls. Restore 45° when clear, preserve geographic movement, zoom and bearing; account for source rendering heights. | **v0.16** VIS-01, VIS-04, MOVE-01 |
+| 2026-11-03 | DEC-029 | **Accepted for implementation on feature branch; merge pending** | Make PWA updates non-disruptive: revision the service worker with compiled assets, keep it waiting, show a Reload prompt on an existing installed app, and change worker only after the player's action. Preserve separate Preview/Stable cache scopes and offline shell; uncached tiles remain online-only. | **v0.17** PWA-01, DIST-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -139,7 +140,7 @@ This section records **requirements evolution** separately from actual implement
 | OPEN-06 | Gym placement in worldwide mapped geography without new physical structures | GYM-01/02 | Open |
 | OPEN-07 | Tile/source revision cadence and persistent collision/encounter consistency | WORLD-04, ENC-02 | Open |
 | OPEN-08 | Starter roster, battle details and final rarity/XP quotas | GAME-01/02, ENC-04 | Open |
-| OPEN-09 | Android/iOS browser/version support, offline-cache and service-worker strategy | PWA-01, MOBILE-01 | Open |
+| OPEN-09 | Android/iOS browser/version support and phone acceptance of scoped caches, offline shell and new-version reload prompt | PWA-01, MOBILE-01 | Open — implementation proposed in PR #26 |
 | OPEN-10 | Longer-term production deployment strategy following direct public-repo Pages prototype | DIST-01 | Open — not blocking test |
 
 ## 6. Rules for updating this tracker
@@ -166,11 +167,11 @@ This section records **requirements evolution** separately from actual implement
 | Smartphone installation and map impression | Owner reports PWA installed and launched on their phone and that the neighborhood map looks extremely faithful (2 Nov 2026) | Confirmed owner report; device/OS unspecified; not a formal source-geometry audit |
 | Full E0 / PWA acceptance | Source geometry audit, representative OS/device installs, screenshots, new walking avatar and joystick | Not complete; owner Task 002 phone tests pending |
 
-**Implemented baseline:** Vite + TypeScript + MapLibre/OpenFreeMap, oblique map/extrusions, portrait prompt, app manifest and offline shell. The **current deployed site** still publishes from `main` only. The new two-channel workflow is proposed in its own PR and remains **unverified** until the infrastructure-only main release is merged and a Pages run succeeds. No second repository or full real-device acceptance is claimed.
+**Implemented baseline:** Vite + TypeScript + MapLibre/OpenFreeMap, real-world extrusions, portrait prompt, app manifest and offline shell. The **two-channel** Pages workflow is deployed: Stable uses `main` at the root and Preview uses `preview` at `/bitmon/preview/`. Latest Pages deployment [run 41536543717](https://github.com/s3ton/bitmon/actions/runs/41536543717) succeeded on 2 November 2026. Independent installed-app identities and complete phone gameplay remain unverified.
 
 **Evidence boundary:** A confirmed smartphone installation and positive map fidelity report do **not** establish that all OpenFreeMap source geometries match, that both Android and iOS are supported, that service-worker caching behaves as intended, or that performance targets are met. No portrait screenshots or measured device benchmarks are attached. Tile loading still requires a network connection for uncached geography. No permanent test suite was added (0 added, 0 removed, net 0).
 
-**Current released build limitations:** PR #9 deployed Task 002 but the first owner phone test found movement blocked and original sprite quality unacceptable. Corrective PRs #10/#12 and eight-way/scale/control PR #13 are merged in `preview`, not yet on `main`; none has passed owner phone acceptance. No battles, captures, wallets, blockchain or backend exist.
+**Current released build limitations:** the first Task 002 phone test found movement blocked and the old sprite unacceptable. The subsequent corrections, camera controls, and occlusion adaptation are now merged to `main` (PR #25) and deployed, but have not yet passed the owner's new phone acceptance. No battles, captures, wallets, blockchain or backend exist.
 
 ### Task 002 — Walking trainer, geographic joystick, direction-following camera (2 November 2026)
 
@@ -184,7 +185,7 @@ This section records **requirements evolution** separately from actual implement
 
 **Task 003 — Geographic visual audit and E0 map readability:** assess dense and sparse OpenFreeMap regions for invented/missing geometry, improve deterministic facade variation and avatar/building occlusion using existing source tiles, and tune performance on mid-range phones. Keep creatures and blockchain deferred until E0 acceptance.
 
-**Release workflow (DEC-022):** Feature PR → `preview` → successful push CI → trusted main-context workflow rebuilds both PWAs and deploys only `/bitmon/preview/` code changes; Stable root always rebuilds from unchanged `main`. Once phone-approved, separate reviewed `preview` → `main` PR changes Stable gameplay. Bootstrap requires a small **infrastructure-only reviewed main release** before the first automatic Preview URL exists.
+**Release workflow (DEC-022):** Feature PR → `preview` → successful push CI → trusted main-context workflow rebuilds both PWAs and deploys only `/bitmon/preview/` code changes; Stable root always rebuilds from unchanged `main`. Once phone-approved, separate reviewed `preview` → `main` PR changes Stable gameplay. The infrastructure-only release has already been completed; both Preview and Stable Pages URLs are deployed.
 
 ### Task 002 corrective response — phone report (2 November 2026)
 
@@ -196,7 +197,7 @@ Owner requested reducing the building-scale trainer to normal-human proportions,
 
 ### Dual-channel PWA testing — deployment infrastructure (2 November 2026)
 
-The owner identified that requiring an untested gameplay PR to merge into `main` before phone validation defeats the `preview` release gate. DEC-022 defines **two installable PWAs on one GitHub Pages domain**. Source branch `preview` can be tested in the `/bitmon/preview/` app after successful review/CI; stable `/bitmon/` remains compiled from `main` until separate release approval. Main-only Pages environment protection is retained by using the default-branch `workflow_run` context. Separate PWA manifest identities, service-worker scopes, CacheStorage prefixes and a preview visual label/icon are part of the infrastructure. Manual verification of both installations and updates is outstanding; do **not** claim either channel is live before the main infrastructure PR's deployment succeeds.
+The owner identified that requiring an untested gameplay PR to merge into `main` before phone validation defeats the `preview` release gate. DEC-022 defines **two installable PWAs on one GitHub Pages domain**. Source branch `preview` can be tested in the `/bitmon/preview/` app after successful review/CI; stable `/bitmon/` remains compiled from `main` until separate release approval. Main-only Pages environment protection is retained by using the default-branch `workflow_run` context. Separate PWA manifest identities, service-worker scopes, CacheStorage prefixes and a preview visual label/icon are part of the infrastructure. The two channels have successful Pages deployments; manual verification of independent installed-app identities, offline shell and future updates is still outstanding.
 
 ### Owner Preview issues and Task 002 follow-up — 2 November 2026
 
@@ -208,7 +209,7 @@ The owner requested that only the top and bottom 10% of the portrait viewport re
 
 ### Toolchain refresh audit — 2 November 2026
 
-The owner requested checking and updating stale tooling. Node 22 CI is replaced by **Node 26 Active LTS**, with a root `.nvmrc` and package engine boundary; TypeScript 5.9.3 is upgraded to 7.0.2; MapLibre GL JS 6.16.0 and Vite 8.3.5 are confirmed current and exact-pinned. GitHub Actions checkout/setup-node are upgraded from v4 to v7, and Pages artifact/setup/deploy actions to v5/v6/v5. Current runner and task build compatibility require CI; a Pages workflow in `preview` is not active until a separate release into `main`. There is no tracked lockfile; dependencies remain installed with npm, so transitive updates are not yet reproducibly pinned. No gameplay or map source changes are caused by this audit.
+The owner requested checking and updating stale tooling. Node 22 CI is replaced by **Node 26 Active LTS**, with a root `.nvmrc` and package engine boundary; TypeScript 5.9.3 is upgraded to 7.0.2; MapLibre GL JS 6.16.0 and Vite 8.3.5 are confirmed current and exact-pinned. GitHub Actions checkout/setup-node are upgraded from v4 to v7, and Pages artifact/setup/deploy actions to v5/v6/v5. Current runner and task build compatibility require CI; a Pages workflow in `preview` is not active until a separate release into `main`. That initial upgrade did not include a tracked lockfile. PR #26 (3 November) now proposes npm lockfile v3 and `npm ci` for reproducible installs; see the maintenance entry below. No gameplay or map source changes are caused by this audit.
 
 ### Preview camera soft-follow refinement — 2 November 2026
 
@@ -221,3 +222,9 @@ The top-right camera selector is now a hamburger button (44 × 44 CSS px) with a
 ### Building occlusion visibility correction — 2 November 2026
 
 The owner requested not drawing the player visibly through buildings. The camera instead adjusts pitch toward top-down only if a source building intersects the line of sight from trainer to camera; exact source footprint edges and MapLibre extrusion `render_height`/14 m fallback supply a conservative clearance pitch. The camera gradually restores its normal 45° angle after clearing the obstruction. The DOM trainer is hidden while adjusting to avoid a transient through-wall overlay. This is a camera/view rule; it must not change the OpenFreeMap footprint, geographic position, collision tests, heading controls, or zoom. Smartphone acceptance, dense-city performance, and difficult geometry cases remain unverified.
+
+### Reproducible builds and controlled PWA updates — 3 November 2026
+
+The owner approved only **maintenance items 1, 2, 4 and 5**. [PR #26](https://github.com/s3ton/bitmon/pull/26) was created from `preview` and targets `preview`; it does **not** authorize a merge into `main`. Implementation adds a Node 26-generated `package-lock.json` (npm v3 lockfile; 87 entries at generation), switches the `check.yml` and `pages.yml` installers to `npm ci`, and stamps the production service worker from a digest of the emitted application shell. Existing per-channel cache isolation remains in place. A waiting update shows a Reload button; the player chooses when the page activates the new worker. First installs activate automatically. The offline shell is cached; uncached OpenFreeMap tile requests are still not supported offline.
+
+**Verification boundary:** GitHub PR build must pass `npm ci --no-audit --no-fund`, `npm run check`, and `npm run build`. Device testing remains required for installed Preview update notice, reload, offline shell and channel isolation. The revised `pages.yml` runs from `main` and is not active there unless separately released. No permanent automated tests were added or removed (net 0); the existing `tsc` and Vite build are the minimal repository checks. No geographic data, collision, movement or visual world rules were changed. No stable promotion is authorized.
