@@ -657,20 +657,20 @@ Do not choose the chain solely on the price of a token transfer. Benchmark a **r
 
 ### Critical invariants for test and audit
 
-1. A trainer has at most one active canonical state lineage, **beginning at a registered genesis commitment before its eligible encounter rounds**.
-2. Every rewarded epoch is eligible, unique, authenticated, after registration/finality/activation, and within budget; demo encounters can never settle.
+1. Local single-player saves never silently become canonical; each opted-in trainer has one active verified lineage **beginning at registered genesis before eligible encounter rounds**.
+2. Every verified rewarded epoch is eligible, unique, authenticated, after registration/finality/activation, and within budget; local-only encounters can never settle as canonical.
 3. Every time-limited rare claim was included by the deadline and matches its later proof.
 4. New XP and inventory follow the deterministic rules exactly.
-5. A creature has at most one canonical owner.
+5. A verified creature has at most one canonical owner; only legitimate fresh-beacon Rare/Legendary catches with timely self-funded proofs can create individual NFTs.
 6. The only ownership change path is the swap contract (or time-locked control rotation); standard token transfers fail.
 7. Every swap is same-tier, 1-for-1, atomic, and sets both levels to the lower of the two.
 8. A trainer's swap count in any rolling 24 hours is at most one, and wallet rotation never resets it.
 9. No path converts one tier into another.
-10. A gym transition is valid only if the proof matches the active defense snapshot/hash at submission and every creature on both teams has the gym's permanent assigned type (including dual-type matches).
+10. A gym transition requires the active defense snapshot, same gym type on every team member, NFT-minted ownership for all Rare/Legendary participants and authenticated inventory ownership for Common/Uncommon.
 11. A gym's assigned type is immutable after creation; leadership transfers and defense-team updates cannot change it or introduce additional gym-specific eligibility restrictions.
-12. A sponsor cannot change a game action, replay an authorization, or grant an invalid proof.
+12. A Digital Gold operator cannot change an action, replay an authorization, grant an invalid proof or sponsor a registration/NFT mint/NFT trade. Contracts cannot depend on its ledger.
 13. An invalid proof, malformed beacon round, or mismatched rules version always fails.
-14. Any player with gas and a valid proof can progress without an advertising account.
+14. Any player with gas and a valid proof can register, mint, trade and submit gym challenges/victories from independent clients without Digital Gold; official UI exclusivity is not a protocol rule.
 15. Content distribution and contracts cannot silently replace the canonical rules with a developer-controlled mint path.
 
 ---
@@ -695,7 +695,7 @@ Deliverables:
 
 ### Phase 1 — Fun local single-player prototype
 
-**Goal:** Build and balance the local RPG engine before integrating blockchain settlement; a separate guest demo can exercise it without verified progression.
+**Goal:** Deliver the complete free local single-player RPG before introducing opt-in verified multiplayer.
 
 Deliverables:
 
@@ -704,7 +704,7 @@ Deliverables:
 - Local save with export/import and clear pending-state UI.
 - Deterministic simulation test vectors across browser/VM platforms.
 
-**Exit criterion:** Players can exercise the gameplay loop in a labeled local **demo** without a wallet, ads, or a server; no demo save is treated as a verified collection. Verified onboarding is introduced in Phase 2.
+**Exit criterion:** Players can play and save the complete local RPG without wallet, ads or server; this save remains intact on multiplayer opt-in, but old unverified Rare/Legendary cannot become verified NFTs.
 
 ### Phase 2 — Verified progression prototype
 
@@ -712,14 +712,14 @@ Deliverables:
 
 Deliverables:
 
-- Permissionless **registration-first** onboarding, with genesis commitment and eligibility only for future beacon epochs after finality/safety buffer.
+- Permissionless, **self-funded opt-in registration** before verified future beacon epochs, with local single-player remaining independently playable.
 - Beacon-based epoch assignment and personalized spawn mapping; explicit tests rejecting every pre-registration/guest encounter, including attempted retroactive imports.
 - ZK engine for a bounded set of encounters.
 - On-chain verifier and accepted state roots/nonces.
-- Expiring rare-encounter reservation transaction.
+- One timely, self-funded **Rare/Legendary ZK catch claim and NFT mint**, with no separate pre-capture reservation.
 - Direct self-paid settlement on a public testnet.
 
-**Exit criterion:** A new player registers before receiving verified encounters; independently reproduce and reject fraudulent proofs, retrospective/guest imports, replays, rerolls, and missed rare deadlines.
+**Exit criterion:** A player opts in before any verified encounter; old local Rare/Legendary cannot be imported or minted; fraudulent proofs, replays, rerolls and missed claim deadlines fail.
 
 ### Phase 3 — Swaps and gyms
 
@@ -727,8 +727,8 @@ Deliverables:
 
 Deliverables:
 
-- Restricted-transfer creature assets and the swap contract (same tier, level reset, 1/day).
-- Gym registry with permanent assigned types, same-type NPC genesis leaders, type-checked challenge proofs, delayed defense-team updates, and defense trade-locks.
+- Self-funded, restricted-transfer **Rare/Legendary NFTs** and their same-tier swap contract (level reset, 1/day); Common/Uncommon remain authenticated non-NFT inventory.
+- Gym registry with permanent types, matching NPC leaders, pre-battle commitment, verified ownership/type-checked post-win proof, on-chain fame, delayed defense updates and trade locks.
 - Recovery, key rotation, and encrypted backup design.
 - Optional prover services, alternate RPC/indexers, and mirrored PWA hosting.
 - Testnet audit, stress testing, and an adversarial test for bypassing the swap rules.
@@ -737,16 +737,17 @@ Deliverables:
 
 ### Phase 4 — Independent sponsorship integration
 
-**Goal:** Remove fee friction without turning the sponsor into a game authority.
+**Goal:** Introduce ad-earned Digital Gold only for official gym actions without making its operator an on-chain authority.
 
 Deliverables:
 
-- Standard sponsorship request schema and paymaster/funder integration.
-- Single-use signed allowances, per-user quotas, and abuse controls (including registration limits).
-- At least one independent sponsor with a self-pay fallback.
+- Off-chain, non-transferable Digital Gold ledger earned only via verified opt-in rewarded ads, with no redemption or purchase.
+- Single-use **gym-only** sponsorship authorizations, credit reservation/consumption and anti-fraud/paymaster controls.
+- No Digital Gold for registration, minting, NFT swaps or PvP ownership settlement.
+- A separately tested self-funded gym contract pathway via independent clients, despite the official Digital Gold-only gym UI.
 - Advertising integration only after policy validation and privacy readiness.
 
-**Exit criterion:** Sponsor shutdown or denial does not stop self-paid valid settlements.
+**Exit criterion:** Sponsor shutdown does not prevent local single-player or permissionless self-funded registration, minting, trading and gym claims.
 
 ### Phase 5 — Public ecosystem
 
@@ -778,7 +779,7 @@ Track the game as a **game first**.
 | Performance | Client FPS, proof latency and memory on mid-tier mobile, settlement confirmation time |
 | Cost | Real gas per proof, claim, swap, registration, gym claim, plus prover costs |
 | Decentralization | Ability to self-pay, use alternate RPC/host, verify independently, survive sponsor outages |
-| Sponsor | Valid ad completion rate, realized revenue per action, invalid traffic rate, gross margin |
+| Digital Gold | Valid reward completions, realized ad proceeds, credits outstanding, gas/proof cost per gym operation, invalid traffic and net margin |
 | Safety and trust | Lost-save incidents, key recovery success, audit findings, clear pending/final status |
 
 Avoid using speculative trading volume as a success indicator. Do not build an in-game market.
@@ -796,13 +797,13 @@ Avoid using speculative trading volume as a success indicator. Do not build an i
 | Deterministic gyms are solvable | Outcome depends on search effort, not live play. | Option A for MVP; evaluate later options (Section 11.8). |
 | Gym type imbalance | Some gym types may have too few accessible creatures or limited strategic variety. | Ensure Common-tier options for every assigned type and balance the roster globally. |
 | Mempool front-running of gym claims | Leader could try to invalidate a challenger's proof by replacing the defense. | Delayed-activation defense-team updates; proof bound to the active snapshot. |
-| Rare claim timing | Too-short deadlines punish human players or network outages. | Reserve promptly, capture afterward; tune the window. |
+| Rare claim timing | Too-short deadlines punish human players or network outages. | Benchmark one self-funded proof-and-NFT-mint after capture, with mobile latency included; tune the window. |
 | Region hindsight | Public entropy enables post-hoc region choice. | Bind zone before reveal, or simplify. |
 | State availability | A root proves validity but does not restore missing user data. | Portable logs and encrypted redundant storage. |
 | ZK cost on phones | Local proofs may be slow. | Benchmark early; incremental proofs and optional outsourced proving. |
-| Registration-first onboarding cost | Players need a confirmed transaction before verified encounters; a 24-hour delay would also harm the first session. | Minimal transaction, optional sponsor, first safely eligible future epoch instead of a fixed 24-hour wait, and a separate guest demo. |
+| Verified opt-in cost | Registration is required for canonical fairness, but must not block free local single-player. | Clearly separate local versus verified lineages; self-fund registration before future eligible epochs. |
 | Registration spam and state bloat | Free accounts cost the chain storage. | Registration fee or bond; sponsor limits. |
-| Google rewarded-ad eligibility | Fee sponsorship may conflict with reward conditions. | Get explicit confirmation; preserve self-pay and other sponsors. |
+| Google rewarded-ad eligibility | Digital Gold sponsors on-chain gym actions even if NFTs participate; indirect monetary/platform rules remain unclear. | Get explicit approval; retain independent self-pay contract access and local gameplay. |
 | Legal classification | Restricted-transfer game assets still need review. | Jurisdiction-specific legal review before commercial launch. |
 | Blockchain dependency | An L2 may have sequencing or upgrade centralization. | Publish assumptions; support alternative access routes. |
 | Contract exploit or upgrade | Immutable mistakes can be permanent; unrestricted upgrades undermine trust. | Audits, narrow permissions, governed migrations. |
@@ -822,7 +823,7 @@ Avoid using speculative trading volume as a success indicator. Do not build an i
 - Gyms and swaps carry no financial prizes by design. If any monetary reward, fee, or marketplace is added later, reassess before launch.
 - Present creatures as game assets, not financial investments.
 
-The most robust business separation is **functional**: the sponsor has no governance, minting, verifier, or user-asset authority; the game never requires it; all interactions with the sponsor are optional.
+The separation is **functional**: the Digital Gold operator has no governance, minting, trading, verifier or asset authority. The official gym UI uses its credit, but the underlying contracts and local gameplay never depend on it.
 
 ---
 
@@ -830,15 +831,15 @@ The most robust business separation is **functional**: the sponsor has no govern
 
 1. **Swap economics:** exact tier definitions, whether sub-tiers are needed, and whether to add a post-swap lock.
 2. **Level-reset details:** which properties reset, which stay bound, and which are fixed innate traits.
-3. **Registration onboarding:** exact safe activation epoch/finality buffer, minimum self-pay cost, whether to provide a sponsor at launch, and whether the optional guest demo is worth maintaining. Registration **before verified play** and non-retroactivity are now fixed design decisions.
+3. **Verified opt-in:** safe activation epoch/finality buffer, self-funded registration cost, and whether local Common/Uncommon can enter canonical starting rosters at published fixed attributes; old local Rare/Legendary remain ineligible.
 4. **Randomness / epoch schedule:** fixed global rounds versus account-relative opportunities, plus outage behavior.
 5. **Region selection:** how to bind zone before the spawn seed is known.
-6. **Rare-reservation policy:** which tiers require prompt claims and the deadline.
+6. **Rare/Legendary NFT claim policy:** single proof-and-mint deadline and all-in self-funded gas/proving costs; no separate reservation.
 7. **Gym design:** permanent type assignment per gym, available Common-tier creatures for each type, defense-policy format, team-update cooldown, and the Section 11.8 option.
 8. **Combat complexity:** keep initial deterministic mechanics ZK-efficient.
 9. **State representation:** inventory Merkle structure, swap escrow mechanics, checkpoint lineage.
 10. **Proof toolchain:** select and benchmark a circuit/zkVM and verifier on candidate networks.
-11. **Sponsorship:** build self-pay first; ask Google or alternatives to review the full reward mechanism.
+11. **Digital Gold:** measure pre-gym/post-win costs, set ad credit pricing, and obtain provider-specific approval; keep self-funded gym contract calls independently possible.
 12. **Governance:** immutable game version or a transparent, narrow migration process.
 13. **Legal boundaries:** confirm requirements for a separate sponsor business and a community-run game.
 
@@ -873,8 +874,8 @@ External references for feasibility and policy checks, not endorsements.
 
 ## Final vision statement
 
-**bitmon is a permissionlessly registered, locally played game whose verified collection cannot be fabricated by modifying a client, and whose rules make farming pointless instead of trying to police who is human.** Its core innovation is a verifiable single-player progression protocol with personalized public randomness, limited time-based opportunities, deterministic capture, same-tier creature swaps, and player-led gyms where the reward is fame.
+**bitmon is a full local single-player game with opt-in, permissionlessly registered verified multiplayer whose canonical collection cannot be fabricated by modifying a client.** Its core innovation is a verifiable single-player progression protocol with personalized public randomness, limited time-based opportunities, deterministic capture, same-tier creature swaps, and player-led gyms where the reward is fame.
 
-Independent companies may build businesses around the protocol—gas sponsorship, wallet tools, gym explorers, proving services, or game portals—without becoming owners of the rules. The original developer can stop operating, and the game can still exist as software, smart contracts, and a collection of independently verifiable player states.
+Independent companies may build optional Digital Gold gym-funding services, wallet tools, gym explorers, proving services, or game portals without becoming owners of the rules. The original developer can stop operating, and the game can still exist as software, smart contracts, and a collection of independently verifiable player states.
 
-The first milestone is **not** launching a marketplace or signing up with Google. It is proving that the cheapest honest player journey works: **register a trainer before any verified encounter**, obtain a fair rare spawn, claim it before expiration, capture it with valid actions, generate one proof, finalize the creature with a self-paid transaction, swap it for a same-tier creature, and take a gym. Everything else builds on that core.
+The first milestone is **not** launching a marketplace or signing up with Google. Prove a complete local RPG, then a voluntary verified opt-in: register before fresh randomness, catch a legitimate rare creature, self-fund one timely proof/NFT mint, battle with it or swap it under the restrictions, and prove a gym victory that records on-chain fame. Digital Gold funds only official gym operations; the protocol must also work with independent self-funded callers.
