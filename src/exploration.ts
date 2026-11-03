@@ -599,6 +599,12 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     keys.clear()
   })
   window.addEventListener('pagehide', () => { if (hasPlacedSpawn) persistProgress(true) })
+  map.on('sourcedataloading', (event) => {
+    if (event.sourceId === 'openmaptiles' && event.coord) {
+      const { z, x, y } = event.coord.canonical
+      decodedTiles.delete(z + '/' + x + '/' + y)
+    }
+  })
   map.on('sourcedata', (event) => {
     if (event.sourceId !== 'openmaptiles') return
     let newlyDecoded = false
