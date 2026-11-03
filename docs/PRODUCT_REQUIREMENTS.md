@@ -230,9 +230,9 @@ The game should not require disclosure of the player's real-world location merel
 
 ### ENC-01 — Local versus online encounters
 
-- **Unauthenticated, offline gameplay generates Common and Uncommon wild encounters only** using device \`crypto.getRandomValues()\` and a reproducible versioned battle random stream; keep local seeds/counters in IndexedDB. No cached Rare/Legendary lottery tickets exist offline.
+- **Unauthenticated, offline gameplay generates Common and Uncommon wild encounters only** using device `crypto.getRandomValues()` and a reproducible versioned battle random stream; keep local seeds/counters in IndexedDB. No cached Rare/Legendary lottery tickets exist offline.
 - **Rare/Legendary availability requires a live online session authenticated through Supabase Auth.** An online Cloudflare Worker issues one immutable, expiring encounter opportunity under account/global cooldown and approved virtual travel/time eligibility; it binds location/region before a secret secure random draw.
-- The server stores \`encounter_id\`, trainer ID, opportunity counter, location key, rules version, server random result and expiry in Cloudflare D1. Repeated/parallel/reconnected requests return the same result; losing a battle doesn't allow a free reroll.
+- The server stores `encounter_id`, trainer ID, opportunity counter, location key, rules version, server random result and expiry in Cloudflare D1. Repeated/parallel/reconnected requests return the same result; losing a battle doesn't allow a free reroll.
 - The browser may animate the fight locally, but **only server-validated actions and chance rolls** can produce a verified Rare/Legendary creature. Client-supplied rarity, save file, arbitrary win transcript or spoofed time does not count.
 - Supabase isn't queried for normal offline training and stores no game inventory.
 
@@ -262,7 +262,7 @@ The game should not require disclosure of the player's real-world location merel
 - Display local-only and verified-online ownership clearly. Guest saves survive login and app restarts, but are **not** proof of authenticity. Exact initial authenticated starter roster is an open decision; do not import arbitrary guest XP/levels.
 - Normal Common, Uncommon, Rare and Legendary creatures are **database game assets**. None needs an NFT to fight, progress, trade or qualify for gym and ordinary PvP once verified online.
 - The online authoritative inventory, XP, trade locks, species, abilities, ownership and gameplay history are written only by Cloudflare server logic to D1.
-- Truly unique event monsters are marked as unminted entitlements or minted linked NFTs. After minting, current contract \`ownerOf\`, checked with wallet signature, decides who may use that creature in-game.
+- Truly unique event monsters are marked as unminted entitlements or minted linked NFTs. After minting, current contract `ownerOf`, checked with wallet signature, decides who may use that creature in-game.
 
 ### GAME-02 — Combat and capture
 
@@ -291,7 +291,7 @@ The game should not require disclosure of the player's real-world location merel
 
 ### PVP-01 — Casual direct battles without hosted simulation
 
-- Casual guest/unranked player battles use a WebRTC \`RTCDataChannel\` to exchange match invite, parties, versioned rules, actions and deterministic outcome confirmations.
+- Casual guest/unranked player battles use a WebRTC `RTCDataChannel` to exchange match invite, parties, versioned rules, actions and deterministic outcome confirmations.
 - Use a lightweight signaling endpoint (Cloudflare Worker) for discovery/ICE exchange; STUN allows peer connectivity in many cases, and a TURN relay is necessary when direct connectivity fails. No continuous Cloudflare battle process is necessary for these matches.
 - Peers commit to their choices/seeds before revealing when turn order or randomness could be manipulated; check deterministic transcript hashes. **Client cheating, disconnects and withholding reveal remain possible.** Such battles award no canonical rarity, gym fame, transferable NFT or official leaderboard points.
 - If ranked/rewarded PvP is introduced, authenticate users and add authoritative arbitration/result verification; do not call direct peer agreement a secure ranked system.
@@ -382,7 +382,7 @@ The game should not require disclosure of the player's real-world location merel
 - **Touch is mandatory** for all player-facing interactions; text, overlays, actions and maps must fit common **portrait smartphone** screens. Keyboard controls are optional for developers.
 - Use clear contrasts and symbolic cues alongside type colors, especially for color-vision accessibility.
 - Important game interactions do not rely on tiny map markers or precise pixel tapping.
-- Show map loading, offline/unavailable regions, wallet failures, slow proofs, and transaction finality explicitly.
+- Show map loading, offline/unavailable regions, optional login errors, verified encounter expiry, gym reconnect status, and delayed Hall-of-Fame publication clearly.
 - Do not place interactive content where map attribution, safety messaging, or critical UI overlays become hidden.
 - The visual style should support localization and geographic names in different languages and scripts where data permit.
 
