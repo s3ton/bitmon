@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import './style.css'
 import { startExploration } from './exploration'
 import { registerPwa } from './pwa'
-import { MAP_CACHE_LIMIT_MB, offlineMap, savedPosition } from './offline-map'
+import { MAP_CACHE_LIMIT_MIB, offlineMap, savedPosition } from './offline-map'
 
 setWorkerUrl(workerUrl)
 addProtocol('bitmon', async (params, controller) => ({
@@ -111,7 +111,7 @@ const zoomValue = document.querySelector<HTMLOutputElement>('#zoom-value')!
 const cacheStatus = document.querySelector<HTMLElement>('#offline-cache-status')!
 offlineMap.setStatusListener((bytes, persistent) => {
   cacheStatus.textContent = persistent
-    ? 'Offline map: ' + (bytes / 1024 / 1024).toFixed(1) + ' / ' + MAP_CACHE_LIMIT_MB + ' MB'
+    ? 'Offline map: ' + (bytes / 1024 / 1024).toFixed(1) + ' / ' + MAP_CACHE_LIMIT_MIB + ' MiB'
     : 'Offline map storage unavailable'
 })
 
