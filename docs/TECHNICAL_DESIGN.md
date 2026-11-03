@@ -140,35 +140,33 @@ The **same publicly authenticated randomness value** is distributed to all clien
 
 **Official ranked/rewarding PvP (future option):** require Supabase login and server-validated rosters/results, a server arbiter or an auditable action transcript with independent server adjudication, disconnection penalties, and explicit ranking rules. A minimal Worker/DO match arbiter could be added if ranked PvP proves valuable; **do not deploy an always-on PvP simulation server for casual matches**. No NFT requirement for ordinary PvP.
 
-## 7. Gyms: WebSocket-only Cloudflare Durable Objects
+## 7. Gyms: free FIFO reservation queue, one WebSocket battle at a time
 
-One **SQLite-backed Durable Object per gym ID** is authoritative for the gym's permanent type, leader/version, defense policy, active challenges and win ledger. Its WebSocket Hibernation API allows it to sleep between events while retaining accepted WebSocket connections. **All gameplay turns use this gym DO's WebSocket. There are no HTTP battle-turn routes, polling endpoints or HTTP fallbacks.** A WebSocket technically starts via HTTP Upgrade; the handshake/authentication routing is allowed, but no battle turn uses HTTP.
+One **SQLite-backed Durable Object per gym ID** owns the permanent type, current leader and defender policy, durable FIFO queue, exactly **one active official challenge**, win ledger and idempotent currency/event outbox. Its WebSocket Hibernation API allows clients to stay connected while the object sleeps between messages. All queue operations, invitations, turns and resume actions use **WebSocket messages**: **no HTTP battle-turn, queue-status or polling fallback**. The only unavoidable HTTP interaction is the initial WebSocket Upgrade handshake.
 
-### 7.1 Starting and processing a challenge
+### 7.1 Free queue and paid activation
 
-1. A player signs in and opens the gym WebSocket routed directly to its DO; an auth gate verifies Supabase identity. A client may also obtain ordinary leaderboard metadata without an active battle.
-2. The player selects a team from allowed gym-type species/templates. **Every combat-relevant value—level, stats, moves, items, abilities and per-team caps—is replaced with published server-approved loadout rules.** Locally edited Common/Uncommon stats and inventory cannot grant advantage. Rare/Legendary eligibility uses canonical online ownership, and one-of-one event monsters require a current on-chain owner check.
-3. The DO creates an idempotent session with the current **leader_version** and immutable defender snapshot, reserves/debits Digital Gold **once** through an authenticated D1 currency operation, and durably stores its charge/session state. Cross-store updates use an idempotent outbox/compensating refund; do not assume a transaction spans DO SQLite and D1.
-4. The WebSocket delivers commands and state updates. The DO validates actions, computes one turn with server randomness and a shared deterministic combat engine, persists the transition to its own SQLite before acknowledging it, then can sleep. On reconnect the same authenticated player reattaches to the existing session and reads authoritative state **over WebSocket only**. Disconnection expiry uses durable alarms, not in-memory timers.
+1. After Supabase login, the client connects to the gym DO by WebSocket. Join/leave/inspect/resume queue is free. Enforce **one queued or active position per trainer per gym**, FIFO order and a bounded queue size; persist membership, join order, last-known session and any expiration in the DO's SQLite. A trainer can continue normal map exploration while queued.
+2. If the gym is idle, the head of the queue receives a **time-limited start offer**, not an immediate Digital Gold debit. If the player is disconnected/backgrounded, a briefly resumable queue position may receive its offer after reconnect; the offer itself is not charged. An absent/declining player loses the opportunity after an acceptance deadline without paying and the DO offers the next trainer. Maintain fair FIFO; no indefinite hold by absent accounts.
+3. On **explicit WebSocket acceptance**, the DO uses server-authoritative identity and published gym-legal species/loadout templates. Local Common/Uncommon levels, moves, items, abilities and stats are replaced by fixed allowed values; Rare/Legendary ownership comes from verified D1 records and unique event NFT access requires current owner verification.
+4. **At actual match start**, atomically create the active battle in DO SQLite against **the current leader and latest defender snapshot**, and initiate/confirm **exactly one** Digital Gold debit in D1 using a unique idempotency key. A cross-store transaction is impossible; use a short **pending-start** state plus retryable debit/outbox/compensating refund so a user is never charged for a battle that was never activated and duplicate accepts cannot double-charge. Only mark the match active and send the first turn after the debit is confirmed.
+5. Each WebSocket action checks active trainer/session/turn/rules and versioned server RNG, computes one deterministic transition with the shared combat engine, and persists it in gym SQLite **before acknowledging**. Ordinary idle time does not require continuous DO execution; alarms enforce deadlines.
 
-### 7.2 Concurrent challenges: parallel battles, single winner
+### 7.2 Sequential leadership: no stale concurrent battles
 
-**Multiple users may fight the same frozen defender snapshot concurrently.** Do not queue every player behind a single active match: a popular gym could otherwise block players for hours. The gym DO may impose a bounded active-session count and at most one active official challenge per trainer, determined by real device/load testing.
+- **Exactly one active paid official challenge per gym**, including during reconnect grace. There can be many free queued trainers, but they do not fight stale defense versions in parallel.
+- A legitimate win immediately replaces the leader, increments the version and appends one unique victory ID inside the DO. The D1 leaderboard receives an idempotent projection, and a company-funded asynchronous on-chain Hall-of-Fame publisher processes the unique win after the ordinary game result.
+- A loss, surrender or active-battle timeout ends that match and advances the queue; the next accepted challenge uses **whatever leader/defender is current when it starts**. No paid challenger has their battle invalidated because another player won.
+- Player disconnect: keep the paid battle state durably for a **bounded reconnect window**, then use a scheduled alarm to forfeit if the player does not return. Disconnected queue users are not charged, have a short published resume/offer policy, and cannot block an active gym indefinitely.
+- Refunds are **not** part of normal gym concurrency. Refund only for genuine platform failures such as an idempotent D1 debit succeeded but DO session creation failed. Do not allow intentional disconnect/surrender to reverse a valid paid attempt.
+- Popular gyms can have long queues. Define maximum queue length, offer acceptance window, active turn/battle timer and reconnect grace as balance/operational parameters. Display actual queue position; do not invent precise waiting-time estimates. Consider scheduled tournaments separately only if congestion becomes a demonstrated issue.
 
-- Each session stores `leader_version` and the defense snapshot captured at entry.
-- The DO serializes victory settlement: **the first valid completed victory whose `leader_version` still equals the gym's current version** becomes leader. Atomically increment the leader version and append exactly one unique win ID in the DO's SQLite state.
-- Other challenges targeting the replaced version **cannot overwrite** the winner. Mark those overlapping sessions **superseded**, notify clients over their WebSockets, and **refund their Digital Gold** once through the idempotent ledger. A superseded session grants no loss and may be replayed as a new attempt against the new leader. A genuine defeat completed against the then-current version still consumes the normal attempt cost.
-- If multiple results arrive nearly simultaneously, the DO's serialized durable order is authoritative; never use browser clocks, winner claims or last-write-wins in D1 to choose a champion.
-- On disconnected/abandoned matches, publish a modest timeout, release stale sessions and apply the normal forfeiture policy; **refund only server-error/cancelled/superseded charges**, not deliberate disconnects to avoid a loss.
-- The D1 leaderboard is a **projection**, not a second leader authority; the DO sends idempotent leader-change events through an outbox. An eligible win is queued once for Bitmon-funded asynchronous on-chain Hall-of-Fame publishing; chain delay/failure never blocks the gym.
+### 7.3 WebSocket hibernation and protocol
 
-### 7.3 Hibernation and protocol
-
-- Use `ctx.acceptWebSocket()`, WebSocket message/close handlers, serialized socket attachments, and durable SQLite for leader, session, turns, random seed/counters, currency/outbox and winner history. Restore all required state when a hibernating DO wakes.
-- Do **not** use `ws.accept()`, per-turn HTTP endpoints, synchronous polling, or timers that keep the DO continuously active. Use Durable Object alarms for session timeout and retry scheduling.
-- A disconnected client reconnects the WebSocket to the same DO with a signed authenticated resume token/session ID. If no WebSocket can be established, the official challenge waits or expires according to the rules; **there is no fallback transport**.
-- Cloudflare request handling still carries the **initial HTTP Upgrade** required to create a WebSocket. The no-HTTP rule refers specifically to the transport for gameplay turn messages.
-- Publish the leader-version race, refund/expiry policy and disconnection behavior before launch so players understand contested gyms.
+- Use `ctx.acceptWebSocket()`, persistent SQLite records for queue, offered-turn state, active session, turn history, deterministic RNG seed/counter, leader/version, timeout alarms and an idempotent D1/outbox record. Socket attachments contain only reconnect identity/routing; never keep the sole copy of a confirmed action in memory.
+- On wake/redeploy, reconstruct the queue/active battle from SQLite; reconnecting clients reauthenticate and receive authoritative queue or match state **over WebSocket only**. Browser-background suspension is expected, not treated as permanent connectivity.
+- Avoid per-client polling, HTTP gameplay turns and timers that keep the DO active. Durable Object alarms handle offer/forfeit expirations and retryable outbox work.
+- A failed WebSocket connection means a gym challenge is unavailable until WebSocket connection is restored; **there is no HTTP fallback**. TURN (for casual WebRTC PvP) is unrelated to this transport.
 
 ## 8. Digital Gold, monetization, and legal review
 
