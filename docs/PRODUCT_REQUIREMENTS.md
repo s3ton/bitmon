@@ -49,20 +49,20 @@
 
 ### Working assumptions / still open
 
-- Virtual joystick movement, not mandatory physical GPS. Coordinate jumps and edited offline movement are accepted; basic server-clock lottery throttling avoids unlimited rare rolls without trying to certify meters traveled.
+- Virtual joystick movement, not mandatory GPS. Coordinate jumps and editable offline movement are accepted; public-beacon eligibility is one fixed hash per trainer per period rather than a server-clock per-encounter throttle. Multi-account farming remains an acknowledged risk.
 - Browser Web Crypto seeds schedule encounters after randomized distances of a few meters and make local combat reproducible on reload. These improve offline continuity, not tamper resistance.
-- Exact randomized encounter-distance interval, server lottery cooldown, rarity odds, region modifiers, rejoin expiry and online rare battle action validation need balancing; the per-eligible-encounter probability rule is fixed.
+- Exact randomized ordinary encounter distance, **beacon period duration**, Rare/Legendary per-period thresholds, claim/spawn windows, beacon outage behavior and online capture verification require balancing. Previous per-encounter rarity odds do not directly carry over.
 - No guest-to-online inventory migration is required for gym eligibility: permitted Common/Uncommon species use fixed authoritative gym templates. Exact cosmetic roster appearance and rare/unique ownership rules still apply.
 - Digital Gold credit rate, free allocation if needed, ad-network approval, optional subscription terms and consumer/privacy compliance are open.
-- Matchmaking, WebRTC TURN relay costs, PvP cheating tolerance, gym simultaneous-session limits, refund deadlines and chain privacy need implementation validation. TURN has nothing to do with HTTP gym turns.
+- Matchmaking, WebRTC TURN relay costs, PvP cheating tolerance, **gym queue capacity, offered-turn timeout, reconnect grace** and chain privacy need implementation validation. TURN remains unrelated to gym battle turns.
 - Legal status of unique NFTs requires case-specific review; "one-of-one" is not an automatic MiCA exemption.
 
 ## 3. Who the player is and what they do
 
 1. **Start playing:** Open the PWA and explore cached OpenFreeMap tiles, train and capture Common/Uncommon locally without registration.
-2. **Opt into online encounters:** Log in using Supabase Auth to receive server-issued Rare/Legendary encounter opportunities. Cloudflare decides the spawn and verifies the capture; the resulting normal creature lives in the online D1 collection.
+2. **Opt into the rare lottery:** Log in using Supabase Auth to establish a stable eligible trainer ID. Each period, the device checks the shared beacon and computes its result locally; only winners contact Cloudflare for an expiring rare encounter. Captured Rare/Legendary creatures live in D1.
 3. **Keep local and canonical data distinct:** Local saves persist; edited/offline stats cannot silently become authoritative inventory. A new verified starting roster may be granted under published rules.
-4. **Challenge a gym:** Sign in, spend Digital Gold earned from eligible optional rewarded ads, and fight a server-owned gym defender. Practice is free.
+4. **Challenge a gym:** Sign in and join the **free WebSocket queue**. Keep exploring while waiting. Accept the turn offer and spend Digital Gold **only when the battle starts** against the then-current defender. Practice remains free.
 5. **Become gym champion:** Win a verified match; the familiar leaderboard updates immediately. Bitmon later publishes public on-chain fame without asking for a wallet or crypto.
 6. **Fight friends:** Connect over WebRTC for unranked casual PvP without a hosted battle simulation; some network environments need TURN, and no authoritative rewards depend on the result.
 7. **Trade normal monsters:** Use authenticated server-side restricted inventory swaps, not NFTs.
@@ -226,32 +226,34 @@ A 1:1 Earth cannot be practical to explore exclusively by walking at a human-sca
 
 The game should not require disclosure of the player's real-world location merely to explore a geographic map. If an optional “go to my location” control is later added, request permission transparently and keep physical-location data separate from the authenticated game profile unless deliberately specified and reviewed. **No mandatory GPS or proof-of-physical-presence rule is approved in this PRD.**
 
-## 7. Encounters, regions, and fair randomness
+## 7. Encounters, regions, and public randomness
 
-### ENC-01 — Every few meters, an encounter
+### ENC-01 — Wild encounters every few meters
 
-- Using local device randomness, schedule Common/Uncommon wild encounters after a randomized **few meters** of accepted virtual avatar exploration, not a fixed meter interval. Preserve the distance accumulator, next threshold and battle seed on reload.
-- **Offline or not signed in:** Only Common or Uncommon appears. Use their relative weights in the local selection. A Rare or Legendary cannot be obtained from a local-only encounter.
-- **Online and signed in:** Each **server-eligible** encounter runs one server-owned lottery across **Common, Uncommon, Rare and Legendary**, using the same versioned rarity probabilities for every eligible online encounter. No separate elite-only lottery or hidden purchase. A local encounter triggering before the account's server lottery cooldown is complete remains Common/Uncommon-only.
-- No account is needed to walk, train, capture locally or practice gyms.
+- The device schedules ordinary Common/Uncommon wild encounters at random intervals of a few virtual meters. This works offline on cached maps, without login or a server, and local cheating is tolerated.
+- **Rare/Legendary availability is separate:** eligible signed-in trainers get one public-beacon lottery result **per fixed period**, not an additional random chance for every ordinary encounter. Normal encounters remain Common/Uncommon while online as well.
 
-### ENC-02 — Fair online lottery without movement policing
+### ENC-02 — Shared public-beacon lottery
 
-- Cloudflare authenticates the request, applies a minimal account-wide server-clock spacing limit to prevent automated unlimited **rare rolls**, and binds one immutable encounter ID/region before drawing using secure randomness. The result is persisted in D1; refreshes, reconnects, parallel tabs and failed capture attempts never reroll the same opportunity.
-- A region or habitat may affect **species**, using OpenFreeMap-only attributes. It must not let changing coordinates instantly multiply independent rarity rolls. If source geography cannot be reliably evaluated server-side, keep rarity odds region-independent initially.
-- We explicitly accept editable local Common/Uncommon saves and spoofed avatar movement. There is no GPS requirement or movement proof-of-presence protocol. Do not equate these relaxed rules with permission to fabricate the authoritative Rare/Legendary results.
+- Publish one fresh authenticated unpredictable public random value per period, preferably from a verifiable independent beacon; distribute through a cacheable public resource. Clients can check the same resource each period. **No per-player encounter WebSocket, no per-step movement reporting, no ordinary-encounter API call.**
+- Each trainer has a stable, opaque ID tied to a Supabase-authenticated account **established before the relevant beacon value is known**; new accounts become eligible in a subsequent period, not retroactively.
+- A published domain-separated hash of `(game/lottery version, period ID, immutable trainer ID, beacon value)` maps to **disjoint Rare and Legendary thresholds**. Each trainer has at most one possible rare-tier win per period. Neither arbitrary encounter counters, locations, new browser seeds nor chosen nonces can give extra draws.
+- A non-winner proceeds with local Common/Uncommon encounters and makes **no game-backend lottery request**. A winner logs in/uses their existing session to contact Cloudflare during a defined claim window. The server validates the beacon, trainer's historical eligibility, exact hash result and the once-per-`(trainer, period)` claim rule; creates one expiring authoritative ticket in D1, idempotently.
+- A winning ticket can cause the **next wild encounter** during the allowed period/claim window to become the authenticated Rare/Legendary battle. Cloudflare verifies actions and any capture before awarding the monster; expiry, loss and disconnection do not create an extra draw.
+- This is **one time-based lottery draw**, not the previous full-rarity roll on every few-meter encounter. Period length and thresholds must be calibrated to intended rarity as a function of player time, rather than copying per-encounter probabilities without adjustment.
+- GPS, physical travel and client movement integrity are not required; multi-account farming or checking periods while idle are accepted limitations. Any optional geographic species rule must not permit backdating a location after a seed is published.
 
-### ENC-03 — Online Rare/Legendary capture
+### ENC-03 — Rare/Legendary capture
 
-- Once the server lottery yields Rare or Legendary, issue one authenticated, expiring encounter ticket. The server validates legal battle moves, capture RNG and ownership before awarding a normal Rare/Legendary monster in D1.
-- Common/Uncommon encounters are ordinary local PvE. Online Rare/Legendary encounters must be online for ticket creation and authoritative capture; a disconnected pending ticket can only resume under its explicit expiry rules.
-- Normal Rare/Legendary creatures need no blockchain mint, ZK proof, gas, wallet or NFT.
+- Verified Rare/Legendary captures require a winning online period and one server-validated expiring encounter ticket. Cloudflare checks legal actions, battle/capture RNG, rules, owner and one-time consumption before writing the monster to D1.
+- Offline and non-winning periods still support normal Common/Uncommon captures without any login, blockchain or game-server contact.
+- No wallet, ZK proof, NFT or gas is required for ordinary rare monsters.
 
-### ENC-04 — Encounter rules and odds
+### ENC-04 — Public odds and continuity
 
-- Keep a **single published probability table for eligible online encounters**; do not change the agreed rarity weights merely because this uses a server lottery. The offline table is explicitly restricted to Common/Uncommon.
-- Draw local encounter distances from a bounded few-meter distribution and version the schedule. The exact meter distribution, probabilities and server lottery cooldown are tuning parameters, not yet numerical requirements.
-- Basic rate limits protect the authoritative server lottery, not the authenticity of walking. We tolerate cheating in noncompetitive local exploration.
+- Publish Rare/Legendary probabilities **per eligible trainer period**, along with the current period, hash algorithm and window/expiry rules. Local Common/Uncommon relative probabilities and random distance cadence remain separate.
+- A shared cached beacon requires a lightweight network fetch per period, but the expensive authenticated backend work is performed **only for winning claims and their battles**. A cache or origin miss still costs network resources; this is not a zero-request design.
+- If no valid current signed beacon is available, the client must not invent a win or backfill arbitrary previous periods. Local play continues; retry the shared public resource under a published outage policy.
 
 ## 8. Collection, progression and combat
 
