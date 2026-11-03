@@ -312,3 +312,12 @@ The same change replaces the worker's pairwise POI, landuse and footprint scans 
 **Known limits:** mapped shapes are unchanged, so spires stay flat-topped, domes stay stepped and the ironwork lattice is painted on solid parts. Archetypes are generic; there is no bespoke art per monument.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on the sampled landmark tiles confirmed grouping, group extents and timings, and the London tile still round-trips all 2,108 building polygons identically. Desktop browser review covered the Colosseum, Eiffel Tower, Sagrada Família and St Peter's. Phone appearance and performance remain unverified.
+
+
+### Coordinate teleport nearest-clear landing fix — 3 November 2026
+
+**Owner-reported regression:** Entering coordinates can visibly move the map to the requested destination and then immediately return to the previous location. The current teleport flow intentionally rolls back whenever the exact requested point is inside mapped building/water geometry. This is especially common for landmark or address coordinates that resolve to a building centroid, so the behavior reads as a broken teleport even though the destination map loaded correctly.
+
+**Correction:** Treat the entered coordinate as a destination anchor rather than requiring the exact point to be walkable. Reuse one shared nearest-clear-position routine for both startup relocation and teleportation: first project onto nearby loaded OpenFreeMap transportation lines and choose the closest valid point, then fall back to a 2 m radial search against the exact loaded building/water collision index. The search is bounded to 70 m. If no clear landing can be validated, preserve the existing rollback. Successful relocation updates the map, trainer, saved position and offline-cache player position, and reports the landing offset.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. No new test framework is justified for this interaction. Required automated validation remains the existing TypeScript/Vite PWA build. Manual device acceptance should verify (1) a clear coordinate lands exactly, (2) a coordinate inside a mapped building lands nearby and stays there, (3) unavailable/no-clear destinations still roll back, and (4) the relocated position persists after reload.
