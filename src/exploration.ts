@@ -162,6 +162,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   let heading = map.getBearing()
   let collisionAreas: CollisionArea[] = []
   let collisionOrigin: Position | null = null
+  const decodedTiles = new Set<string>()
   let hasPlacedSpawn = false
   let teleporting = false
   let stick = { x: 0, y: 0 }
@@ -196,13 +197,23 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     lastAppearance = appearance
   }
 
+  // Check only the tiles covering the collision neighborhood. Missing distant
+  // viewport tiles need not freeze walking, but incomplete nearby tiles must
+  // never replace verified building/water geometry with an empty result.
+  function neighborhoodReady(point: Position): boolean {
+    for (const east of [-COLLISION_RADIUS_METERS, 0, COLLISION_RADIUS_METERS]) {
+      for (const north of [-COLLISION_RADIUS_METERS, 0, COLLISION_RADIUS_METERS]) {
+        if (!tileReady(displace(point, east, north))) return false
+      }
+    }
+    return true
+  }
+
   // Use source WGS84 polygons, not screen-space extrusions or rendered pixels.
   function refreshCollision(): void {
-    // Missing peripheral tiles must not freeze an already-verified, cached tile.
-    // First spawn still waits for fully loaded source geometry.
-    if (!offlineMap.hasTileAt(position) ||
-      (!hasPlacedSpawn && !teleporting && !map.isSourceLoaded('openmaptiles'))) return
+    if (!neighborhoodReady(position)) return
     const areas: CollisionArea[] = []
+    const seen = new Set<string>()
     for (const layer of ['building', 'water']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
         const geometry = feature.geometry
@@ -219,6 +230,11 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           }
           if (bounds.maxLon < position.lon - .002 || bounds.minLon > position.lon + .002 ||
               bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
+          // MapLibre can return the same source polygon from multiple loaded tiles.
+          // Only deduplicate identical rings: clipped boundary fragments differ.
+          const signature = layer + ':' + JSON.stringify(rings)
+          if (seen.has(signature)) continue
+          seen.add(signature)
           // Match the height fallback used by the fill-extrusion layer.
           const sourceHeight = Number(feature.properties?.render_height)
           const height = layer === 'building' && feature.properties?.hide_3d !== true
@@ -305,10 +321,8 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
 
   function tileReady(candidate: Position): boolean {
     if (!validPosition(candidate) || !offlineMap.hasTileAt(candidate)) return false
-    // A stored neighbor still needs to be decoded into the current map view
-    // before its building and water footprints can be checked.
-    return tileKeyAt(candidate) === tileKeyAt(position) ||
-      (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded())
+    // A downloaded/stored PBF isn't safe until MapLibre has decoded the tile.
+    return decodedTiles.has(tileKeyAt(candidate))
   }
 
   function isBlocked(candidate: Position): boolean {
@@ -482,17 +496,18 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       avatar.style.visibility = 'hidden'
       await new Promise<void>((resolve, reject) => {
         const timer = setTimeout(() => finish(false), 12000)
-        const onIdle = () => {
-          if (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded()) finish(true)
-        }
+        const onData = () => { if (neighborhoodReady(target)) finish(true) }
         function finish(ready: boolean): void {
           clearTimeout(timer)
-          map.off('idle', onIdle)
+          map.off('sourcedata', onData)
+          map.off('idle', onData)
           if (ready) resolve()
           else reject(new Error('Could not load destination map tiles.'))
         }
-        map.on('idle', onIdle)
+        map.on('sourcedata', onData)
+        map.on('idle', onData)
         map.jumpTo({ center: [target.lon, target.lat] })
+        onData()
       })
       position = { ...target }
       refreshCollision()
@@ -583,8 +598,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   })
   window.addEventListener('pagehide', () => { if (hasPlacedSpawn) persistProgress(true) })
   map.on('sourcedata', (event) => {
-    if (!teleporting && event.sourceId === 'openmaptiles' && event.isSourceLoaded &&
-      (!collisionOrigin || distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
+    if (event.sourceId !== 'openmaptiles') return
+    let newlyDecoded = false
+    if (event.coord && event.tile?.state === 'loaded') {
+      const { z, x, y } = event.coord.canonical
+      const key = z + '/' + x + '/' + y
+      newlyDecoded = !decodedTiles.has(key)
+      decodedTiles.add(key)
+    }
+    if (!teleporting && (newlyDecoded || !collisionOrigin ||
+        distanceMeters(position, collisionOrigin) >= CACHE_REFRESH_METERS)) {
       refreshCollision()
     }
   })
