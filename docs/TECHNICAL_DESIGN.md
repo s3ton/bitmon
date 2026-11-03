@@ -1,19 +1,19 @@
 # bitmon — Hybrid Game Backend and Optional On-Chain Collectibles
 
 **Document type:** Technical architecture and threat model
-**Version:** 4.1 — WebSocket-only gym DO battles, per-encounter online rarity lottery, concurrent snapshot challenges
-**Date:** 3 November 2026
+**Version:** 4.2 — cached public randomness lottery and single-challenger gym queue
+**Date:** 4 November 2026
 **Status:** Approved direction; detailed parameters and external compliance remain open; implementation not started
 **Product requirements:** [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)
 **Development decisions:** [DEVELOPMENT_TRACKER.md](DEVELOPMENT_TRACKER.md)
 
-> **Architecture change (DEC-048):** This supersedes the registration-first on-chain/ZK protocol, general-purpose Rare/Legendary NFTs, public-beacon battle commitments, on-chain gym contest resolution, and gas sponsorship described in earlier versions. Those historical decisions remain discoverable in git history and the tracker; they are **not** current implementation requirements.
+> **Architecture history:** DEC-048 supersedes the registration-first on-chain/ZK game engine and gas sponsorship. **DEC-050 further supersedes the per-encounter server RNG and parallel/refund gym concurrency proposals** of DEC-049. Public beacon randomness is now used **off-chain for rare eligibility only**, not for on-chain battle commitments; historical designs remain in git/tracker, not as current requirements.
 
 ## 1. Product boundary and principles
 
 bitmon is a complete smartphone-first, offline-capable PWA based on OpenFreeMap/MapLibre. Opening the game, traveling through already cached map areas, training, ordinary wild battles and Common/Uncommon captures need **no account, network, wallet or ads**. Real-world GPS is **not** required: travel happens via the virtual avatar/joystick, including existing preview coordinate jumps. Existing PWA cache, 1:1 source geometry, collisions, low-poly presentation and the OpenFreeMap-only geography policy remain intact. Offline exploration is limited to previously cached tiles; no client may invent missing mapped roads or buildings.
 
-Only **online, signed-in** players can receive authoritative Rare/Legendary encounters, save competitive inventories, enter official gym challenges, or claim rare online rewards. Supabase provides **authentication only**; the canonical game data lives on Cloudflare. Casual PvP may be guest-to-guest, without a persisted leaderboard or rewards.
+Only **online, signed-in** players can claim authenticated Rare/Legendary encounters, save competitive inventories, enter official gyms or claim rare online rewards. The **beacon draw itself is checked locally once per period**; Cloudflare processes only winners' claims and subsequent rare battles. Supabase provides **authentication only**; Cloudflare owns canonical game data. Casual PvP may be guest-to-guest without ranked rewards.
 
 On-chain features are optional embellishments, **not** the game engine:
 - The server is authoritative for gym outcomes, inventories and the visible leaderboard.
@@ -29,17 +29,19 @@ On-chain features are optional embellishments, **not** the game engine:
    Bitmon PWA (GitHub Pages Preview/Stable)
    ├─ IndexedDB: settings, world position, cached raw OpenFreeMap PBF tiles,
    │             local monster collection/progress and guest save
-   ├─ crypto.getRandomValues(): local encounter/capture random draws
+   ├─ crypto.getRandomValues(): ordinary local encounters and capture draws
+   ├─ Shared CDN-cached, authenticated public randomness beacon (each period)
+   │  + hash(beacon, fixed trainer ID, period) for local Rare/Legendary eligibility
    ├─ WebRTC RTCDataChannel: direct unranked player-vs-player turns
-   └─ Optional login / online requests
+   └─ Optional login / winning rare claim / gym queue WebSocket
                │
       ┌────────┴─────────────┐
       │ Supabase Auth ONLY   │ Email/social login, signed session JWT
       └────────┬─────────────┘
                │ JWT passed to public API
       ┌────────▼───────────────────┐
-      │ Cloudflare Worker API      │ JWT verification, rate limits,
-      │                            │ matchmaking signaling, encounters,
+      │ Cloudflare Worker API      │ JWT verification, rare WIN claims,
+      │                            │ matchmaking signaling, battle validation,
       │                            │ currency operations, event claims
       └────────┬───────────────────┘
                │
@@ -47,10 +49,10 @@ On-chain features are optional embellishments, **not** the game engine:
       │        │                         │
     D1 SQL   Gym Durable Object       WebRTC signaling
     --------  per gym ID, SQLite       Worker + expiring D1 rendezvous
-    verified  authoritative combat     STUN, TURN fallback
-    trainer   serialized challenge
-    inventory WebSockets optional
-    rare roll Hibernate between events
+    trainer   one active battle         STUN, TURN fallback
+    inventory durable free FIFO queue
+    winning   WebSocket-only turns
+    claims    Hibernate between events
     gold      alarms for deadlines
     NFT grant │
     records   └────┐
@@ -68,7 +70,7 @@ On-chain features are optional embellishments, **not** the game engine:
 
 **Supabase is not a monster, leaderboard, Digital Gold or gym database.** Its identity UID is the stable foreign key for authenticated Cloudflare data. The frontend never receives a Cloudflare admin key or directly edits authoritative records.
 
-**Cloudflare D1** is the shared, queryable canonical store for authenticated players, inventories, encounter tickets/results, Digital Gold ledger, special-event entitlements and public-facing leaderboard projections. **SQLite-backed Durable Objects** own the serialized live gym state, active challenge sessions and canonical sequence of gym leadership transitions. D1 leaderboard is a **read model** updated idempotently from those transitions, not a second competing authority.
+**Cloudflare D1** stores stable trainer identities/eligibility times, winning beacon-period claim/tickets, verified rare capture results, inventories, Digital Gold ledger, one-off NFT entitlements and public leaderboard projections. **Non-winning beacon outcomes create no D1 entry or authenticated Worker request.** SQLite-backed gym Durable Objects own the durable FIFO queue, single active battle, leadership transitions and replay-safe session state. The D1 leaderboard is an idempotent **read model**, not a second leader authority.
 
 For simple operations, start with one Worker API, one D1 database, one gym Durable Object class and the smallest necessary publisher worker/queue; no microservice framework, separate matchmaking database, or Supabase Postgres game tables. Do not deploy cloud services as dependencies of E0 exploration.
 
