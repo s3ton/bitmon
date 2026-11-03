@@ -92,30 +92,32 @@ For simple operations, start with one Worker API, one D1 database, one gym Durab
 - The authenticated game profile is in D1; no on-chain trainer registration or wallet prerequisite.
 - Ordinary local training remains possible when auth, network, Supabase or Cloudflare is down.
 
-## 4. Encounter generation and online rarity lottery
+## 4. Encounter generation and low-request public-beacon lottery
 
-### 4.1 Distance-triggered local encounters
+### 4.1 Local exploration remains independent
 
-- Every few **locally traveled** meters, the client may trigger a wild encounter. Draw the next encounter distance from a published random distance interval/distribution using device `crypto.getRandomValues()`. Persist the threshold and movement accumulator so reloading does not accidentally restart the cadence. No precise distance interval or rarity percentages are changed by this decision; tune later through playtesting.
-- **Offline or unsigned guest:** only Common/Uncommon can appear, drawn according to their **relative weights**; there is no offline Rare/Legendary possibility. Device seeds plus deterministic counters make local battle outcomes reproducible, not fraud-resistant.
-- **Online signed-in:** when an encounter triggers, request the **same complete rarity lottery on every eligible online encounter** (Common, Uncommon, Rare, Legendary, with one published probability table, not a second lottery just for rares). The Worker generates the rarity/species; the browser never chooses or overrides the outcome. If a user isn't online or does not log in, they remain in the Common/Uncommon pool.
-- Do not claim that an offline encounter has identical absolute rarity probabilities to an online encounter; its Rare/Legendary probability is intentionally zero.
+- At device-randomized distances of a few virtual meters, the PWA generates an ordinary **Common or Uncommon** encounter from a local probability distribution. Use browser `crypto.getRandomValues()` for the initial unpredictable seed and a versioned deterministic stream for reproducible battle/capture results. Persist threshold, movement counter and seed in IndexedDB.
+- No account, network, beacon, Worker call or server permission is required for these encounters. Browser movement, location and local-save cheating are deliberately not policed. Offline players never obtain genuine Rare/Legendary claim rights.
 
-### 4.2 Secure online lottery and authenticated captures
+### 4.2 One public random value, one chance per trainer per period
 
-1. At an ordinary distance-triggered encounter, a logged-in client requests an online encounter from a Cloudflare Worker using an idempotent opportunity identifier. It supplies its current **virtual** region/location; client distance claims are **not trusted as physical proof**.
-2. The Worker validates JWT and enforces **one server-authorized online draw per accepted encounter opportunity**, with a modest account-wide **server-clock minimum interval/rate cap** to stop scripts from sending thousands of extra lottery requests. This is not a walking-distance anti-cheat system; farming Common/Uncommon local encounters is acceptable. If online draw eligibility has not yet returned, the player receives an ordinary Common/Uncommon local encounter rather than a second rare lottery. Publish this distinction transparently.
-3. Atomically bind trainer ID, server sequence, source location/region if supported, versioned rarity table and idempotency key **before** sampling secure Worker randomness. Store the **full** Common/Uncommon/Rare/Legendary result and expiry in D1. A refresh, duplicate request or retry returns the same result, not another draw. Each accepted online opportunity uses the same published rarity probabilities.
-4. Common/Uncommon from the online lottery may use the ordinary local presentation and need not be individually verified for low-stakes local progression. Rare/Legendary outcomes issue a single-use server-recorded encounter ticket with immutable species and rarity.
-5. For a Rare/Legendary encounter, server-authoritative battle validation checks moves, rules version, capture RNG and ticket owner/expiry, then awards a canonical creature in D1 at most once. Client-generated final battle outcomes or modified saves are insufficient.
-6. Timeout, escape or loss consumes/expires that ticket under published rules; never grant a new lottery draw for a failed capture.
+The **same publicly authenticated randomness value** is distributed to all clients periodically through a shared cacheable endpoint/resource; there is **no per-player encounter WebSocket and no per-ordinary-encounter API call**. Prefer an externally verifiable, unpredictable beacon (for example signed drand rounds) or a documented commit-before-reveal publisher whose previous commitment is immutable before reveal. A beacon value must not be chosen after the operator observes target accounts.
 
-### 4.3 Scope of cheating prevention
+1. **Eligibility established first.** On initial Supabase login, a Worker assigns a stable opaque trainer ID and server-records its activation time/first eligible future period in D1. A new account cannot register after a period's seed is revealed and retrospectively claim that period. Changing app storage, tab, wallet or virtual location does not change its trainer ID.
+2. **Shared public data.** Each period has `(lottery_version, period_id, authenticated_beacon_value)`. Clients may retrieve it directly from CDN cache once per period and verify the provider signature/chain as appropriate; CDN misses still produce some traffic, but do not cause per-user authenticated game API work.
+3. **Deterministic local test.** Compute a versioned, domain-separated cryptographic digest `H("bitmon-rare" || version || period_id || trainer_id || beacon_value)`. Interpret uniformly against **published disjoint Rare and Legendary thresholds**; every eligible trainer has at most **one special winning outcome per period**. No client-controlled nonce, encounter sequence, region, device random seed, or extra hash inputs.
+4. **No winning result:** continue locally with Common/Uncommon encounters; do not send a game-backend lottery request. This avoids per-encounter Worker invocations, D1 reads/writes and dedicated rarity WebSockets for the large majority of players.
+5. **Winning result:** during the published claim window, the trainer authenticates to one Worker claim endpoint. The Worker fetches/revalidates the authoritative period value, authenticates the account and its **pre-seed eligibility**, recomputes the exact hash and rarity, and atomically records the unique `(trainer_id, period_id)` claim plus a single expiring D1 ticket. Duplicate/replayed requests return existing ticket/status; losing a capture never reopens the period.
+6. **Manifest in exploration:** a claimed winning entitlement replaces the **next local wild encounter** within a published spawn/claim window with the authenticated Rare/Legendary species. Capture requires server-authoritative actions and RNG, finalized once in D1. A lost connection can resume the existing ticket until expiry; an expired ticket cannot be minted/imported from a local save.
+7. **Beacon unavailable/invalid:** do not substitute a client-created number or allow arbitrary historical-round claims. Let the period await a verified value within an explicit grace rule, or skip it with clear UX; local ordinary play is unaffected.
 
-- No movement surveillance or anti-spoofing system for Common/Uncommon. Virtual coordinate jumps and modified browser movement are accepted aspects of low-stakes gameplay.
-- Protect **lottery request counts, uniqueness and server-authored rarity** only. Basic per-account throttling, idempotency, rate limiting and transactional ticket consumption are enough for MVP; make no claim of bot-proof Rare/Legendary scarcity or physical location integrity. Enforce any optional species/habitat rules using OpenFreeMap-only information, and do not let teleporting multiply independent lottery draws.
-- A rare encounter **must be online** when issued and while recording the authoritative capture. If connectivity fails, a stored pending ticket may be resumed within its published deadline, never transformed into an offline transferable entitlement.
-- Publish odds and server rule versions. Optional server-seed audits cannot independently prove an operator never withheld outcomes; the backend is trusted.
+### 4.3 Distribution, odds and threats
+
+- One draw per period is **not equivalent to** a rarity roll on each ordinary encounter. Determine period duration, Rare/Legendary thresholds and claim/spawn windows from expected active sessions; do **not** silently copy old per-encounter probabilities. Publish probability by trainer-period and rules version.
+- One seed per epoch means **all users can compute the same period** but receive different deterministic outcomes because their immutable trainer IDs differ. Non-participating players may learn they would have won without exploring; physical activity requirements are explicitly absent. To discourage completely idle claims, require the successful trainer to reach a wild encounter while still within the allowed window, not client-proven steps.
+- Multiple accounts can multiply chances, and a client can spoof virtual travel/locations. These are accepted MVP risks; no user tracking or anti-GPS-spoofing service is introduced. Do not permit signing up with a **chosen trainer ID** until after seeing the beacon: use server-issued immutable identities and only future-round eligibility.
+- Geographic modifiers, if introduced later, may select species from OpenFreeMap-only information **at claim** but cannot multiply hash attempts by selecting a new region after reveal. For the MVP, keep Rare/Legendary thresholds independent of claimed location.
+- The backend remains trusted to issue correct tickets/captures and to publish/serve authenticated period values; a public beacon proves entropy provenance, **not** fairness of account creation, claim processing or gameplay outcomes.
 
 ## 5. Inventory, gameplay and trading
 
