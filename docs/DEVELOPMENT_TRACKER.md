@@ -138,6 +138,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-03 | DEC-038 | **Feature in review — user acceptance pending** | Replace the DOM trainer and rendered-feature/CSS occlusion workaround with one depth-tested MapLibre 3D custom-layer billboard. Let the shared WebGL depth buffer resolve building/avatar visibility per pixel while retaining the same atlas, geographic position, visual scale and gradual camera clearance. | **v0.25** VIS-01, VIS-04, EXPL-01 |
 | 2026-11-03 | DEC-039 | **Accepted — implementation in review** | Replace the old trainer art with the owner-approved original avatar. Store only N/NE/E/SE/S in one transparent WebP atlas, use eight elapsed-time walking frames per stored direction, and mirror the texture coordinates for NW/W/SW. Keep the depth-tested WebGL renderer, geographic scale, collision and camera behavior unchanged. | **v0.26** EXPL-01, VIS-04/05 |
 | 2026-11-03 | DEC-040 | **Accepted — implementation in review** | Texture mapped buildings with MapLibre `fill-extrusion-pattern` (no custom renderer). Split each building into ground-floor, upper-floor and 0.5 m roof-cap layers inside the source height. A tile worker splits OpenFreeMap's merged building multipolygons into one feature per footprint and tags it with a POI/landuse-inferred style and a deterministic palette variant; patterns are drawn procedurally on demand per integer zoom so 4 m storeys stay aligned. Regional palettes are deferred. | **v0.27** VIS-02/03, MAP-GATE-04/05 |
+| 2026-11-03 | DEC-041 | **Accepted — implementation in review** | Give world-famous landmarks their own facade archetypes (cathedral, shrine, fortress, arena, ironwork, palace). A landmark is a heritage-class POI whose name has 20+ translations in the tile; all its stacked building parts are grouped with it, its mapped `colour` snaps to a Bitmon stone/metal tint, and a 1 m gold cornice sits under its roof cap. No hand-made per-monument art. | **v0.28** VIS-03, MAP-GATE-04/05 |
 
 ### Open decisions to resolve before related implementation
 
@@ -294,3 +295,20 @@ A stable `main` deployment was cancelled after PR #45 because a later `workflow_
 **Correction:** Real deployable events continue to share `bitmon-pages` with `cancel-in-progress: true`, preserving stale-deployment cancellation. Any `workflow_run` that does not exactly satisfy the existing preview-push deployment gate now receives a run-specific `bitmon-pages-skip-<run_id>` group and therefore cannot cancel or displace a real deployment.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. This is workflow-only configuration; validation is the existing PWA build plus review of the concurrency expression against the build-job eligibility predicate. Production verification requires the post-promotion `main` Pages run to complete successfully.
+
+### Landmark facades — 3 November 2026
+
+The owner asked for world-famous monuments to stop looking like ordinary buildings. Sampled OpenFreeMap tiles (St Peter's, Colosseum, Sagrada Família, Eiffel Tower, Duomo di Milano, Westminster, Notre-Dame, Taj Mahal, Pantheon) showed two causes. Each landmark is mapped as many stacked parts, but its POI sits in only one of them, so its spires and tiers were styled as office towers. And OpenMapTiles' POI `rank` is only local. The number of `name:*` translations turned out to be a reliable global fame signal: every sampled landmark has 55–73, while about 1% of roughly 60,000 sampled POIs reach 20.
+
+The tile worker now treats a place of worship, attraction, monument, castle, museum, theatre, town hall, library or non-artwork gallery POI with 20+ translations as a landmark. The most famous POI claims its parts first. Each group grows up to two steps:
+- to parts centred within a member's outline
+- to a modest base around a member
+- to parts stacked on or under a member (overlapping in plan, meeting in height, one raised off the ground)
+
+The style comes from the POI class (Christian worship → cathedral, other worship → shrine, castle → fortress) or otherwise from shape (raised rings with holes → ironwork, an elliptical courtyard ring → arena, everything else → palace). The tint comes from the mapped `colour`. Sampled results: the Colosseum is an arena; the Eiffel Tower is bronze ironwork (19 parts including legs); the Sagrada Família is a cathedral with all 27 parts up to 185 m; St Peter's and the Duomo are cathedrals; the Taj Mahal is a white palace.
+
+The same change replaces the worker's pairwise POI, landuse and footprint scans with a uniform grid. A dense Barcelona z14 tile drops from 1,039 ms to 107 ms; the London sample from 49 ms to 13 ms.
+
+**Known limits:** mapped shapes are unchanged, so spires stay flat-topped, domes stay stepped and the ironwork lattice is painted on solid parts. Archetypes are generic; there is no bespoke art per monument.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. Ephemeral Node checks on the sampled landmark tiles confirmed grouping, group extents and timings, and the London tile still round-trips all 2,108 building polygons identically. Desktop browser review covered the Colosseum, Eiffel Tower, Sagrada Família and St Peter's. Phone appearance and performance remain unverified.
