@@ -1,4 +1,42 @@
+// Persistent-storage permission is origin-wide. Request it only when bitmon is
+// running as an installed app; preview/stable keep separate data namespaces.
+function protectInstalledStorage(): void {
+  const status = document.querySelector<HTMLElement>('#storage-persistence-status')!
+  const retry = document.querySelector<HTMLButtonElement>('#storage-persistence-retry')!
+  const installed = matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+
+  if (!installed) {
+    status.textContent = 'Launch installed bitmon from the home screen to protect offline data.'
+    return
+  }
+  const storage = navigator.storage
+  if (!storage?.persist || !storage.persisted) {
+    status.textContent = 'Storage protection is not supported on this device.'
+    return
+  }
+
+  async function requestProtection(): Promise<void> {
+    retry.hidden = true
+    status.textContent = 'Checking offline storage protection…'
+    try {
+      const granted = await storage.persisted() || await storage.persist()
+      status.textContent = granted
+        ? 'Protected from automatic storage eviction. Clearing app/site data still deletes saves.'
+        : 'Best effort: the phone may delete offline tiles when storage is low.'
+      retry.hidden = granted
+    } catch {
+      status.textContent = 'Storage protection could not be requested on this device.'
+      retry.hidden = false
+    }
+  }
+
+  retry.addEventListener('click', () => { void requestProtection() })
+  void requestProtection()
+}
+
 export function registerPwa(): void {
+  protectInstalledStorage()
   if (!('serviceWorker' in navigator)) return
 
   window.addEventListener('load', () => {
