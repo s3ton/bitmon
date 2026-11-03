@@ -98,6 +98,7 @@ class OfflineMapCache {
   private loaded = new Set<string>()
   private usedBytes = 0
   private player: Position = savedPosition()
+  private landingTile: string | null = null
   private onStatus: StatusListener | null = null
   private writeQueue: Promise<void> = Promise.resolve()
   readonly ready: Promise<void>
@@ -131,6 +132,10 @@ class OfflineMapCache {
     this.player = { ...position }
   }
 
+  protectLandingPosition(position: Position | null): void {
+    this.landingTile = position ? tileKeyAt(position) : null
+  }
+
   hasTileAt(position: Position): boolean {
     const key = tileKeyAt(position)
     return this.loaded.has(key) || this.metadata.has(key)
@@ -159,7 +164,7 @@ class OfflineMapCache {
     let remaining = this.usedBytes
     if (remaining + data.byteLength > LIMIT_BYTES) {
       const farthest = [...this.metadata.values()]
-        .filter((tile) => tile.key !== currentTile)
+        .filter((tile) => tile.key !== currentTile && tile.key !== this.landingTile)
         .sort((a, b) => distanceFromPlayer(b, this.player) -
           distanceFromPlayer(a, this.player))
       for (const tile of farthest) {
