@@ -229,16 +229,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           }
           if (bounds.maxLon < position.lon - .002 || bounds.minLon > position.lon + .002 ||
               bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
-          // MapLibre can return the same source polygon from multiple loaded tiles.
-          // Only deduplicate identical rings: clipped boundary fragments differ.
-          const signature = layer + ':' + JSON.stringify(rings)
-          if (seen.has(signature)) continue
-          seen.add(signature)
           // Match the height fallback used by the fill-extrusion layer.
           const sourceHeight = Number(feature.properties?.render_height)
           const height = layer === 'building' && feature.properties?.hide_3d !== true
             ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
             : undefined
+          // Exact duplicates have the same geometry and appearance. Keep any
+          // overlapping footprints with different heights for safe occlusion.
+          const signature = layer + ':' + height + ':' + JSON.stringify(rings)
+          if (seen.has(signature)) continue
+          seen.add(signature)
           areas.push({ ...bounds, rings, height })
         }
       }
@@ -535,7 +535,14 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       hasPlacedSpawn = previousSpawn
       offlineMap.setPlayerPosition(original)
       map.jumpTo({ center: [originalCenter.lng, originalCenter.lat] })
-      map.once('idle', refreshCollision)
+      map.once('idle', () => {
+    // Some browsers may finish all visible tiles before their per-tile
+    // sourcedata events are observed. Full source readiness is a safe fallback.
+    if (map.areTilesLoaded() && map.isSourceLoaded('openmaptiles')) {
+      decodedTiles.add(tileKeyAt(position))
+    }
+    refreshCollision()
+  })
       coordinateStatus.textContent = error instanceof Error ? error.message : 'Destination unavailable.'
     } finally {
       offlineMap.protectLandingPosition(null)
