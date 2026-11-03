@@ -285,3 +285,12 @@ OpenFreeMap merges every building that shares height/colour into one multipolygo
 **Known limits:** pattern texture is world-aligned, so pitched roofs are suggested by light/dark bands rather than true ridges; window columns can be cut at corners; window spacing varies slightly with latitude; a footprint crossing a z14 tile edge may change palette at the seam.
 
 **Tests and validation:** 0 permanent tests added, 0 removed, net 0. `npm run check` and `npm run build` pass. An ephemeral Node round-trip check on a London z14 tile confirmed identical building polygons/attributes, unchanged other layers, about 49 ms per tile in the worker and +8% tile bytes. Desktop browser review covered Milan (blocks, POI styles) and Palo Alto (houses) at zooms 16.4–19.2. Phone performance and appearance remain unverified.
+
+
+### GitHub Pages deployment concurrency hotfix — 3 November 2026
+
+A stable `main` deployment was cancelled after PR #45 because a later `workflow_run` event from the promotion PR entered the shared `bitmon-pages` concurrency group before its build-job guard skipped it. Workflow-level concurrency is evaluated before the job-level `if`, so a non-deployable run could still cancel a legitimate deployment.
+
+**Correction:** Real deployable events continue to share `bitmon-pages` with `cancel-in-progress: true`, preserving stale-deployment cancellation. Any `workflow_run` that does not exactly satisfy the existing preview-push deployment gate now receives a run-specific `bitmon-pages-skip-<run_id>` group and therefore cannot cancel or displace a real deployment.
+
+**Tests and validation:** 0 permanent tests added, 0 removed, net 0. This is workflow-only configuration; validation is the existing PWA build plus review of the concurrency expression against the build-job eligibility predicate. Production verification requires the post-promotion `main` Pages run to complete successfully.
