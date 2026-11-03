@@ -96,7 +96,6 @@ function openDatabase(): Promise<IDBDatabase> {
 class OfflineMapCache {
   private db: IDBDatabase | null = null
   private metadata = new Map<string, TileMeta>()
-  private loaded = new Set<string>()
   private usedBytes = 0
   private player: Position = savedPosition()
   private landingTile: string | null = null
@@ -137,11 +136,6 @@ class OfflineMapCache {
 
   protectLandingPosition(position: Position | null): void {
     this.landingTile = position ? tileKeyAt(position) : null
-  }
-
-  hasTileAt(position: Position): boolean {
-    const key = tileKeyAt(position)
-    return this.loaded.has(key) || this.metadata.has(key)
   }
 
   private report(): void {
@@ -194,7 +188,6 @@ class OfflineMapCache {
       await transactionDone(tx)
       for (const oldKey of toDelete) {
         this.metadata.delete(oldKey)
-        this.loaded.delete(oldKey)
       }
       this.metadata.set(key, meta)
       this.usedBytes = remaining + meta.bytes
@@ -211,16 +204,12 @@ class OfflineMapCache {
     const pending = this.pendingWrites.get(key)
     if (pending) return pending
     const saved = await this.readTile(key)
-    if (saved) {
-      this.loaded.add(key)
-      return saved
-    }
+    if (saved) return saved
     const response = await fetch('https://tiles.openfreemap.org/planet/latest/' + key + '.pbf',
       { cache: 'no-store' })
     if (!response.ok) throw new Error('OpenFreeMap tile unavailable (' + response.status + ')')
     const data = await response.arrayBuffer()
     if (!data.byteLength) throw new Error('Empty OpenFreeMap tile')
-    this.loaded.add(key)
     this.pendingWrites.set(key, data)
     // Do not delay rendering while a previous tile is being written to disk.
     // The internal buffer is never handed to MapLibre (which may transfer it).
