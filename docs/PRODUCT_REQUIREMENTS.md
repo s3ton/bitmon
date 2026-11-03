@@ -469,7 +469,7 @@ These questions need explicit product decisions; do not mistake unmeasured param
 10. **Art and device targets:** original creature art, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
 11. **Production infrastructure:** Cloudflare Worker/D1/DO/Queues costs, persistent backups, Supabase Auth recovery, monitoring, operational security and alternative hosting after GitHub Pages prototype.
 
-## 15. Map data and implementation constraints## 15. Map data and implementation constraints (supporting notes, not player-facing features)
+## 15. Map data and implementation constraints (supporting notes, not player-facing features)
 
 These notes distinguish the desired player experience from the information actually available in the selected map source.
 
