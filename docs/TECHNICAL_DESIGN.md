@@ -46,7 +46,7 @@ On-chain features are optional embellishments, **not** the game engine:
       ┌────────┼─────────────────────────┐
       │        │                         │
     D1 SQL   Gym Durable Object       WebRTC signaling
-    --------  per gym ID, SQLite       via Workers/ephemeral rooms
+    --------  per gym ID, SQLite       Worker + expiring D1 rendezvous
     verified  authoritative combat     STUN, TURN fallback
     trainer   serialized challenge
     inventory WebSockets optional
@@ -126,7 +126,7 @@ For simple operations, start with one Worker API, one D1 database, one gym Durab
 
 **Casual/direct PvP (initial scope):**
 
-1. Two players exchange an invite or join a simple optional matchmaking/signaling endpoint in a Cloudflare Worker. Guests may participate without Supabase login.
+1. Two players exchange an invite or join an optional matchmaking/signaling endpoint in a Cloudflare Worker. Use a short-lived D1 rendezvous record for offers/answers/ICE (with expiry and cleanup), or a tiny signaling room Durable Object later if lower latency is needed. Guests may participate without Supabase login; this coordination endpoint does not execute battles.
 2. Negotiate an encrypted `RTCDataChannel` using WebRTC ICE/STUN; provide a TURN relay fallback for mobile NAT/firewall cases. A QR/manual invite still requires ICE candidate exchange and may fail without TURN. Signaling is a small ephemeral coordination service, **not** the turn-by-turn game engine.
 3. Both peers agree on battle rules version, roster snapshot, turn order, initial seed commitment/hash, and an immutable match ID. Each turn exchanges actions/sequence numbers, acknowledgments and, if needed, a commit-then-reveal phase to avoid second-mover advantage. Resolve chance through a combined seed contribution revealed after both sides commit. Missing reveal/disconnect means **void/incomplete**, not a provable loss.
 4. Both browsers run the same deterministic combat engine and compare signed/hashed transcript checkpoints. The UI warns about mismatches or aborts. No authoritative ranking, Digital Gold prizes, rarity awards or ownership changes are granted from an untrusted direct match.
