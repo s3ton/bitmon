@@ -319,8 +319,9 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   }
 
   function tileReady(candidate: Position): boolean {
-    if (!validPosition(candidate) || !offlineMap.hasTileAt(candidate)) return false
-    // A downloaded/stored PBF isn't safe until MapLibre has decoded the tile.
+    if (!validPosition(candidate)) return false
+    // A PBF can authorize movement only after MapLibre has decoded its geometry.
+    // The active map tile remains usable even if disk storage is unavailable.
     return decodedTiles.has(tileKeyAt(candidate))
   }
 
