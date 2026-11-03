@@ -13,5 +13,12 @@ jobs:
         with:
           node-version-file: '.nvmrc'
       - run: npm install --no-audit --no-fund
+      # Bootstrap the committed lockfile from the actual Node 26 CI resolver.
+      # This temporary step will be removed before the PR is ready for review.
+      - name: Export npm lockfile for commit
+        run: |
+          echo 'BITMON_LOCKFILE_BEGIN'
+          base64 -w 400 package-lock.json
+          echo 'BITMON_LOCKFILE_END'
       - run: npm run check
       - run: npm run build
