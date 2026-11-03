@@ -45,6 +45,13 @@ body { overflow: hidden; }
   text-align: center;
 }
 #status[hidden] { display: none; }
+#status.map-warning {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom) + 96px);
+  transform: translateX(-50%);
+  font-size: 12px;
+  pointer-events: none;
+}
 
 .maplibregl-ctrl-bottom-right { bottom: env(safe-area-inset-bottom); }
 .maplibregl-ctrl-attrib { font-size: 10px; }
