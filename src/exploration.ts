@@ -300,9 +300,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     return result
   }
 
+  function tileReady(candidate: Position): boolean {
+    if (!validPosition(candidate) || !offlineMap.hasTileAt(candidate)) return false
+    // A stored neighbor still needs to be decoded into the current map view
+    // before its building and water footprints can be checked.
+    return tileKeyAt(candidate) === tileKeyAt(position) ||
+      (map.isSourceLoaded('openmaptiles') && map.areTilesLoaded())
+  }
+
   function isBlocked(candidate: Position): boolean {
-    // A polygon-free viewport does not authorize walking beyond downloaded tiles.
-    if (!offlineMap.hasTileAt(candidate)) return true
+    if (!tileReady(candidate)) return true
     // All feet contact points must remain outside mapped building/water polygons.
     return [candidate, displace(candidate, .5, 0), displace(candidate, -.5, 0),
       displace(candidate, 0, .5), displace(candidate, 0, -.5)]
@@ -348,7 +355,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       let actualNorth = north
       let candidate = displace(position, east, north)
       if (isBlocked(candidate)) {
-        missingMapTile = !offlineMap.hasTileAt(candidate)
+        missingMapTile = !tileReady(candidate)
         const eastOnly = displace(position, east, 0)
         const northOnly = displace(position, 0, north)
         if (Math.abs(east) > .00001 && !isBlocked(eastOnly)) {
