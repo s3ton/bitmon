@@ -1,12 +1,12 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.33 — single-claim high-rarity catches, competitive beacon randomness, and deterministic pseudorandom local play  
+**Version:** 0.34 — optional verified multiplayer, self-funded Rare/Legendary NFTs, and Digital Gold gym challenges  
 **Date:** 3 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
 **Creature name:** **bitmon** (singular and plural)  
-**Related technical document:** [Technical Design](TECHNICAL_DESIGN.md) (registration-first verified play, fixed-type gyms, restricted swaps). This PRD describes **what players should experience**; it is not a replacement for a protocol or security specification. Implementation status and requirement changes are maintained separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
+**Related technical document:** [Technical Design](TECHNICAL_DESIGN.md) (optional verified multiplayer with registration-first authenticity, Digital Gold gym challenges, self-funded NFTs, restricted swaps). This PRD describes **what players should experience**; it is not a replacement for a protocol or security specification. Implementation status and requirement changes are maintained separately in the [Development Tracker](DEVELOPMENT_TRACKER.md).
 
 ---
 
@@ -18,20 +18,20 @@ The **world is mapped 1:1 to the real-world geography represented in OpenFreeMap
 
 **OpenFreeMap is the only geographic data source**, and **MapLibre** displays and styles its tiles. We add original game art to the **existing mapped geometry**: stylized road surfaces, raised/extruded mapped buildings, roof treatments, facades, windows, characters, and bitmon. Building appearance may be **plausibly inferred** from attributes and surrounding context that OpenFreeMap already exposes; inferred usage is an art choice, not an assertion about the real building. No additional OSM enrichment service, building dataset, custom geography source, or invented road/building geometry is required or permitted.
 
-The game is primarily played locally after the player registers a verifiable trainer. Its collection and progression can be validated without trusting the original game website or an always-online game server. The rules, not the client software, determine which rewards are legitimate.
+**The default game is a complete local single-player RPG, with no wallet, blockchain fees or ads required.** Verified multiplayer is an explicit opt-in. Players keep their entire local collection and single-player progress when they opt in, but unverified Rare/Legendary captures can never become verified NFTs or competitive monsters retroactively. The separate verified trainer starts a canonical progression lineage whose results can be validated independently of the original website. The rules, not the client software, determine which competitive rewards are legitimate.
 
-Offline play is deliberately useful but does not expose the full rarity or competitive system. **Common and Uncommon** encounters, wild battles, training, and captures may continue from locally cached authenticated state. Chance-like mechanics in local/non-security-critical play use a deterministic pseudorandom stream so they still look and feel random to ordinary players while remaining reproducible and non-rerollable. **Rare and Legendary spawn rarity/species are online-only and use fresh authenticated public randomness.** After a legitimate high-rarity spawn appears, its battle/capture can resolve locally; a successful catch is claimed once, shortly afterward, with one proof transaction. Friend battles and gym challenges are online and use future authenticated public randomness only where unpredictability affects fairness.
+Local single-player can explore, battle, capture and train at every rarity with self-contained saves and reproducible pseudorandomness; such captures have **no verified multiplayer provenance**. After opting in and registering a trainer, authenticated **Common/Uncommon** encounters may be continued offline from cached verified state and finalized in batches. **Verified Rare/Legendary spawns are online-only**, use fresh authenticated public randomness, and require a timely, self-funded ZK-backed claim and NFT mint after capture. Only NFT-minted Rare/Legendary creatures are eligible for gym or player-vs-player competition. Gym challenges are entered with **Digital Gold**, an optional, non-transferable, ad-earned in-app balance; leadership and fame are recorded on-chain. On-chain gym entry and victory settlement remain publicly callable without the advertising service for independent clients.
 
 ### Product promises
 
 1. **The real Earth is the world.** A street in the map corresponds to that street's real geographic location.
 2. **It feels like a low-poly mobile game, not a navigation app.** Roads and buildings remain recognizable, but everything is presented in a coherent low-poly 2.5D RPG style.
 3. **Every neighborhood has a visual identity without fabricated geography.** OpenFreeMap building footprints, land use, roads, waterways, and parks influence the scene; only surface art and facade treatments may be invented.
-4. **The player's bitmon are earned, not fabricated.** Verified encounters and progression follow independently checkable rules.
+4. **Local play is complete; competitive provenance is verifiable.** Single-player saves remain yours, while verified encounters and progression follow independently checkable rules.
 5. **Most actions are immediate.** Walking, exploring, and ordinary Common/Uncommon wild play can continue locally without blockchain transactions every few seconds.
 6. **High-value randomness is fair.** Rare/Legendary **spawns** and competitive chance events use fresh authenticated public randomness where unpredictability is security-critical; ordinary/local chance mechanics use deterministic pseudorandomness instead.
 7. **Social competition is simple and fair.** Trading follows fixed restrictions; gyms have permanent type identities and reward reputation, not money.
-8. **No single operator is required to keep playing.** The player can self-pay transaction fees, use alternative hosting, and verify the canonical game state.
+8. **No single operator controls the protocol.** Players can self-pay protocol fees through independent clients, use alternative hosting, and verify canonical game state; the official gym UI uses Digital Gold.
 9. **It lives on the phone.** Players can install bitmon from a browser onto their home screen and play in portrait orientation.
 
 ## 2. Decisions and assumptions
@@ -51,41 +51,41 @@ Offline play is deliberately useful but does not expose the full rarity or compe
 - **Never generate a building or road that is not represented in OpenFreeMap.** Do not add missing footprints, invent shortcuts, or draw fictional street links. If the source omits a feature, the game omits it.
 - Buildings use OpenFreeMap footprints, overlaid in **stylized 2.5D**. Their facade/window/roof art may be invented or inferred from the tile's available fields and local mapped context; visual invention must never add a new physical building or expand its footprint.
 - Inferred residential-like styling is allowed as **artistic interpretation**, never as a verified residential label. Ambiguous buildings receive a neutral or plausible generic style.
-- A **verified trainer must register before their first verified encounter**; registration must predate the relevant public randomness.
-- **Offline verified-play candidates are limited to Common and Uncommon wild encounters.** They may be derived from previously authenticated state cached while online and finalized later. Chance-like local mechanics use deterministic pseudorandomness tied to authenticated encounter/battle state and stable event counters, so restarting cannot produce a new roll.
+- **Single-player requires no registration, wallet, ads or blockchain.** A player who opts into verified multiplayer registers a trainer before any verified encounter; registration must predate the relevant public randomness. Old local Rare/Legendary captures remain usable in single-player but are not importable as verified NFTs.
+- **Offline verified-play candidates are limited to Common and Uncommon wild encounters; local-only single-player can contain any rarity.** They may be derived from previously authenticated state cached while online and finalized later. Chance-like local mechanics use deterministic pseudorandomness tied to authenticated encounter/battle state and stable event counters, so restarting cannot produce a new roll.
 - **Rare and Legendary spawn issuance is online-only.** Account registration is the required prior on-chain commitment; the trainer's eligible slot, randomness round, rules version and any required region/habitat context must already be fixed before the deciding public beacon output exists. No additional pre-spawn or pre-capture transaction is required.
-- After a legitimate Rare/Legendary spawn, battle and capture may use the same deterministic/pseudorandom local rules as ordinary PvE. A successful high-rarity catch must be submitted in **one proof transaction within a short protocol-defined deadline after the spawn beacon**; otherwise it is invalid. The proof verifies the legitimate spawn, unused encounter slot and legal resulting state. Exact deadline remains a protocol parameter.
+- After a legitimate **verified** Rare/Legendary spawn, battle and capture may use the same local PvE rules as ordinary play. The player funds the **single timely proof-and-NFT-mint transaction with their own cryptocurrency**; Digital Gold cannot fund or authorize minting. The claim verifies the spawn, unused slot and legal resulting state. Unverified local captures cannot be minted retroactively. Exact deadline remains a protocol parameter.
 - **Friend battles are online.** Both players commit/sign each turn's actions to each other before the assigned future beacon round; that fresh public randomness resolves security-relevant chance events without an on-chain transaction per turn.
-- **Gym challenges are online.** A challenger makes one pre-battle commitment binding the gym, active defense snapshot, challenger team, rules version and committed battle policy/strategy. Future beacon rounds resolve security-relevant chance events; a successful challenge uses one final proof transaction to claim the result. Failed attempts need no final transaction.
+- **Official gym challenges are online and use Digital Gold in the Bitmon UI.** One on-chain pre-battle commitment binds the gym, defense snapshot, challenger team, rules and committed battle strategy before future beacon rounds. A successful victory uses one final proof transaction to record leadership and fame; failure needs no final transaction. The independent on-chain contract permits self-funded calls from alternative clients, without Digital Gold.
 - Each gym has exactly **one permanent assigned bitmon type**. Both teams must contain only bitmon with that type; either type of a dual-type bitmon is sufficient.
 - Gym leaders may update their eligible defense team but cannot alter the gym type or create additional gym-specific rules.
-- Trades are **one-for-one, same rarity tier**, limited to **one swap per trainer per rolling 24 hours**, and both creatures reset to the lower of their prior levels.
+- **Rare/Legendary NFT swaps are self-funded**, never paid with Digital Gold; swaps remain one-for-one within the same tier, once per trainer per rolling 24 hours, with levels reset to the lower. Common/Uncommon stay as authenticated inventory entries rather than individually minted NFTs.
 
 ### Working assumptions, not yet approved
 
 - **Virtual exploration is the primary control scheme:** players move a character through the map using mouse/touch/keyboard/gamepad. A player's real GPS location is **not** assumed to be required. This is different from a location-based game that requires physically visiting coordinates. The movement/travel design must be decided explicitly (§14).
 - The geographic **positions and footprints** are 1:1, but art style, perspective, visible building height, and collision presentation may be stylized for readability. This does **not** mean every meter of travel is fun at normal walking speed.
 - Desktop browsers may be used for development/debugging, but **desktop-specific and landscape layouts are not product requirements**. The game is designed for upright portrait smartphone screens.
-- Offline map coverage remains limited to cached application/map data and local pending progress; the entire Earth map and blockchain settlement are not promised offline. The confirmed rarity rule above separately limits offline wild encounters to Common/Uncommon; Rare/Legendary spawn issuance and competitive security-critical randomness require connectivity.
+- Offline map coverage remains limited to cached app/map data; the entire Earth map is not available offline. Local-only single-player can produce unverified captures at any rarity. **Verified** offline wild encounters are limited to Common/Uncommon; verified Rare/Legendary issuance and security-critical competitive randomness require connectivity.
 - Every bitmon type/rarity, battle rule, starter list, and gym location is still subject to game design unless stated as a confirmed rule above.
 
 ## 3. Who the player is and what they do
 
 ### Primary player journey
 
-1. **Open or install bitmon on a smartphone.** Visit its public PWA URL, or launch it from the home-screen icon; see a short introduction explaining the real-Earth game world.
-2. **Create a verified trainer.** Connect or create a self-custodial wallet, choose a starter under fixed rules, select an initial permitted region, and register the trainer on-chain. Fees are self-paid or optionally sponsored.
-3. **Enter the world.** Start at a map coordinate and see roads, nearby buildings, parks, paths, and water in the bitmon visual language.
-4. **Explore.** Move an eight-direction animated trainer through the world; the fixed-pitch oblique camera follows and turns toward travel while the player adjusts zoom using a side slider. Roads and existing low-poly buildings stream in as the player travels.
-5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; Common/Uncommon wild play can use previously authenticated cached state while Rare/Legendary **spawns** require a live connection and fresh authenticated randomness. The camera moves closer to the encountered bitmon while the **same mapped low-poly world** remains visible in the background.
-6. **Battle, capture, and train.** Wild PvE resolves locally using published deterministic rules plus deterministic pseudorandom rolls for mechanics intended to feel chance-based. A successful Rare/Legendary catch is claimed once with a proof transaction shortly after its spawn beacon; there is no separate capture-randomness commitment. Friend PvP uses mutually committed turn actions plus future public randomness, while gym challenges use one pre-battle strategy commitment and one final proof transaction on success. When an encounter ends, the camera smoothly returns to the prior fixed exploration perspective and follows the trainer again.
-7. **Secure progress.** The UI distinguishes progress saved locally from progress verified on-chain. The player can finalize a batch when needed.
-8. **Trade and challenge gyms.** Swap finalized bitmon under fixed rules and challenge a gym with a type-eligible team. Winning replaces the current player leader and earns recognition.
-9. **Keep playing independently.** The user is not dependent on an ad sponsor or the original website to submit valid state changes.
+1. **Open or install bitmon on a smartphone.** Explain immediately that local single-player is fully playable without a wallet or ads; official on-chain competition is opt-in and uses Digital Gold for in-app gym challenges.
+2. **Begin single-player immediately.** Choose a starter and explore with a local save; wild battles, captures, levels and practice gym fights work without the blockchain.
+3. **Understand the boundary before opting in.** The player keeps every local creature and their local save, but pre-opt-in Rare/Legendary captures have no canonical provenance and cannot be minted or fielded in verified PvP/gyms. New verified Rare/Legendary captures are required. Unverified levels/history are not silently promoted to canonical competitive state.
+4. **Opt into verified multiplayer when ready.** Create/connect a self-custodial wallet, register a trainer and canonical genesis context **before** any eligible public randomness, and start a separate verified progression lineage. Registration and Rare/Legendary minting are self-funded; no Digital Gold can be spent on NFTs.
+5. **Earn Digital Gold optionally.** Watch explicitly opt-in rewarded ads to obtain non-transferable, off-chain Digital Gold usable **only for official gym challenge entry and successful leadership claims in the Bitmon UI**. The sponsor pays underlying network fees without transferring crypto to the player. Digital Gold is not purchased or converted into crypto.
+6. **Capture verified creatures.** Common/Uncommon remain authenticated inventory records, not individual NFTs; legitimate online Rare/Legendary spawns use fresh public randomness and a successful catch needs one timely, self-funded ZK-backed NFT mint. Verified Rare/Legendary entries must be minted before use in official gyms or PvP.
+7. **Challenge gyms.** Play local practice freely. For official leadership, consume Digital Gold to submit one commitment before the public-randomness battle; a victory consumes Digital Gold for one final proof and puts the winner's fame and leadership on-chain. Defeats need no final claim.
+8. **Trade and battle with other trainers.** Restricted NFT swaps are self-funded, and verified PvP checks authoritative monster ownership; signing turn actions off-chain does not require a per-turn gas payment.
+9. **Keep playing independently.** The ad/Digital Gold provider can disappear without changing valid smart-contract operations or preventing self-funded participation through other clients; the normal Bitmon interface need not expose gas mechanics.
 
-### Guest preview
+### Local single-player and verified collection
 
-An optional guest demo can let a player see the map, walk around, and try practice combat without a wallet. Guest bitmon, XP, and encounters are **not** canonical and cannot later be imported into a verified trainer. The interface must not promise that guest progress can be upgraded retroactively.
+Local single-player is the actual free game, not a short guest demo. Its save, captures, levels, progress, and practice battles persist after multiplayer opt-in. It is explicitly **unverified**, so no local Rare/Legendary can be backdated, imported or NFT-minted as a canonical encounter; unverified stats and XP cannot be asserted as verified competitive facts. A separate canonical lineage begins only after on-chain trainer registration. Exact treatment of locally earned Common/Uncommon for competitive onboarding is an open anti-cheat design question; any inclusion must follow published, verifier-checkable genesis/import rules (e.g., fixed baseline properties), never an arbitrary client save.
 
 ## 4. The world: a game version of Earth
 
@@ -247,11 +247,11 @@ The game should not require disclosure of the player's real-world location merel
 
 ## 7. Encounters, regions, and fair randomness
 
-### ENC-01 — First verified encounter requires registered identity
+### ENC-01 — Registration before opt-in verified encounters
 
 **As a player**, I know that my bitmon were legitimately found under the same rules as everyone else's.
 
-- The verified journey starts with a trainer ID committed on-chain **before** any encounter randomness used by that trainer is published.
+- Local single-player needs no identity or blockchain. The separately opted-in verified journey starts with a trainer ID committed on-chain **before** any encounter randomness used by that trainer is published.
 - Registration must be finalized and the protocol-defined activation boundary passed before the player is eligible for verified encounters.
 - The player can see that registration is pending, active, or failed; a guest demo is a separate non-canonical mode.
 - Every eligible trainer has personalized encounter outcomes from fixed identity plus authenticated shared randomness; the player cannot select a different seed or reroll by refreshing a browser. Common/Uncommon offline play may consume previously authenticated cached encounter material, while Rare/Legendary encounter authorization requires fresh online randomness.
@@ -269,10 +269,10 @@ The game should not require disclosure of the player's real-world location merel
 
 - The player meets a bitmon, enters a clear turn-based encounter UI, chooses moves or items, sees the battle resolve, and may attempt capture under the rules for that rarity tier.
 - **Common and Uncommon** wild encounters may be played and captured offline when the necessary map data and previously authenticated encounter state are already cached. Their wild combat and capture resolution are deterministic so no hidden client-side reroll exists.
-- **Rare and Legendary** encounters are not generated offline. They require a live connection for the fresh authenticated randomness that decides the high-rarity spawn, and the resulting encounter receives a unique authenticated identity that cannot be rerolled by reload/reconnect.
+- **Verified Rare and Legendary** encounters are not generated offline; they need fresh authenticated randomness and produce a unique, non-rerollable encounter identity. Local-only Rare/Legendary encounters are possible but remain non-canonical even if played online.
 - Registration is the only required prior on-chain commitment for the high-rarity spawn path. The eligible encounter slot and any required region/habitat context must be fixed before its assigned beacon value exists; the player does **not** send a separate transaction before seeing or fighting the spawn.
 - Once the Rare/Legendary spawn exists, its battle/capture uses published local PvE rules. Chance-like battle/capture presentation may use deterministic pseudorandom rolls derived from the authenticated encounter state; these rolls are reproducible and are not a second source of security-critical randomness.
-- If the player successfully captures the Rare/Legendary bitmon, they submit **one proof transaction within a short deadline measured from the spawn beacon**. The claim is invalid after that deadline. The proof establishes that the trainer/slot/beacon really produced that species/rarity, the slot was unused, and the claimed post-encounter state follows the rules.
+- If a verified player successfully captures the Rare/Legendary bitmon, they **self-fund one proof-and-NFT-mint transaction within a short deadline measured from the spawn beacon**. The claim is invalid after that deadline. The proof establishes that the trainer/slot/beacon really produced that species/rarity, the slot was unused, and the claimed post-encounter state follows the rules.
 - Ordinary Common/Uncommon local progress can remain pending for later finalization. The UI clearly distinguishes offline-capable ordinary play from online-only high-rarity spawn opportunities and displays the high-rarity claim deadline.
 
 ### ENC-04 — Rarity and time budgets
@@ -289,17 +289,17 @@ The game should not require disclosure of the player's real-world location merel
 **As a player**, I can view my roster and understand each bitmon's identity and status.
 
 - Each collected bitmon has a recognizable species, assigned type or pair of types, rarity tier, current level, moves, and authenticated provenance for verified captures.
-- The collection interface distinguishes **local pending** changes from **finalized** canonical ownership.
-- The player can build a party, inspect bitmon, and understand which ones are eligible to trade or assign to gym defense.
+- The collection interface distinguishes **local-only**, **verified pending**, **NFT minted**, and **finalized** states; local-only captures do not gain competitive eligibility on opt-in.
+- Common/Uncommon are authenticated inventory records in verified play, not individual NFTs. Rare/Legendary require minted, self-funded, randomness-verified NFTs to enter official gyms/PvP or NFT trading. The collection shows eligibility clearly.
 - Original bitmon art, names, types, and UI are required; no copyrighted franchise assets are part of the product.
 
 ### GAME-02 — Battles and capture
 
 - Battles are turn-based, strategically understandable, and consistent across supported clients.
 - **Wild PvE is deterministic/reproducible at the protocol level.** Mechanics intended to feel random—such as critical hits, accuracy, status procs or an ordinary catch roll if the final combat design uses one—use a deterministic pseudorandom stream derived from authenticated encounter state plus stable domain/event counters. The same state always yields the same sequence, so restarting cannot reroll it.
-- **Rare/Legendary security randomness applies to the spawn, not the catch.** A registered trainer's predetermined eligible slot uses fresh authenticated public randomness to decide high-rarity spawn/species. After successful local battle/capture, one timely ZK-backed claim transaction finalizes the catch; no capture-attempt commitment or second future beacon is required.
+- **Verified Rare/Legendary security randomness applies to the spawn, not the catch.** A registered trainer's predetermined eligible slot uses fresh authenticated public randomness; one timely self-funded ZK-backed claim mints the NFT after a legal capture. Local-only high-rarity captures are not eligible for retrospective minting; no extra pre-catch commitment is required.
 - **Friend PvP is online and interactive.** Players exchange signed/committed turn actions before the assigned future beacon value is revealed. Security-relevant crit/accuracy/status randomness comes from that beacon; normal turn commitments remain off-chain.
-- **Gym challenges are online but asynchronous against a published defense policy.** One pre-battle commitment binds the challenge and challenger policy/strategy before future beacon randomness. One final proof transaction is required only for a successful challenge/leadership claim.
+- **Official gyms are online and asynchronous against a published defense policy.** The official app requires Digital Gold for the initial on-chain commitment and, on victory, for the final on-chain leadership/fame proof. A free local practice fight has no shared effect. Independent clients can self-fund equivalent permissionless contract calls.
 - The same battle rules/UI should consume a common RNG interface: authenticated public randomness when unpredictability is security-critical, deterministic pseudorandomness otherwise. Exact chance mechanics and multipliers remain balance decisions.
 - Difficulty and pacing should be tuned for enjoyable play, not just cryptographic convenience.
 
@@ -316,7 +316,7 @@ The game should not require disclosure of the player's real-world location merel
 
 ### GAME-03 — Saving and restoration
 
-- Progress is saved locally while playing and can later be proven/finalized on-chain in batches.
+- Single-player saves remain local and playable but cannot automatically become canonical. After verified opt-in, authenticated progress can be proven/finalized on-chain in batches.
 - The interface uses distinct states such as **Guest**, **Local pending**, **Submitted**, **Finalized**, and **Needs attention**.
 - The player can export or restore user-controlled saved information; a cryptographic state root alone cannot recreate lost game history.
 - The player must never be led to believe unsent local state is already guaranteed recoverable from the blockchain.
@@ -327,8 +327,8 @@ The game should not require disclosure of the player's real-world location merel
 
 **As a player**, I can exchange a bitmon without enabling one account to receive unlimited farmed rarity or training.
 
-- Trades exchange **exactly one finalized, unlocked bitmon for exactly one** from another trainer.
-- Both bitmon must belong to the **same rarity tier**. No gifting, one-sided transfers, cross-tier swaps, or ordinary free NFT transfers are supported.
+- NFT trades exchange **exactly one finalized, unlocked, NFT-minted Rare/Legendary bitmon for exactly one** from another trainer. Common/Uncommon are not individually NFT-minted.
+- Both NFTs must belong to the **same rarity tier**, with self-funded blockchain fees. Digital Gold cannot mint, trade, escrow or transfer NFTs. No gifting, one-sided transfers, cross-tier swaps, or ordinary free NFT transfers are supported.
 - After the swap, **both bitmon become the lower of their two prior levels**; non-transferable training-related attributes are reset or remain bound to their original trainer according to the game rules.
 - Each trainer can complete at most **one swap per rolling 24 hours**; both parties consume their quota.
 - Players preview the exact result, including level changes and cooldowns, before signing.
@@ -349,7 +349,7 @@ The game should not require disclosure of the player's real-world location merel
 ### GYM-02 — Become the leader
 
 - A gym initially has a fixed NPC defense until a player defeats it.
-- A challenger assembles an eligible finalized team and fights the current defense **online** under the standard competitive battle rules. Chance events use authenticated commit-before-reveal randomness where the ruleset enables them, and a valid victory proof is submitted against the resulting battle transcript.
+- A local practice battle never changes leadership. For an official gym challenge, the player assembles an eligible verified team; **Rare/Legendary team members must already be minted as self-funded, randomness-verified NFTs**, while Common/Uncommon may appear as authenticated, non-NFT inventory entries. In the official UI, Digital Gold pays for the pre-battle on-chain commitment and, on victory, the final proof that replaces the leader. Future authenticated randomness resolves security-critical chance events. Permissionless self-paid contract calls remain possible through independent clients.
 - The successful challenger becomes the current gym leader; the winning team becomes the initial defense snapshot.
 - Leaders can update their defense team within published cooldown/activation rules, but **only** with bitmon matching the gym type.
 - Defense creatures are locked against trading while assigned, and their battle snapshots are stable until a permitted update.
@@ -357,33 +357,36 @@ The game should not require disclosure of the player's real-world location merel
 
 ### GYM-03 — Recognition, not money
 
-- Gym success grants **fame and history**: current leader, previous leaders, reigns, successful defenses, and non-transferable badges or equivalent recognition.
+- Official gym success records **on-chain fame and history**: current leader, previous leaders, reigns, successful defenses, and non-transferable badges or equivalent recognition. Digital Gold itself never becomes an on-chain asset.
 - No monetary reward or freely transferable reward is attached to gym control.
 - The UI shows the gym's type prominently, with a clear explanation of why a bitmon is or is not eligible.
 
 **Placement of gyms in the global Earth map is open.** A gym might be tied to a mapped location, a generated cell, or a curated game point. The mechanism must be consistent worldwide and must not accidentally give map-data-rich regions exclusive access to the core competitive mode.
 
-## 11. Registration, fees, and independent access
+## 11. Registration, Digital Gold, and independent access
 
-### ACCOUNT-01 — Register at the start
+### ACCOUNT-01 — Opt into verified multiplayer
 
-- A verified player creates or connects a self-custodial wallet and registers a stable trainer ID **before** verified play.
-- The app must explain why this first transaction is necessary and whether an optional fee sponsor is available.
-- A registered trainer's ID remains stable even if their wallet control later rotates under fixed recovery rules.
-- Registration is permissionless; no proof-of-personhood or mandatory centralized account is required.
+- Local single-player is the default and requires no wallet, fee, Digital Gold or ads. From the first launch, the player learns that official multiplayer requires a separate verified account/provenance path.
+- When opting into verified multiplayer, the player creates/connects a self-custodial wallet and registers a stable trainer ID **before** any eligible authenticated encounter randomness. Registration is paid with the player's cryptocurrency, not Digital Gold.
+- Previously captured unverified Rare/Legendary bitmon remain in the local collection but **cannot** be minted or used in official gym/PvP teams. New valid verified encounters and timely self-funded NFT claims are required.
+- Registration is permissionless and stable across wallet-control rotation under fixed recovery rules; no proof-of-personhood or centralized game account is needed for the on-chain protocol.
 
-### FEES-01 — Optional sponsorship
+### FEES-01 — Digital Gold for gym competition only
 
-- The player may pay blockchain network fees directly, or use an independent sponsor when one is available.
-- Advertising is **never mandatory** for playing or submitting an otherwise valid self-paid transaction.
-- The sponsor cannot change spawn probabilities, issue bitmon, determine a battle winner, or veto a valid self-paid action.
-- Ad-funded sponsorship is an optional business integration and must **not** be represented as approved by Google or another ad provider without a policy review.
+- **Digital Gold** is a fictional, off-chain, non-transferable and non-redeemable in-game credit obtained **only through optional, verified rewarded ads**. It cannot be bought, sold, gifted, withdrawn or exchanged for crypto.
+- The official Bitmon interface presents **only Digital Gold** as payment for an official gym challenge's pre-battle commitment and successful post-battle fame/leadership claim. Free local/practice gym battles need none.
+- An optional independent advertising operator maintains the balance, checks reward completion, and pays transaction gas directly for Digital Gold gym operations. The player receives no cryptocurrency, transferable reward, or gas token. Fee funding is an implementation detail, not a player-facing reward.
+- **Never** allow Digital Gold to fund trainer registration, Rare/Legendary NFT minting, NFT swaps/transfers, NFT escrow or self-funded PvP ownership transactions. These operations use the player's own cryptocurrency.
+- The sponsor can withhold its own optional service but cannot control game outcomes, mint NFTs, approve canonical rules, or veto a valid independent self-funded contract call. Smart contracts **must not check Digital Gold or require sponsorship**; independent clients may call the same gym contracts and pay their own gas. Therefore "Digital Gold-only" is an **official Bitmon UI rule**, not an on-chain monopoly or a promise of sponsor-independent UI access.
+- Do not claim Google or any ad network has approved Digital Gold. Seek explicit rewarded-ad policy review, maintain privacy/consent and anti-fraud safeguards, and provide a policy-independent self-pay protocol route.
 
 ### INDEPENDENCE-01 — Continuity
 
-- Players should be able to load an alternative compatible client and continue using verifiable progression rules if the original website disappears.
-- Required map, asset, protocol, and rules versions should be documented sufficiently for independent compatible clients.
-- If the public OpenFreeMap tile endpoint becomes unavailable, the player should be able to switch to a mirror or self-hosted copy of the **same OpenFreeMap geographic dataset**; this must not introduce alternative map geometry.
+- Users keep local single-player gameplay and saves if the sponsor or blockchain is unavailable; chain-backed competition requires network availability.
+- Players should be able to use an alternative compatible client to verify and submit the same canonical gym, capture, swap and PvP-related operations using self-funded cryptocurrency, even without Digital Gold.
+- Required map, assets, protocol, and rules versions must support independently maintained compatible clients.
+- If the public OpenFreeMap tile endpoint becomes unavailable, players can switch to a mirror or self-hosted copy of the **same OpenFreeMap geographic dataset**; no alternative geometry may be substituted.
 
 ## 12. Mobile PWA experience, UX, and accessibility
 
