@@ -1,7 +1,7 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.30 — 15.5–18 zoom and road surface art  
+**Version:** 0.33 — single-claim high-rarity catches, competitive beacon randomness, and deterministic pseudorandom local play  
 **Date:** 3 November 2026  
 **Status:** Draft; explicitly marked open decisions are not approved requirements  
 **Product name:** **bitmon**  
@@ -20,16 +20,19 @@ The **world is mapped 1:1 to the real-world geography represented in OpenFreeMap
 
 The game is primarily played locally after the player registers a verifiable trainer. Its collection and progression can be validated without trusting the original game website or an always-online game server. The rules, not the client software, determine which rewards are legitimate.
 
+Offline play is deliberately useful but does not expose the full rarity or competitive system. **Common and Uncommon** encounters, wild battles, training, and captures may continue from locally cached authenticated state. Chance-like mechanics in local/non-security-critical play use a deterministic pseudorandom stream so they still look and feel random to ordinary players while remaining reproducible and non-rerollable. **Rare and Legendary spawn rarity/species are online-only and use fresh authenticated public randomness.** After a legitimate high-rarity spawn appears, its battle/capture can resolve locally; a successful catch is claimed once, shortly afterward, with one proof transaction. Friend battles and gym challenges are online and use future authenticated public randomness only where unpredictability affects fairness.
+
 ### Product promises
 
 1. **The real Earth is the world.** A street in the map corresponds to that street's real geographic location.
 2. **It feels like a low-poly mobile game, not a navigation app.** Roads and buildings remain recognizable, but everything is presented in a coherent low-poly 2.5D RPG style.
 3. **Every neighborhood has a visual identity without fabricated geography.** OpenFreeMap building footprints, land use, roads, waterways, and parks influence the scene; only surface art and facade treatments may be invented.
 4. **The player's bitmon are earned, not fabricated.** Verified encounters and progression follow independently checkable rules.
-5. **Most actions are immediate.** Walking, exploring, and battling do not require blockchain transactions every few seconds.
-6. **Social competition is simple and fair.** Trading follows fixed restrictions; gyms have permanent type identities and reward reputation, not money.
-7. **No single operator is required to keep playing.** The player can self-pay transaction fees, use alternative hosting, and verify the canonical game state.
-8. **It lives on the phone.** Players can install bitmon from a browser onto their home screen and play in portrait orientation.
+5. **Most actions are immediate.** Walking, exploring, and ordinary Common/Uncommon wild play can continue locally without blockchain transactions every few seconds.
+6. **High-value randomness is fair.** Rare/Legendary **spawns** and competitive chance events use fresh authenticated public randomness where unpredictability is security-critical; ordinary/local chance mechanics use deterministic pseudorandomness instead.
+7. **Social competition is simple and fair.** Trading follows fixed restrictions; gyms have permanent type identities and reward reputation, not money.
+8. **No single operator is required to keep playing.** The player can self-pay transaction fees, use alternative hosting, and verify the canonical game state.
+9. **It lives on the phone.** Players can install bitmon from a browser onto their home screen and play in portrait orientation.
 
 ## 2. Decisions and assumptions
 
@@ -49,6 +52,11 @@ The game is primarily played locally after the player registers a verifiable tra
 - Buildings use OpenFreeMap footprints, overlaid in **stylized 2.5D**. Their facade/window/roof art may be invented or inferred from the tile's available fields and local mapped context; visual invention must never add a new physical building or expand its footprint.
 - Inferred residential-like styling is allowed as **artistic interpretation**, never as a verified residential label. Ambiguous buildings receive a neutral or plausible generic style.
 - A **verified trainer must register before their first verified encounter**; registration must predate the relevant public randomness.
+- **Offline verified-play candidates are limited to Common and Uncommon wild encounters.** They may be derived from previously authenticated state cached while online and finalized later. Chance-like local mechanics use deterministic pseudorandomness tied to authenticated encounter/battle state and stable event counters, so restarting cannot produce a new roll.
+- **Rare and Legendary spawn issuance is online-only.** Account registration is the required prior on-chain commitment; the trainer's eligible slot, randomness round, rules version and any required region/habitat context must already be fixed before the deciding public beacon output exists. No additional pre-spawn or pre-capture transaction is required.
+- After a legitimate Rare/Legendary spawn, battle and capture may use the same deterministic/pseudorandom local rules as ordinary PvE. A successful high-rarity catch must be submitted in **one proof transaction within a short protocol-defined deadline after the spawn beacon**; otherwise it is invalid. The proof verifies the legitimate spawn, unused encounter slot and legal resulting state. Exact deadline remains a protocol parameter.
+- **Friend battles are online.** Both players commit/sign each turn's actions to each other before the assigned future beacon round; that fresh public randomness resolves security-relevant chance events without an on-chain transaction per turn.
+- **Gym challenges are online.** A challenger makes one pre-battle commitment binding the gym, active defense snapshot, challenger team, rules version and committed battle policy/strategy. Future beacon rounds resolve security-relevant chance events; a successful challenge uses one final proof transaction to claim the result. Failed attempts need no final transaction.
 - Each gym has exactly **one permanent assigned bitmon type**. Both teams must contain only bitmon with that type; either type of a dual-type bitmon is sufficient.
 - Gym leaders may update their eligible defense team but cannot alter the gym type or create additional gym-specific rules.
 - Trades are **one-for-one, same rarity tier**, limited to **one swap per trainer per rolling 24 hours**, and both creatures reset to the lower of their prior levels.
@@ -58,7 +66,7 @@ The game is primarily played locally after the player registers a verifiable tra
 - **Virtual exploration is the primary control scheme:** players move a character through the map using mouse/touch/keyboard/gamepad. A player's real GPS location is **not** assumed to be required. This is different from a location-based game that requires physically visiting coordinates. The movement/travel design must be decided explicitly (§14).
 - The geographic **positions and footprints** are 1:1, but art style, perspective, visible building height, and collision presentation may be stylized for readability. This does **not** mean every meter of travel is fun at normal walking speed.
 - Desktop browsers may be used for development/debugging, but **desktop-specific and landscape layouts are not product requirements**. The game is designed for upright portrait smartphone screens.
-- Offline capability is scoped to cached application files and local pending progress where feasible; the entire Earth map, new authenticated randomness and blockchain settlement are not promised offline.
+- Offline map coverage remains limited to cached application/map data and local pending progress; the entire Earth map and blockchain settlement are not promised offline. The confirmed rarity rule above separately limits offline wild encounters to Common/Uncommon; Rare/Legendary spawn issuance and competitive security-critical randomness require connectivity.
 - Every bitmon type/rarity, battle rule, starter list, and gym location is still subject to game design unless stated as a confirmed rule above.
 
 ## 3. Who the player is and what they do
@@ -69,8 +77,8 @@ The game is primarily played locally after the player registers a verifiable tra
 2. **Create a verified trainer.** Connect or create a self-custodial wallet, choose a starter under fixed rules, select an initial permitted region, and register the trainer on-chain. Fees are self-paid or optionally sponsored.
 3. **Enter the world.** Start at a map coordinate and see roads, nearby buildings, parks, paths, and water in the bitmon visual language.
 4. **Explore.** Move an eight-direction animated trainer through the world; the fixed-pitch oblique camera follows and turns toward travel while the player adjusts zoom using a side slider. Roads and existing low-poly buildings stream in as the player travels.
-5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; the camera moves closer to the encountered bitmon while the **same mapped low-poly world** remains visible in the background.
-6. **Battle, capture, and train.** Play turn-based battles locally in the zoomed world view; legal actions change HP, status, inventory, levels, and the pending collection. When the encounter ends, the camera smoothly returns to the prior fixed exploration perspective and follows the trainer again.
+5. **Encounter bitmon.** Eligible encounters are determined fairly from the previously registered trainer identity and authenticated randomness; Common/Uncommon wild play can use previously authenticated cached state while Rare/Legendary **spawns** require a live connection and fresh authenticated randomness. The camera moves closer to the encountered bitmon while the **same mapped low-poly world** remains visible in the background.
+6. **Battle, capture, and train.** Wild PvE resolves locally using published deterministic rules plus deterministic pseudorandom rolls for mechanics intended to feel chance-based. A successful Rare/Legendary catch is claimed once with a proof transaction shortly after its spawn beacon; there is no separate capture-randomness commitment. Friend PvP uses mutually committed turn actions plus future public randomness, while gym challenges use one pre-battle strategy commitment and one final proof transaction on success. When an encounter ends, the camera smoothly returns to the prior fixed exploration perspective and follows the trainer again.
 7. **Secure progress.** The UI distinguishes progress saved locally from progress verified on-chain. The player can finalize a batch when needed.
 8. **Trade and challenge gyms.** Swap finalized bitmon under fixed rules and challenge a gym with a type-eligible team. Winning replaces the current player leader and earns recognition.
 9. **Keep playing independently.** The user is not dependent on an ad sponsor or the original website to submit valid state changes.
@@ -246,7 +254,7 @@ The game should not require disclosure of the player's real-world location merel
 - The verified journey starts with a trainer ID committed on-chain **before** any encounter randomness used by that trainer is published.
 - Registration must be finalized and the protocol-defined activation boundary passed before the player is eligible for verified encounters.
 - The player can see that registration is pending, active, or failed; a guest demo is a separate non-canonical mode.
-- Every eligible trainer has personalized encounter outcomes from fixed identity plus authenticated shared randomness; the player cannot select a different seed or reroll by refreshing a browser.
+- Every eligible trainer has personalized encounter outcomes from fixed identity plus authenticated shared randomness; the player cannot select a different seed or reroll by refreshing a browser. Common/Uncommon offline play may consume previously authenticated cached encounter material, while Rare/Legendary encounter authorization requires fresh online randomness.
 
 ### ENC-02 — Encounters belong to the world
 
@@ -259,16 +267,20 @@ The game should not require disclosure of the player's real-world location merel
 
 ### ENC-03 — Familiar RPG encounter loop
 
-- The player meets a bitmon, enters a clear turn-based encounter UI, chooses moves or items, sees the battle resolve, and may capture the bitmon if fixed conditions are met.
-- Ordinary battles and exploration run locally with immediate feedback and do not each require a chain transaction.
-- Valuable rare encounters may require an **expiring on-chain reservation** before the battle is finished, clearly communicated to the player.
-- The UI must explain when an encounter is still pending and whether a missed claim deadline makes it ineligible for canonical capture.
+- The player meets a bitmon, enters a clear turn-based encounter UI, chooses moves or items, sees the battle resolve, and may attempt capture under the rules for that rarity tier.
+- **Common and Uncommon** wild encounters may be played and captured offline when the necessary map data and previously authenticated encounter state are already cached. Their wild combat and capture resolution are deterministic so no hidden client-side reroll exists.
+- **Rare and Legendary** encounters are not generated offline. They require a live connection for the fresh authenticated randomness that decides the high-rarity spawn, and the resulting encounter receives a unique authenticated identity that cannot be rerolled by reload/reconnect.
+- Registration is the only required prior on-chain commitment for the high-rarity spawn path. The eligible encounter slot and any required region/habitat context must be fixed before its assigned beacon value exists; the player does **not** send a separate transaction before seeing or fighting the spawn.
+- Once the Rare/Legendary spawn exists, its battle/capture uses published local PvE rules. Chance-like battle/capture presentation may use deterministic pseudorandom rolls derived from the authenticated encounter state; these rolls are reproducible and are not a second source of security-critical randomness.
+- If the player successfully captures the Rare/Legendary bitmon, they submit **one proof transaction within a short deadline measured from the spawn beacon**. The claim is invalid after that deadline. The proof establishes that the trainer/slot/beacon really produced that species/rarity, the slot was unused, and the claimed post-encounter state follows the rules.
+- Ordinary Common/Uncommon local progress can remain pending for later finalization. The UI clearly distinguishes offline-capable ordinary play from online-only high-rarity spawn opportunities and displays the high-rarity claim deadline.
 
 ### ENC-04 — Rarity and time budgets
 
 - Rarity is **personal/probabilistic**, not a globally unique cap on a species.
+- The offline encounter pool contains **Common and Uncommon only**. Rare and Legendary encounter issuance requires a live authenticated randomness source and therefore does not occur while fully offline.
 - Encounter opportunities and XP follow deterministic published quotas so simply running many browser actions cannot generate unlimited valid progress for one trainer.
-- Specific rates, epoch schedules, caps, and rare-claim windows are balance parameters to validate; historic concept values are not locked product promises.
+- Specific rarity rates, epoch schedules, caps, high-rarity claim deadlines, and ordinary combat/capture balance parameters are still to validate; historic concept values are not locked product promises.
 
 ## 8. Bitmon collection, progression, and combat
 
@@ -284,8 +296,11 @@ The game should not require disclosure of the player's real-world location merel
 ### GAME-02 — Battles and capture
 
 - Battles are turn-based, strategically understandable, and consistent across supported clients.
-- Damage, status, items, move legality, XP, and capture outcomes follow deterministic, published rules that can be independently verified.
-- Capture is deterministic after the encounter exists and required battle/resource conditions are satisfied; the player cannot brute-force an extra hidden catch roll.
+- **Wild PvE is deterministic/reproducible at the protocol level.** Mechanics intended to feel random—such as critical hits, accuracy, status procs or an ordinary catch roll if the final combat design uses one—use a deterministic pseudorandom stream derived from authenticated encounter state plus stable domain/event counters. The same state always yields the same sequence, so restarting cannot reroll it.
+- **Rare/Legendary security randomness applies to the spawn, not the catch.** A registered trainer's predetermined eligible slot uses fresh authenticated public randomness to decide high-rarity spawn/species. After successful local battle/capture, one timely ZK-backed claim transaction finalizes the catch; no capture-attempt commitment or second future beacon is required.
+- **Friend PvP is online and interactive.** Players exchange signed/committed turn actions before the assigned future beacon value is revealed. Security-relevant crit/accuracy/status randomness comes from that beacon; normal turn commitments remain off-chain.
+- **Gym challenges are online but asynchronous against a published defense policy.** One pre-battle commitment binds the challenge and challenger policy/strategy before future beacon randomness. One final proof transaction is required only for a successful challenge/leadership claim.
+- The same battle rules/UI should consume a common RNG interface: authenticated public randomness when unpredictability is security-critical, deterministic pseudorandomness otherwise. Exact chance mechanics and multipliers remain balance decisions.
 - Difficulty and pacing should be tuned for enjoyable play, not just cryptographic convenience.
 
 ### CAM-01 — Battle framing in the existing world
@@ -334,7 +349,7 @@ The game should not require disclosure of the player's real-world location merel
 ### GYM-02 — Become the leader
 
 - A gym initially has a fixed NPC defense until a player defeats it.
-- A challenger assembles an eligible finalized team, fights the current defense locally under fixed battle rules, and submits a valid victory proof.
+- A challenger assembles an eligible finalized team and fights the current defense **online** under the standard competitive battle rules. Chance events use authenticated commit-before-reveal randomness where the ruleset enables them, and a valid victory proof is submitted against the resulting battle transcript.
 - The successful challenger becomes the current gym leader; the winning team becomes the initial defense snapshot.
 - Leaders can update their defense team within published cooldown/activation rules, but **only** with bitmon matching the gym type.
 - Defense creatures are locked against trading while assigned, and their battle snapshots are stable until a permitted update.
