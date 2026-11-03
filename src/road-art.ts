@@ -1,5 +1,5 @@
 import type { ExpressionSpecification, FillLayerSpecification, LineLayerSpecification } from 'maplibre-gl'
-import { CARRIAGEWAY_METRES, STREETS } from './road-tiles'
+import { CARRIAGEWAY_METRES, PARAPET_METRES, PATH_METRES, STREETS } from './road-tiles'
 
 // Street art for mapped OpenFreeMap transportation features: asphalt with
 // kerbs, sidewalks and lane markings, paved or dirt footways, tiled plazas,
@@ -36,8 +36,7 @@ const classIn = (classes: string[]): Expression => ['in', ['get', 'class'], ['li
 const unpaved: Expression = ['any', ['==', ['get', 'surface'], 'unpaved'], ['==', ['get', 'class'], 'track']]
 
 const carriageway: Expression = ['to-number', ['get', ['get', 'class'], ['literal', CARRIAGEWAY_METRES]], 0]
-const pathWidth: Expression = ['match', ['get', 'subclass'],
-  'pedestrian', 4, 'platform', 3, 'steps', 2.5, 'path', 1.5, 2]
+const pathWidth: Expression = ['to-number', ['get', ['coalesce', ['get', 'subclass'], ''], ['literal', PATH_METRES]], 2]
 
 // Ground metres to CSS px; MapLibre doubles line widths per zoom level here.
 function metres(value: Expression | number): Expression {
@@ -88,7 +87,7 @@ export function roadLayers(): (FillLayerSpecification | LineLayerSpecification)[
     { ...transportation, id: 'bridge-sides', layout: { ...round, 'line-sort-key': ['to-number', ['get', 'layer'], 1] },
       filter: ['all', onBridge, ['any', classIn(ROADS), ['==', ['get', 'class'], 'path']]],
       paint: { 'line-color': '#6f6a62',
-        'line-width': metres(['+', ['case', ['==', ['get', 'class'], 'path'], pathWidth, carriageway], 1.2]) } },
+        'line-width': metres(['+', ['case', ['==', ['get', 'class'], 'path'], pathWidth, carriageway], PARAPET_METRES]) } },
     { ...transportation, id: 'bridges', layout: { ...round, 'line-sort-key': ['to-number', ['get', 'layer'], 1] },
       filter: ['all', onBridge, ['any', classIn(ROADS), ['==', ['get', 'class'], 'path']]],
       paint: { 'line-color': ['case', ['==', ['get', 'class'], 'path'], '#cbbfa8', unpaved, DIRT, ASPHALT],

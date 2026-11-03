@@ -1,10 +1,17 @@
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { offlineMap, savePosition, tileKeyAt, validPosition, type Position } from './offline-map'
+import { deckMetres } from './road-tiles'
 import { createTrainerLayer } from './trainer-layer'
 
 type Ring = number[][]
 type Polygon = Ring[]
-type CollisionArea = { minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number }
+// Walls block; overhead parts (raised on columns or spanning a gap) are walked
+// under and only matter to the camera; mapped bridge decks and piers are walked
+// on, over water, piers and the bridge's own building parts.
+type CollisionRole = 'wall' | 'overhead' | 'deck'
+type CollisionArea = {
+  minLon: number; maxLon: number; minLat: number; maxLat: number; rings: Polygon; height?: number; role: CollisionRole
+}
 type MeterBounds = { minX: number; maxX: number; minY: number; maxY: number }
 type CollisionIndex = {
   buildOrigin: Position
@@ -91,6 +98,8 @@ const CACHE_REFRESH_METERS = 12
 const METERS_PER_DEGREE = METERS_PER_RADIAN * Math.PI / 180
 const COLLISION_CELL_METERS = 24
 const MAX_INDEX_CELLS_PER_AREA = 64
+// A building part starting this high leaves room to walk beneath it.
+const HEADROOM_METERS = 3
 
 function distanceMeters(a: Position, b: Position): number {
   return Math.hypot(
@@ -155,8 +164,34 @@ function collisionAt(index: CollisionIndex, point: Position): boolean {
   const local = localMeters(index, point)
   const key = Math.floor(local.x / COLLISION_CELL_METERS) + ':' +
     Math.floor(local.y / COLLISION_CELL_METERS)
-  if (index.cells.get(key)?.some((area) => contains(area, point))) return true
-  return index.overflow.some((area) => contains(area, point))
+  let wall = false
+  for (const areas of [index.cells.get(key) ?? [], index.overflow]) {
+    for (const area of areas) {
+      if (area.role === 'overhead' || !contains(area, point)) continue
+      if (area.role === 'deck') return false
+      wall = true
+    }
+  }
+  return wall
+}
+
+// A bridge's walkable deck: one rectangle per centreline segment, as wide as
+// the drawn deck and extended by half that width so consecutive segments overlap.
+function deckRectangles(line: number[][], width: number): Polygon[] {
+  const half = width / 2
+  const result: Polygon[] = []
+  for (let i = 1; i < line.length; i++) {
+    const a = { lon: line[i - 1][0], lat: line[i - 1][1] }
+    const b = { lon: line[i][0], lat: line[i][1] }
+    const east = (b.lon - a.lon) * METERS_PER_DEGREE * Math.cos(radians(a.lat))
+    const north = (b.lat - a.lat) * METERS_PER_DEGREE
+    const length = Math.hypot(east, north)
+    if (!length) continue
+    const [ue, un] = [east / length * half, north / length * half]
+    result.push([[displace(a, -ue + un, -un - ue), displace(a, -ue - un, -un + ue),
+      displace(b, ue - un, un + ue), displace(b, ue + un, un - ue)].map((p) => [p.lon, p.lat])])
+  }
+  return result
 }
 
 function cameraCandidates(index: CollisionIndex, position: Position, bearing: number): Set<CollisionArea> {
@@ -317,11 +352,28 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
       maxIndexedBuildingDistance: 0,
     }
     const seen = new Set<string>()
-    for (const layer of ['building', 'water']) {
+    for (const layer of ['building', 'water', 'transportation']) {
       for (const feature of map.querySourceFeatures('openmaptiles', { sourceLayer: layer })) {
+        const properties = feature.properties ?? {}
         const geometry = feature.geometry
-        if (geometry.type !== 'Polygon' && geometry.type !== 'MultiPolygon') continue
-        const polygons: Polygon[] = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+        let polygons: Polygon[]
+        let role: CollisionRole = 'wall'
+        if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') {
+          polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates
+          if (layer === 'transportation') {
+            if (properties.class !== 'bridge' && properties.class !== 'pier') continue
+            role = 'deck'
+          } else if (layer === 'building' && Number(properties.render_min_height) >= HEADROOM_METERS) {
+            role = 'overhead'
+          }
+        } else if (layer === 'transportation' && properties.brunnel === 'bridge' &&
+            (geometry.type === 'LineString' || geometry.type === 'MultiLineString')) {
+          const width = deckMetres(properties)
+          if (!width) continue
+          const lines = geometry.type === 'LineString' ? [geometry.coordinates] : geometry.coordinates
+          polygons = lines.flatMap((line) => deckRectangles(line, width))
+          role = 'deck'
+        } else continue
         for (const rings of polygons) {
           if (!rings.length || rings[0].length < 3) continue
           const bounds = { minLon: Infinity, maxLon: -Infinity, minLat: Infinity, maxLat: -Infinity }
@@ -334,16 +386,16 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
           if (bounds.maxLon < position.lon - .002 || bounds.minLon > position.lon + .002 ||
               bounds.maxLat < position.lat - .002 || bounds.minLat > position.lat + .002) continue
           // Match the height fallback used by the fill-extrusion layer.
-          const sourceHeight = Number(feature.properties?.render_height)
-          const height = layer === 'building' && feature.properties?.hide_3d !== true
+          const sourceHeight = Number(properties.render_height)
+          const height = layer === 'building' && properties.hide_3d !== true
             ? (Number.isFinite(sourceHeight) && sourceHeight > 0 ? sourceHeight : 14)
             : undefined
           // Exact duplicates have the same geometry and appearance. Keep any
           // overlapping footprints with different heights for safe occlusion.
-          const signature = layer + ':' + height + ':' + JSON.stringify(rings)
+          const signature = role + ':' + height + ':' + JSON.stringify(rings)
           if (seen.has(signature)) continue
           seen.add(signature)
-          indexArea(index, { ...bounds, rings, height })
+          indexArea(index, { ...bounds, rings, height, role })
         }
       }
     }

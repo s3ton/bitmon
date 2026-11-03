@@ -141,6 +141,7 @@ This section records **requirements evolution** separately from actual implement
 | 2026-11-03 | DEC-041 | **Accepted — implementation in review** | Give world-famous landmarks their own facade archetypes (cathedral, shrine, fortress, arena, ironwork, palace). A landmark is a heritage-class POI whose name has 20+ translations in the tile; all its stacked building parts are grouped with it, its mapped `colour` snaps to a Bitmon stone/metal tint, and a 1 m gold cornice sits under its roof cap. No hand-made per-monument art. | **v0.28** VIS-03, MAP-GATE-04/05 |
 | 2026-11-03 | DEC-042 | **Accepted — implementation in review** | Extend landmark archetypes from six to twelve using tile signals only: mosque and temple from the place-of-worship subclass, ruins from the castle subclass, bell tower for a POI part at least 3× taller than wide, skyscraper for a solid body of 120 m+ (taller open structures stay ironwork), and bridge for a famous POI in water with a raised deck spanning 80 m+. Landmark groups grow up to four steps, and stacked parts may merely abut. | **v0.29** VIS-03, MAP-GATE-04/05 |
 | 2026-11-03 | DEC-043 | **Accepted — implementation in review** | Cap zoom at 15.5–18 with 18 as the default, and draw the trainer at 3× true scale instead of 2×. Replace plain road lines with street art on existing transportation geometry: true-metre class widths, kerbs, sidewalk strips only where sidewalks are not mapped, asphalt, alley setts, lane markings, footway paving/dirt/steps/cycleway, tiled plazas, bridge decks over the ground network, and painted crossings where a mapped footway crosses a mapped street. Tunnels and indoor/underground features are not drawn. The tile worker rebuilds the transportation layer with geometry unchanged. | **v0.30** VIS-01, WORLD-02, MAP-GATE-03/05 |
+| 2026-11-03 | DEC-044 | **Accepted — implementation in review** | Building parts whose `render_min_height` is 3 m or more no longer block walking (the camera still treats them as tall); mapped bridge and pier areas, and the drawn deck of every bridge road or path (its art width plus parapets, never rail), are walkable over water and buildings. | **v0.31** MOVE-01, WORLD-01 |
 
 ### Open decisions to resolve before related implementation
 
@@ -381,3 +382,11 @@ In Node, the tile worker went from 2–38 ms to 3–60 ms per z14 tile (road pas
 - all 4,151 painted crossings lie on a mapped at-ground footway segment.
 
 Desktop browser review covered Milan, London Soho, Piazza Navona, Pont Neuf, Central Park and Mumbai. Phone appearance and frame rate remain unverified.
+
+### Walkable bridges and raised parts — 3 November 2026
+
+The owner reported that Tower Bridge could not be walked. Collision treated every water polygon and every building part as a wall, whatever its height, and ignored roads, so no bridge over water could be crossed. Tower Bridge's roadway lies over river water and under a building part mapped at 7–9 m, with piers at 0–9 m beneath the towers.
+
+**Implementation:** collision areas now have a role. Building parts starting 3 m or more above the ground are `overhead`: indexed for the camera's clearance check but never blocking. Transportation `bridge`/`pier` areas and a rectangle per segment of every bridge road or path (as wide as its drawn deck, from the widths `road-art.ts` uses) are `deck`: a point on a deck is clear even over water, piers or the bridge's own building parts. Rail bridges have no drawn deck and stay blocked. The trainer stays at ground level, so on Tower Bridge it walks under the drawn deck.
+
+**Validation:** in the desktop browser, a temporary probe of the live collision index (removed before commit) found the whole Tower Bridge roadway clear with the river blocked on both sides, and London Bridge clear as a continuous strip about 30 m wide across the Thames; a coordinate jump onto London Bridge landed on the deck. `npm run build` passes. Phone check pending.

@@ -14,6 +14,17 @@ import { Grid, metresPerUnit, type Feature, type Point, type Value } from './til
 export const CARRIAGEWAY_METRES: Record<string, number> = {
   motorway: 14, trunk: 12, primary: 11, secondary: 9, tertiary: 8, minor: 6, busway: 6, service: 4, track: 3,
 }
+// Footway widths by subclass; other paths are 2 m wide.
+export const PATH_METRES: Record<string, number> = { pedestrian: 4, platform: 3, steps: 2.5, path: 1.5 }
+// Parapets add this much to a bridge deck beyond its carriageway or footway.
+export const PARAPET_METRES = 1.2
+
+// Full drawn width of a mapped bridge deck, or undefined for classes (rail,
+// ferry) whose bridges are not drawn and cannot be walked.
+export function deckMetres(tags: Record<string, unknown>): number | undefined {
+  const width = tags.class === 'path' ? PATH_METRES[String(tags.subclass)] ?? 2 : CARRIAGEWAY_METRES[String(tags.class)]
+  return width === undefined ? undefined : width + PARAPET_METRES
+}
 // Streets with kerbs and sidewalks, where mapped footways get painted crossings.
 export const STREETS = ['trunk', 'primary', 'secondary', 'tertiary', 'minor', 'busway']
 const WALKWAYS = new Set(['footway', 'path', 'pedestrian'])
