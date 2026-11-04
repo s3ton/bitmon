@@ -459,7 +459,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 
 These questions need explicit product decisions; do not mistake unmeasured parameters for confirmed requirements.
 
-1. **Public beacon:** choose a reliable authenticated beacon, epoch duration, Rare/Legendary per-period thresholds, claim window and outage policy. Tune ordinary few-meter encounters independently; no per-encounter rare lottery or walking anti-cheat.
+1. **Public beacon:** choose a reliable authenticated beacon, precise global alignment of the **decided eight-hour epochs**, in-progress battle completion grace and outage policy. **The 10% Rare / 1% Legendary thresholds and no-rollover same-period claim deadline are decided.** Tune ordinary few-meter encounters independently; no per-encounter rare lottery or walking anti-cheat.
 2. **Habitat balance:** validate any species/region modifier from OpenFreeMap-only data; until safe, use location-independent rare odds.
 3. **Gym roster templates:** decide exact allowed levels, species, stats, moves and items for local Common/Uncommon in official gyms; do not import untrusted local stats. No separate guest-to-online migration blocker.
 4. **Gym queue:** one active fight per gym and a free FIFO reservation queue are decided. Tune queue cap, offer acceptance, battle timeout, idempotent charge/compensation and reconnect grace.
