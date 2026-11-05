@@ -47,8 +47,14 @@ const WORSHIP_STYLES: Record<string, LandmarkStyle> = {
 // only about 1% of all POIs reach 20.
 const FAMOUS_TRANSLATIONS = 20
 
+// A part rests on another whose top is within this of its base.
+const REST_METRES = 1
+
 type Footprint = Area & { tags: Record<string, Value>; size: number; center: Point; group?: LandmarkGroup }
 type LandmarkGroup = { style: LandmarkStyle | null; members: Footprint[]; core: Footprint[]; onWater: boolean }
+
+const baseOf = ({ tags }: Footprint) => Number(tags.render_min_height) || 0
+const topOf = ({ tags }: Footprint) => Number(tags.render_height) || 0
 
 function styleFor(area: Area, pois: Grid<{ point: Point; style: JoinedStyle }>, landuse: Grid<Area & { style: JoinedStyle }>): JoinedStyle | undefined {
   let best: JoinedStyle | undefined
@@ -210,6 +216,18 @@ export function buildingFeatures(tile: VectorTile, x: number, y: number): Featur
       footprints.push(footprint)
       footprintGrid.add(footprint, footprint)
     }
+  }
+
+  // OpenMapTiles hides a building's outline because its parts redraw it, but
+  // sometimes no part redraws the body under an upper part, leaving that part
+  // floating. Show an outline whose top meets such a part.
+  for (const part of footprints) {
+    const base = baseOf(part)
+    if (!base || part.tags.hide_3d === true) continue
+    const beneath = [...footprintGrid.near(pointBox(part.center))].filter((other) =>
+      baseOf(other) < base && topOf(other) >= base - REST_METRES && contains(other, part.center))
+    if (beneath.some((other) => other.tags.hide_3d !== true)) continue
+    for (const other of beneath) if (topOf(other) <= base + REST_METRES) delete other.tags.hide_3d
   }
 
   // A landmark is mapped as many stacked parts (spires, tiers, domes) and its

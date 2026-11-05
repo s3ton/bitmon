@@ -118,7 +118,7 @@ const SEE_THROUGH_OPACITY = .4
 const SEE_THROUGH = '-see-through'
 const partIn = (ids: number[]): ExpressionSpecification => ['in', ['id'], ['literal', ids]]
 
-// Translucent copies of the building layers, added above the trainer. They
+// Translucent copies of the building layers, added below the trainer. They
 // draw only the parts covering the trainer, which the opaque layers then skip.
 export function seeThroughLayers(): FillExtrusionLayerSpecification[] {
   return buildingLayers().map((layer) => ({
