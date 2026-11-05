@@ -48,7 +48,7 @@ const WORSHIP_STYLES: Record<string, LandmarkStyle> = {
 // only about 1% of all POIs reach 20.
 const FAMOUS_TRANSLATIONS = 20
 
-// Names that mark a famous monument as an arch or monumental gate.
+// Names that mark a monument or attraction as an arch or monumental gate.
 const ARCH_NAME = /^(?!.*\b(bridge|park)\b).*\b(arch|arc|arco|gate|gateway|porta|puerta|triumphal)\b/i
 // A plain box this tall and elongated can be drawn with openings.
 const ARCH_MIN_HEIGHT = 10
@@ -101,10 +101,13 @@ function landmarkSeed(properties: Record<string, Value>): { style: LandmarkStyle
   if (!LANDMARK_CLASSES.has(poiClass) || properties.subclass === 'artwork') return undefined
   let fame = 0
   for (const key in properties) if (key.startsWith('name:') && key !== 'name:latin' && key !== 'name:nonlatin') fame++
+  const arched = ARCH_NAME.test(String(properties['name:en'] ?? properties.name))
+  // A monument with an arch name needs no fame; looser classes still do.
+  if (poiClass === 'monument' && arched) return { style: 'arch', fame }
   if (fame < FAMOUS_TRANSLATIONS) return undefined
   if (poiClass === 'place_of_worship') return { style: WORSHIP_STYLES[String(properties.subclass ?? '')] ?? 'shrine', fame }
   if (poiClass === 'castle') return { style: properties.subclass === 'ruins' ? 'ruins' : 'fortress', fame }
-  return { style: ARCH_NAME.test(String(properties['name:en'] ?? properties.name)) ? 'arch' : null, fame }
+  return { style: poiClass === 'attraction' && arched ? 'arch' : null, fame }
 }
 
 // Landmarks without a telling class are judged by where and how they stand.
