@@ -107,6 +107,7 @@ export function createTrainerLayer(
   let column = 0
   let mirrored = false
   let visible = true
+  let covered = false
   let textureReady = false
   let glProgram: WebGLProgram | null = null
   let buffer: WebGLBuffer | null = null
@@ -224,6 +225,8 @@ export function createTrainerLayer(
       gl.vertexAttribPointer(aCorner, 2, gl.FLOAT, false, 0, 0)
       gl.enable(gl.BLEND)
       gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+      // Stacked see-through parts add up to nearly opaque, so draw over them.
+      if (covered) gl.disable(gl.DEPTH_TEST)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
     },
 
@@ -249,6 +252,11 @@ export function createTrainerLayer(
       row = nextRow
       column = nextColumn
       mirrored = nextMirrored
+      map.triggerRepaint()
+    },
+    setCovered(next: boolean) {
+      if (covered === next) return
+      covered = next
       map.triggerRepaint()
     },
     setVisible(next: boolean) {

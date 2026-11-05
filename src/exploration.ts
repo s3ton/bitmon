@@ -298,8 +298,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
   const addTrainerLayer = () => {
     if (map.getLayer(trainer.layer.id)) return
     map.addLayer(trainer.layer)
-    // Above the trainer, so it shows through the parts that cover it.
-    for (const layer of seeThroughLayers()) map.addLayer(layer)
+    for (const layer of seeThroughLayers()) map.addLayer(layer, trainer.layer.id)
   }
   if (map.isStyleLoaded()) addTrainerLayer()
   else map.once('style.load', addTrainerLayer)
@@ -597,6 +596,7 @@ export function startExploration(map: MapLibreMap, initialPosition: Position): v
     if (ids.join() !== covering) {
       covering = ids.join()
       showThrough(map, ids)
+      trainer.setCovered(ids.length > 0)
     }
     movementStatus.hidden = landscape || length <= DEAD_ZONE || (ready && !blocked)
     if (!movementStatus.hidden) {
