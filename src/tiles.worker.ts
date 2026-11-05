@@ -6,8 +6,8 @@ import { writeLayer } from './tile-geometry'
 
 // Adds art tags to an OpenFreeMap z14 tile on the protocol path, before
 // MapLibre parses it. The `building` and `transportation` layers are rebuilt
-// with their source geometry and attributes unchanged; every other layer keeps
-// its original bytes.
+// with their source geometry and attributes unchanged (apart from drawn arch
+// openings, see building-tiles.ts); every other layer keeps its original bytes.
 
 const REBUILT = new Set(['building', 'transportation'])
 

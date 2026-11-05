@@ -1,8 +1,8 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.39 — rebalanced 9.8%/0.2% rarity and documentation consistency audit
-**Date:** 4 November 2026
+**Version:** 0.40 — drawn openings for famous arches
+**Date:** 5 November 2026
 **Status:** Draft; architecture accepted, detailed parameters remain open
 **Product name / creature name:** **bitmon** (singular and plural)
 **Related technical document:** [Hybrid Technical Design](TECHNICAL_DESIGN.md); implementation and decision history: [Development Tracker](DEVELOPMENT_TRACKER.md).
@@ -168,6 +168,7 @@
 - Inventing **surface-level art** is encouraged: windows, roof textures, facade colors, doors, signs without real-world business names, shutters, and decorative details on *mapped buildings*. Their specific appearance is fictional and need not match the actual building.
 - Do **not** invent extra building footprints, annexes, freestanding structures, roads, paths, entrances that imply a new traversable route, or other missing physical features.
 - Art selection is **deterministic** for a stable source feature or geometry fingerprint, OpenFreeMap data revision, and bitmon art version. A guessed residential-like facade must not change randomly whenever the map scrolls.
+- A famous arch or monumental gate mapped as one plain box may be drawn with arch openings cut inside its footprint and height. The whole mapped footprint still blocks the player, because the openings add no traversable route.
 - Window positions and facade elements must stay on the visible walls of the existing building; roof treatment and shadows must not make another building appear nearby.
 - When context is ambiguous, use neutral variety rather than forcing a specific classification. If inference is used, keep it internal to rendering; no asserted real-world usage labels.
 - Never add enrichment queries to raw OpenStreetMap, third-party building databases, proprietary map APIs, aerial imagery, or a custom geographic tile source. A mirror or self-hosted copy of **the same OpenFreeMap dataset/schema** is acceptable for availability.
