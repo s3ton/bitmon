@@ -2,8 +2,9 @@ import type { ExpressionSpecification, FillExtrusionLayerSpecification, FilterSp
 import type { JoinedStyle } from './building-tiles'
 import { LANDMARK_TINTS, type LandmarkStyle } from './landmarks'
 
-// Facade art for mapped OpenFreeMap buildings. Geometry, footprints and heights
-// stay exactly as sourced; only surface patterns are inferred and invented.
+// Facade art for mapped OpenFreeMap buildings. Footprints and heights stay as
+// sourced (arch openings are cut inside theirs by the tile worker); only surface
+// patterns are inferred and invented.
 // The tile worker tags each footprint with `bitmon_style` (from POIs/landuse in
 // the same tile) and `bitmon_variant`; untagged footprints are styled by height.
 // Famous landmarks (`bitmon_landmark`) use their own archetypes, a tint taken
@@ -22,9 +23,9 @@ const GOLD = '#d9a93a'
 const PART_LAYERS = ['ground', 'upper', 'roof'] as const
 type Part = typeof PART_LAYERS[number]
 
-type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic' | 'portal' | 'arcade' | 'lattice' | 'colonnade' | 'screen'
+type GroundKind = 'door' | 'shopfront' | 'entrance' | 'roller' | 'arch' | 'clinic' | 'portal' | 'arcade' | 'lattice' | 'colonnade' | 'screen' | 'plinth'
 type UpperKind = 'window' | 'strip' | 'arched' | 'ribbed' | 'balcony' | 'band' | 'lancet' | 'arcade' | 'lattice' | 'slit' | 'pilaster' |
-  'pointed' | 'eave' | 'belfry' | 'curtain'
+  'pointed' | 'eave' | 'belfry' | 'curtain' | 'plain'
 type RoofKind = 'tiles' | 'flat' | 'ribbed' | 'scales'
 type FacadeStyle = {
   walls: string[]; accents: string[]; roofs: string[]
@@ -60,6 +61,7 @@ const STYLES: Record<JoinedStyle | LandmarkStyle | 'house' | 'block' | 'tower', 
   skyscraper: { walls: LANDMARK_TINTS, accents: ['#5d86ad'], roofs: ['#8f99a3', '#7f8c99'], ground: 'entrance', upper: 'curtain', roof: 'flat', glass: '#7fb2d6' },
   bridge: { walls: LANDMARK_TINTS, accents: ['#3e7cc0', '#5d7590'], roofs: ['#5b6573', '#6b7f99'], ground: 'arcade', upper: 'lancet', roof: 'tiles', masonry: true },
   palace: { walls: LANDMARK_TINTS, accents: ['#3e5f99', '#4f8a7c', '#9a6a3a'], roofs: ['#8a8f98', '#4f8a7c'], ground: 'colonnade', upper: 'pilaster', roof: 'flat', masonry: true },
+  arch: { walls: LANDMARK_TINTS, accents: ['#8a7458'], roofs: ['#cdbb94', '#c2b08a'], ground: 'plinth', upper: 'plain', roof: 'flat', masonry: true },
 }
 
 const INK = '#2f3550'
@@ -310,12 +312,16 @@ function drawImage(part: Part, style: FacadeStyle, variant: number, zoom: number
         rect(.04, .58, .92, py, shade(accent, -.3))
         for (const x of [.0, .47, .94]) rect(x, .18, .06, .72, accent)
         break
+      case 'plinth':
+        rect(0, .6, 1, .3, shade(wall, -.12))
+        break
       case 'lattice':
         break
     }
     return ctx.getImageData(0, 0, width, heightPx)
   }
 
+  if (style.upper === 'plain') return ctx.getImageData(0, 0, width, heightPx)
   // Upper floors: one 4 m storey per image row, with a ledge at its base.
   rect(0, .92, 1, .08, shade(wall, -.12))
   switch (style.upper) {

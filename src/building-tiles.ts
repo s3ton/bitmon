@@ -7,7 +7,8 @@ import { bounded, clipRing, contains, Grid, metresPerUnit, pointBox, signedArea,
 // splits it back into one feature per footprint and tags each with an art
 // style inferred from POIs and landuse in the same tile. Famous landmarks and
 // all their stacked parts get a landmark style instead. Geometry and source
-// attributes are copied unchanged.
+// attributes are copied unchanged, except that a famous arch mapped as one plain
+// box is drawn with openings inside that box, which still blocks the player.
 
 
 // Ordered by precedence when several mapped POIs fall inside one footprint.
@@ -46,6 +47,17 @@ const WORSHIP_STYLES: Record<string, LandmarkStyle> = {
 // landmark sampled (Colosseum, Eiffel Tower, Taj Mahal...) has 55+, while
 // only about 1% of all POIs reach 20.
 const FAMOUS_TRANSLATIONS = 20
+
+// Names that mark a monument or attraction as an arch or monumental gate.
+const ARCH_NAME = /^(?!.*\b(bridge|park)\b).*\b(arch|arc|arco|gate|gateway|porta|puerta|triumphal)\b/i
+// A plain box this tall and elongated can be drawn with openings.
+const ARCH_MIN_HEIGHT = 10
+const ARCH_MIN_ASPECT = 1.5
+// Openings as fractions of the box's length and height. Long arches have a
+// tall central opening between two smaller ones, short arches a single one.
+const ARCH_LONG_METRES = 20
+const LONG_ARCH = [{ from: .12, to: .25, rise: .35 }, { from: .37, to: .63, rise: .55 }, { from: .75, to: .88, rise: .35 }]
+const SHORT_ARCH = [{ from: .3, to: .7, rise: .54 }]
 
 // A part rests on another whose top is within this of its base.
 const REST_METRES = 1
@@ -89,36 +101,38 @@ function landmarkSeed(properties: Record<string, Value>): { style: LandmarkStyle
   if (!LANDMARK_CLASSES.has(poiClass) || properties.subclass === 'artwork') return undefined
   let fame = 0
   for (const key in properties) if (key.startsWith('name:') && key !== 'name:latin' && key !== 'name:nonlatin') fame++
+  const arched = ARCH_NAME.test(String(properties['name:en'] ?? properties.name))
+  // A monument with an arch name needs no fame; looser classes still do.
+  if (poiClass === 'monument' && arched) return { style: 'arch', fame }
   if (fame < FAMOUS_TRANSLATIONS) return undefined
   if (poiClass === 'place_of_worship') return { style: WORSHIP_STYLES[String(properties.subclass ?? '')] ?? 'shrine', fame }
   if (poiClass === 'castle') return { style: properties.subclass === 'ruins' ? 'ruins' : 'fortress', fame }
-  return { style: null, fame }
+  return { style: poiClass === 'attraction' && arched ? 'arch' : null, fame }
 }
 
 // Landmarks without a telling class are judged by where and how they stand.
 // Heights are metres; footprint extents are tile units.
 function shapeStyle(group: LandmarkGroup, metresPerUnit: number): LandmarkStyle {
-  const top = (member: Footprint) => Number(member.tags.render_height) || 0
   // A famous POI standing in water with a raised, long and narrow deck or
   // walkway is a bridge (Tower Bridge), unlike a moored ship or a fountain.
   const deck = group.members.some((member) => {
-    if (!(Number(member.tags.render_min_height) > 0)) return false
+    if (!baseOf(member)) return false
     let span = 0
     for (const a of member.rings[0]) for (const b of member.rings[0]) span = Math.max(span, Math.hypot(a.x - b.x, a.y - b.y))
     return span * metresPerUnit >= 80 && span * span >= 4 * member.size
   })
   if (group.onWater && deck) return 'bridge'
   // Raised open rings (Eiffel-like towers) read as ironwork.
-  const ironwork = group.members.some((member) => Number(member.tags.render_min_height) > 0 && member.rings.length > 1)
+  const ironwork = group.members.some((member) => baseOf(member) > 0 && member.rings.length > 1)
   // Very tall landmarks: a solid body rising from the ground is a skyscraper;
   // height made of raised pieces (Eiffel Tower, London Eye) is open ironwork.
-  if (Math.max(...group.members.map(top)) >= 120) {
-    const tallBody = group.members.some((member) => top(member) >= 120 && (Number(member.tags.render_min_height) || 0) <= 5)
+  if (Math.max(...group.members.map(topOf)) >= 120) {
+    const tallBody = group.members.some((member) => topOf(member) >= 120 && baseOf(member) <= 5)
     return tallBody && !ironwork ? 'skyscraper' : 'ironwork'
   }
   // A POI part at least three times taller than wide is a bell or clock tower.
-  const slender = group.core.some((member) => top(member) >= 25 &&
-    top(member) >= 3 * Math.max(member.maxX - member.minX, member.maxY - member.minY) * metresPerUnit)
+  const slender = group.core.some((member) => topOf(member) >= 25 &&
+    topOf(member) >= 3 * Math.max(member.maxX - member.minX, member.maxY - member.minY) * metresPerUnit)
   if (slender) return 'belltower'
   if (ironwork) return 'ironwork'
   // A courtyard inside a near-elliptical outline reads as an arena.
@@ -153,12 +167,46 @@ function tintFor(colour: Value | undefined): number | undefined {
 // Parts that touch in plan and meet in height, one of them raised off the
 // ground: legs carrying a platform, a drum carrying a dome.
 function stacked(a: Footprint, b: Footprint): boolean {
-  const [aBase, aTop] = [Number(a.tags.render_min_height) || 0, Number(a.tags.render_height) || 0]
-  const [bBase, bTop] = [Number(b.tags.render_min_height) || 0, Number(b.tags.render_height) || 0]
+  const [aBase, aTop, bBase, bTop] = [baseOf(a), topOf(a), baseOf(b), topOf(b)]
   if ((aBase <= 0 && bBase <= 0) || aTop < bBase || bTop < aBase) return false
   // Footprints that merely abut (a walkway against a tower wall) still count.
   const margin = 4
   return a.minX - margin <= b.maxX && b.minX - margin <= a.maxX && a.minY - margin <= b.maxY && b.minY - margin <= a.maxY
+}
+
+// Vertical strips across a plain box that rise to its top from the ground (the
+// piers) or from a stepped round arch head. Sharing one top keeps the roof and
+// cornice whole. Returns nothing unless the footprint is a long rectangle.
+function archStrips(box: Footprint, metres: number): { rings: Polygon; base: number }[] | undefined {
+  const ring = box.rings[0]
+  const top = topOf(box)
+  if (box.rings.length > 1 || ring.length !== 5 || baseOf(box) || top < ARCH_MIN_HEIGHT || box.tags.hide_3d === true) return undefined
+  const between = (p: Point, q: Point) => Math.hypot(p.x - q.x, p.y - q.y)
+  let [a, b, c, d] = ring
+  if (between(b, c) > between(a, b)) [a, b, c, d] = [b, c, d, a]
+  const length = between(a, b) * metres
+  const near = (p: number, q: number) => Math.abs(p - q) <= .1 * Math.max(p, q)
+  if (length < ARCH_MIN_ASPECT * between(b, c) * metres || !near(between(a, b), between(c, d)) || !near(between(a, c), between(b, d))) return undefined
+  const along = (p: Point, q: Point, t: number) => ({ x: Math.round(p.x + t * (q.x - p.x)), y: Math.round(p.y + t * (q.y - p.y)) })
+  const strip = (from: number, to: number, base: number) => {
+    const start = along(a, b, from)
+    return { base, rings: [[start, along(a, b, to), along(d, c, to), along(d, c, from), start]] }
+  }
+  const strips = []
+  let edge = 0
+  for (const { from, to, rise } of length >= ARCH_LONG_METRES ? LONG_ARCH : SHORT_ARCH) {
+    strips.push(strip(edge, from, 0))
+    const radius = (to - from) * length / 2
+    const steps = Math.max(3, Math.round(2 * radius))
+    for (let i = 0; i < steps; i++) {
+      const offset = (i + .5) / steps * 2 - 1
+      const head = rise * top + radius * (Math.sqrt(1 - offset * offset) - 1)
+      strips.push(strip(from + (to - from) * i / steps, from + (to - from) * (i + 1) / steps, Math.round(head)))
+    }
+    edge = to
+  }
+  strips.push(strip(edge, 1, 0))
+  return strips
 }
 
 export function buildingFeatures(tile: VectorTile, x: number, y: number): Feature[] {
@@ -262,10 +310,13 @@ export function buildingFeatures(tile: VectorTile, x: number, y: number): Featur
       frontier = next
     }
   }
+  const arches = new Map<Footprint, { rings: Polygon; base: number }[]>()
   for (const group of groups) {
     const style = group.style ?? shapeStyle(group, unit)
     const tint = group.members.map((member) => tintFor(member.tags.colour)).find((index) => index !== undefined) ?? DEFAULT_TINT[style]
     for (const { tags } of group.members) Object.assign(tags, { bitmon_style: style, bitmon_variant: tint, bitmon_landmark: true })
+    const strips = style === 'arch' && group.members.length === 1 && archStrips(group.members[0], unit)
+    if (strips) arches.set(group.members[0], strips)
   }
   // World-unique part ids (tile, then footprint index) let the style pick out
   // the parts covering the trainer.
@@ -275,10 +326,16 @@ export function buildingFeatures(tile: VectorTile, x: number, y: number): Featur
   // would draw the overlap and flicker as they fight for depth, so each tile
   // keeps only the part inside its own square; together they cover the footprint.
   const features: Feature[] = []
-  footprints.forEach(({ tags, rings, minX, minY, maxX, maxY }, i) => {
+  const add = ({ rings, minX, minY, maxX, maxY }: Area, tags: Record<string, Value>) => {
     const inside = minX >= 0 && minY >= 0 && maxX <= extent && maxY <= extent
     const clipped = inside ? rings : rings.map((ring) => clipRing(ring, extent))
-    if (clipped[0]) features.push({ id: tileId + i, type: 3, tags, geometry: clipped.filter((ring) => ring !== undefined) })
-  })
+    if (clipped[0]) features.push({ id: tileId + features.length, type: 3, tags, geometry: clipped.filter((ring) => ring !== undefined) })
+  }
+  for (const footprint of footprints) {
+    const strips = arches.get(footprint)
+    // The hidden box keeps blocking the player: the openings are only drawn.
+    add(footprint, strips ? { ...footprint.tags, hide_3d: true } : footprint.tags)
+    for (const { rings, base } of strips ?? []) add(bounded(rings), { ...footprint.tags, render_min_height: base })
+  }
   return features
 }
