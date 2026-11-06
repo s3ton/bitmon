@@ -275,7 +275,7 @@ The game should not require disclosure of the player's real-world location merel
 #### Type effectiveness (GAME-02)
 
 - The twelve combat types are **Water, Air, Acid, Fire, Metal, Ice, Flora, Earth, Crystal, Electric, Light and Darkness**. The relationships form a **custom chart, not a circle**. Each type has **three advantages, three weaknesses and five neutral opponents** (excluding itself). An advantage also grants resistance to the disadvantaged type; do not maintain a separate contradictory resistance table.
-- The **attack move's type** determines the matchup. Against a single defending type, an advantageous move deals **1.5×** damage, the reverse (resisted) move deals **2/3×** damage (approximately **0.67×**), and a neutral move deals **1×** before other battle modifiers. Same-type move proficiency/resonance, dual-type defense combination and final rounding order are still **undecided**; do not silently infer them from this chart.
+- The **attack move's type** determines the matchup. Against a single defending type, an advantageous move deals **3/2 (1.5×)** damage, the reverse (resisted) move deals **2/3 (approximately 0.67×)** damage, and a neutral move deals **1×** before other battle modifiers. For a **dual-type defender**, evaluate that *one move type* separately against **both defending types** and **multiply the two effectiveness factors**. An advantage against one type and resistance against the other cancel exactly: **3/2 × 2/3 = 1×**. Use exact fractions (or equivalent exact rational arithmetic) until the combined multiplier has been determined; do not round 2/3 to 0.67 before multiplying. Same-type attack proficiency/resonance and final damage rounding order are still **undecided**.
 - The following is the **initial agreed 12-type balance chart**. **Bold targets** preserve the owner's 20 mandatory matchups; other targets fill the symmetric three-in/three-out balance and remain subject to future explicit tuning. The **Weak against** column is the exact inverse of the advantages. Rules versions must identify this matrix in deterministic battle transcripts and server validation.
 
 | Type | Strong against and resistant to | Weak against |
@@ -294,6 +294,19 @@ The game should not require disclosure of the player's real-world location merel
 | Darkness | **Flora**, Crystal, Electric | Air, Fire, Light |
 
 Examples: **Electric** attacks are strong against **Ice**, **Flora** attacks against **Light** (photosynthesis theme), and **Water** attacks against **Fire**. Those defending types' attacks are correspondingly resisted in the reverse direction. No type may be both strong and weak against the same other type.
+
+**Dual-type defender effectiveness (one attacking move):**
+
+| Against defender type A | Against defender type B | Combined multiplier |
+|---|---|---|
+| Advantage (3/2) | Advantage (3/2) | **9/4 = 2.25×** |
+| Advantage (3/2) | Neutral (1) | **3/2 = 1.5×** |
+| Advantage (3/2) | Resistance (2/3) | **1×** |
+| Neutral (1) | Neutral (1) | **1×** |
+| Neutral (1) | Resistance (2/3) | **2/3 ≈ 0.667×** |
+| Resistance (2/3) | Resistance (2/3) | **4/9 ≈ 0.444×** |
+
+For example, **Electric** versus **Water/Earth** is **3/2 × 2/3 = 1×**, because Electric is strong against Water but Earth resists Electric. The two defending types are distinct; this calculation describes **one move hitting one dual-type defender**, not a damage bonus based on the attacking creature's own types.
 
 ### CAM-01 — Battle framing in the existing world
 
@@ -492,7 +505,7 @@ These questions need explicit product decisions; do not mistake unmeasured param
 7. **Hall of Fame:** on-chain network, one transaction per win versus batch threshold, publisher retry costs, privacy treatment of public pseudonyms, on-chain record schema.
 8. **Unique event NFTs:** actual one-of-one criteria, event award fairness, mint wallet recovery and contract chain, transfer/owner synchronization, licensing and MiCA/legal assessment.
 9. **Map controls and world:** fast virtual travel, world geometry integrity, walkable/offroad rules, gym distribution, map revision cadence and no alternate geography sources.
-10. **Art and device targets:** original creature art, unresolved dual-type effectiveness and same-type move bonus/rounding rules, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
+10. **Art and device targets:** original creature art, unresolved same-type move bonus and final damage rounding rules, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
 11. **Production infrastructure:** Cloudflare Worker/D1/DO/Queues costs, persistent backups, Supabase Auth recovery, monitoring, operational security and alternative hosting after GitHub Pages prototype.
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
