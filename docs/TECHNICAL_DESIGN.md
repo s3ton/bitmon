@@ -1,8 +1,8 @@
 # bitmon — Hybrid Game Backend and Optional On-Chain Collectibles
 
 **Document type:** Technical architecture and threat model
-**Version:** 4.4 — 9.8%/0.2% odds and documentation consistency audit
-**Date:** 4 November 2026
+**Version:** 4.5 — twelve-type effectiveness design
+**Date:** 6 November 2026
 **Status:** Approved direction; detailed parameters and external compliance remain open; implementation not started
 **Product requirements:** [PRODUCT_REQUIREMENTS.md](PRODUCT_REQUIREMENTS.md)
 **Development decisions:** [DEVELOPMENT_TRACKER.md](DEVELOPMENT_TRACKER.md)
@@ -126,6 +126,7 @@ The **same publicly authenticated randomness value** is distributed to all clien
 - Preserve prior game-balance intent for ordinary **server-mediated** exchanges: exactly one creature for one of the same rarity tier, one completed swap per trainer per rolling 24 hours, both reset to the lower level. Use an atomic, consented database swap with unique request IDs; no NFT mint, crypto, wallet or open marketplace is involved for normal creatures.
 - All rarity tiers can compete in ordinary authenticated gym battles and eligible ranked PvP **without NFTs**; rarity does not require blockchain custody. Local-only monsters are for practice/unranked play unless admitted under a separately verifiable import rule.
 - Keep combat pure/deterministic given explicitly supplied seed, legal action sequence and rules version. Share one rules implementation between client for presentation and server for validation; don't duplicate two divergent game engines.
+- The versioned type matchup source of truth is [GAME-02 in the PRD](PRODUCT_REQUIREMENTS.md#game-02--combat-and-capture): **Water, Air, Acid, Fire, Metal, Ice, Flora, Earth, Crystal, Electric, Light, Darkness**. It contains exactly **three outgoing advantages and three incoming weaknesses per type**, with no mutual advantage. Resolve effectiveness from the **attack move's type**, not the attacking creature's types: for each defending type select the rational factor **3/2** on advantage, **2/3** on resistance (reverse matchup), otherwise **1**. For a dual-type defender multiply the two factors **exactly before damage rounding** (e.g. Electric versus Water/Earth = 3/2 × 2/3 = 1, versus two advantages = 9/4, versus two resistances = 4/9). Avoid rounded decimal approximations and duplicate hand-maintained weakness/resistance data. The gym server and local client must use the same type chart, rational multiplier and rules version. Same-type attack proficiency/resonance and final damage rounding order remain open decisions.
 - Do not monetize by selling combat power or randomized transferable collectibles without a separate policy/legal review.
 
 ## 6. PvP without a continuous battle server

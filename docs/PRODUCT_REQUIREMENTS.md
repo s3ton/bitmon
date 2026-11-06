@@ -1,8 +1,8 @@
 # bitmon — Product Requirements
 
 **Document type:** Player-facing product requirements document (PRD)  
-**Version:** 0.40 — drawn openings for famous arches
-**Date:** 5 November 2026
+**Version:** 0.41 — twelve-type effectiveness chart
+**Date:** 6 November 2026
 **Status:** Draft; architecture accepted, detailed parameters remain open
 **Product name / creature name:** **bitmon** (singular and plural)
 **Related technical document:** [Hybrid Technical Design](TECHNICAL_DESIGN.md); implementation and decision history: [Development Tracker](DEVELOPMENT_TRACKER.md).
@@ -272,6 +272,42 @@ The game should not require disclosure of the player's real-world location merel
 - Local encounters and battles can use private device randomness and tolerate local cheating. Online Rare/Legendary captures and official gyms remain server-authoritative; all official gym stats/items/moves are normalized from a published template.
 - Maintain the same-world camera zoom to the battle and restore pre-battle map framing afterward (CAM-01).
 
+#### Type effectiveness (GAME-02)
+
+- The twelve combat types are **Water, Air, Acid, Fire, Metal, Ice, Flora, Earth, Crystal, Electric, Light and Darkness**. The relationships form a **custom chart, not a circle**. Each type has **three advantages, three weaknesses and five neutral opponents** (excluding itself). An advantage also grants resistance to the disadvantaged type; do not maintain a separate contradictory resistance table.
+- The **attack move's type** determines the matchup. Against a single defending type, an advantageous move deals **3/2 (1.5×)** damage, the reverse (resisted) move deals **2/3 (approximately 0.67×)** damage, and a neutral move deals **1×** before other battle modifiers. For a **dual-type defender**, evaluate that *one move type* separately against **both defending types** and **multiply the two effectiveness factors**. An advantage against one type and resistance against the other cancel exactly: **3/2 × 2/3 = 1×**. Use exact fractions (or equivalent exact rational arithmetic) until the combined multiplier has been determined; do not round 2/3 to 0.67 before multiplying. Same-type attack proficiency/resonance and final damage rounding order are still **undecided**.
+- The following is the **initial agreed 12-type balance chart**. **Bold targets** preserve the owner's 20 mandatory matchups; other targets fill the symmetric three-in/three-out balance and remain subject to future explicit tuning. The **Weak against** column is the exact inverse of the advantages. Rules versions must identify this matrix in deterministic battle transcripts and server validation.
+
+| Type | Strong against and resistant to | Weak against |
+|---|---|---|
+| Water | **Fire**, **Metal**, Acid | Flora, Electric, Light |
+| Air | **Acid**, Light, Darkness | Metal, Ice, Earth |
+| Acid | **Metal**, **Earth**, Crystal | Water, Air, Ice |
+| Fire | **Ice**, **Flora**, **Darkness** | Water, Earth, Crystal |
+| Metal | **Earth**, Air, Crystal | Water, Acid, Electric |
+| Ice | **Flora**, Air, Acid | Fire, Electric, Light |
+| Flora | **Water**, **Earth**, **Light** | Fire, Ice, Darkness |
+| Earth | **Electric**, Air, Fire | Acid, Metal, Flora |
+| Crystal | **Light**, Fire, Electric | Acid, Metal, Darkness |
+| Electric | **Water**, **Metal**, **Ice** | Earth, Crystal, Darkness |
+| Light | **Darkness**, Water, Ice | Air, Flora, Crystal |
+| Darkness | **Flora**, Crystal, Electric | Air, Fire, Light |
+
+Examples: **Electric** attacks are strong against **Ice**, **Flora** attacks against **Light** (photosynthesis theme), and **Water** attacks against **Fire**. Those defending types' attacks are correspondingly resisted in the reverse direction. No type may be both strong and weak against the same other type.
+
+**Dual-type defender effectiveness (one attacking move):**
+
+| Against defender type A | Against defender type B | Combined multiplier |
+|---|---|---|
+| Advantage (3/2) | Advantage (3/2) | **9/4 = 2.25×** |
+| Advantage (3/2) | Neutral (1) | **3/2 = 1.5×** |
+| Advantage (3/2) | Resistance (2/3) | **1×** |
+| Neutral (1) | Neutral (1) | **1×** |
+| Neutral (1) | Resistance (2/3) | **2/3 ≈ 0.667×** |
+| Resistance (2/3) | Resistance (2/3) | **4/9 ≈ 0.444×** |
+
+For example, **Electric** versus **Water/Earth** is **3/2 × 2/3 = 1×**, because Electric is strong against Water but Earth resists Electric. The two defending types are distinct; this calculation describes **one move hitting one dual-type defender**, not a damage bonus based on the attacking creature's own types.
+
 ### CAM-01 — Battle framing in the existing world
 
 - Camera frames trainer and opponent against the existing OpenFreeMap low-poly scene, not a separate invented battle map.
@@ -450,7 +486,7 @@ The first playable milestone is an **installable portrait-smartphone PWA vertica
 | Guest training | Common/Uncommon training works offline without account; attempts to request an authoritative Rare/Legendary encounter require a valid Supabase session. |
 | Animated explorer | Geographic joystick movement uses camera-relative eight-direction poses; vertical thumb input matches the intended direction, the camera turns smoothly toward heading, and idle retains the bearing. |
 | Same-world battle camera | On battle start the active camera zooms toward the encountered bitmon while the mapped world remains visible; after battle it returns to the exact exploration framing. **Deferred until after E0.** |
-| Fire gym | Fire and Fire/Wind are accepted; Water/Wind is rejected for both attack and defense. |
+| Fire gym | Fire and Fire/Air are accepted; Water/Air is rejected for both attack and defense. |
 | Chain outage | Gym victories update D1/DO leaderboards without waiting for the Bitmon-funded on-chain Hall-of-Fame transaction; publication retries later. |
 | Installable phone PWA | The app can be installed/launched from Android and iOS home screens with a portrait-first UI. |
 | Landscape rotation | Unsupported orientation lock shows a rotate-phone message and preserves session state; no landscape gameplay is implemented. |
@@ -469,7 +505,7 @@ These questions need explicit product decisions; do not mistake unmeasured param
 7. **Hall of Fame:** on-chain network, one transaction per win versus batch threshold, publisher retry costs, privacy treatment of public pseudonyms, on-chain record schema.
 8. **Unique event NFTs:** actual one-of-one criteria, event award fairness, mint wallet recovery and contract chain, transfer/owner synchronization, licensing and MiCA/legal assessment.
 9. **Map controls and world:** fast virtual travel, world geometry integrity, walkable/offroad rules, gym distribution, map revision cadence and no alternate geography sources.
-10. **Art and device targets:** original creature art, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
+10. **Art and device targets:** original creature art, unresolved same-type move bonus and final damage rounding rules, battle rules and chance tables, camera tuning, minimum portrait mobile devices, PWA storage/cache limits and source attribution.
 11. **Production infrastructure:** Cloudflare Worker/D1/DO/Queues costs, persistent backups, Supabase Auth recovery, monitoring, operational security and alternative hosting after GitHub Pages prototype.
 
 ## 15. Map data and implementation constraints (supporting notes, not player-facing features)
